@@ -93,6 +93,9 @@ services:
         - action: sync
           path: ./src
           target: /app/src
+        - action: sync
+          path: ./knowledge_graphs
+          target: /app/knowledge_graphs
         - action: rebuild
           path: ./pyproject.toml
 
