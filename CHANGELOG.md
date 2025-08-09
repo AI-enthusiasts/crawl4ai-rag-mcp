@@ -12,12 +12,19 @@ All notable changes to this project will be documented in this file.
   - Improved logging to show specific import errors for better debugging
   - Fixed Dockerfile to remove obsolete knowledge_graphs directory copy instruction
   - Updated Dockerfile directory creation to align with consolidated module structure
+  - **Resolved circular import issue** causing "cannot import name 'MCPToolError' from partially initialized module 'core'" error
+  - Implemented lazy loading for knowledge_graph modules to break circular dependency chain
   
 ### Technical Details
 
 - The warning "Knowledge graph dependencies not available" was caused by import path issues after module consolidation
 - Solution adds proper path resolution and detailed error logging
 - Dockerfile was still trying to copy non-existent `/build/knowledge_graphs` directory
+- **Circular import chain fixed**:
+  - core.context was importing from knowledge_graph at module level
+  - knowledge_graph.enhanced_validation imports from services
+  - services imports MCPToolError from core
+  - Solution: Lazy import of knowledge_graph modules via `_lazy_import_knowledge_graph()` function
 
 ## [2025-08-09] - Knowledge Graph Module Consolidation
 
