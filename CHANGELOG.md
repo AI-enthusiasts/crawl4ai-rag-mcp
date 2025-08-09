@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2025-08-09] - Knowledge Graph Module Consolidation
+
+### Changed
+
+- **Project Structure Simplification**:
+  - Consolidated `/knowledge_graphs` directory into `/src/knowledge_graph` module
+  - Moved all knowledge graph related Python files to the main source tree
+  - Updated all import statements to use standard Python module imports
+  - Removed standalone knowledge_graphs directory to eliminate path complexity
+
+### Fixed
+
+- **Import Resolution Issues**:
+  - Fixed "Knowledge graph dependencies not available" warning in production Docker
+  - Resolved module import failures by integrating into main source structure
+  - Updated relative imports in `knowledge_graph_validator.py` and `parse_repo_into_neo4j.py`
+  - Fixed `core/context.py` to import from proper module location
+
+### Updated
+
+- **Docker Configuration**:
+  - Simplified Dockerfile by removing separate knowledge_graphs COPY instruction
+  - Updated docker-compose.yml to remove knowledge_graphs from watch paths
+  - Consolidated all source code under single `/app/src` directory in container
+
+### Impact
+
+- **Deployment**: Simplified deployment with single source directory
+- **Maintenance**: Easier to maintain with standard Python module structure
+- **Reliability**: Eliminated path-related import issues in Docker environments
+- **Development**: Improved developer experience with consistent module structure
+
 ## [2025-08-09] - Neo4j Knowledge Graph Attribute Extraction Enhancement
 
 ### Fixed

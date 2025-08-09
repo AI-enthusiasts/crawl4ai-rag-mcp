@@ -33,11 +33,8 @@ COPY src/main.py src/
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system -e .
 
-# Copy the rest of the source code
+# Copy the rest of the source code (includes knowledge_graph module)
 COPY src/ ./src/
-
-# Copy knowledge graph modules
-COPY knowledge_graphs/ ./knowledge_graphs/
 
 # Run crawl4ai-setup if available
 RUN crawl4ai-setup || echo "crawl4ai-setup not required"

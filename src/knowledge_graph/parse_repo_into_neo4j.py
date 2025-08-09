@@ -19,12 +19,10 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Set
-import sys
-sys.path.append(str(Path(__file__).parent.parent / "src"))
-
-# Import GitRepositoryManager - must succeed for Git metadata collection
-from knowledge_graph.git_manager import GitRepositoryManager
 import ast
+
+# Import GitRepositoryManager from same package
+from .git_manager import GitRepositoryManager
 
 from dotenv import load_dotenv
 from neo4j import AsyncGraphDatabase

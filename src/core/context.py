@@ -36,12 +36,8 @@ def get_app_context() -> Optional["Crawl4AIContext"]:
 
 # These imports are conditional based on Neo4j availability
 try:
-    # Add knowledge_graphs directory to path for imports
-    import sys
-
-    sys.path.append("/app/knowledge_graphs")
-    from knowledge_graph_validator import KnowledgeGraphValidator
-    from parse_repo_into_neo4j import DirectNeo4jExtractor
+    from knowledge_graph.knowledge_graph_validator import KnowledgeGraphValidator
+    from knowledge_graph.parse_repo_into_neo4j import DirectNeo4jExtractor
 
     KNOWLEDGE_GRAPH_AVAILABLE = True
 except ImportError:

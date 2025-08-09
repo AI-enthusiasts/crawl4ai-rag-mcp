@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from neo4j import AsyncGraphDatabase
 
-from ai_script_analyzer import (
+from .ai_script_analyzer import (
     AnalysisResult, ImportInfo, MethodCall, AttributeAccess, 
     FunctionCall, ClassInstantiation
 )
