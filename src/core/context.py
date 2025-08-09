@@ -34,27 +34,40 @@ def get_app_context() -> Optional["Crawl4AIContext"]:
     return _app_context
 
 
-# These imports are conditional based on Neo4j availability
-try:
-    # Import from src.knowledge_graph module with proper path resolution
-    import sys
-    import os
-    
-    # Add src directory to path if not already there
-    src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    if src_dir not in sys.path:
-        sys.path.insert(0, src_dir)
-    
-    from knowledge_graph.knowledge_graph_validator import KnowledgeGraphValidator
-    from knowledge_graph.parse_repo_into_neo4j import DirectNeo4jExtractor
+# These will be imported lazily to avoid circular imports
+KNOWLEDGE_GRAPH_AVAILABLE = False
+KnowledgeGraphValidator = None
+DirectNeo4jExtractor = None
 
-    KNOWLEDGE_GRAPH_AVAILABLE = True
-    logger.info("Knowledge graph dependencies loaded successfully")
-except ImportError as e:
-    KNOWLEDGE_GRAPH_AVAILABLE = False
-    KnowledgeGraphValidator = None
-    DirectNeo4jExtractor = None
-    logger.warning(f"Knowledge graph dependencies not available: {e}")
+
+def _lazy_import_knowledge_graph():
+    """Lazily import knowledge graph modules to avoid circular imports."""
+    global KNOWLEDGE_GRAPH_AVAILABLE, KnowledgeGraphValidator, DirectNeo4jExtractor
+    
+    if KNOWLEDGE_GRAPH_AVAILABLE:
+        return True
+        
+    try:
+        # Import from src.knowledge_graph module with proper path resolution
+        import sys
+        import os
+        
+        # Add src directory to path if not already there
+        src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if src_dir not in sys.path:
+            sys.path.insert(0, src_dir)
+        
+        from knowledge_graph.knowledge_graph_validator import KnowledgeGraphValidator as KGV
+        from knowledge_graph.parse_repo_into_neo4j import DirectNeo4jExtractor as DNE
+        
+        KnowledgeGraphValidator = KGV
+        DirectNeo4jExtractor = DNE
+        KNOWLEDGE_GRAPH_AVAILABLE = True
+        logger.info("Knowledge graph dependencies loaded successfully")
+        return True
+    except ImportError as e:
+        logger.warning(f"Knowledge graph dependencies not available: {e}")
+        return False
 
 
 @dataclass
@@ -120,6 +133,10 @@ async def crawl4ai_lifespan(server: FastMCP) -> AsyncIterator[Crawl4AIContext]:
 
     # Check if knowledge graph functionality is enabled
     knowledge_graph_enabled = settings.use_knowledge_graph
+
+    # Try to import knowledge graph modules lazily
+    if knowledge_graph_enabled:
+        _lazy_import_knowledge_graph()
 
     if knowledge_graph_enabled and KNOWLEDGE_GRAPH_AVAILABLE:
         neo4j_uri = settings.neo4j_uri
