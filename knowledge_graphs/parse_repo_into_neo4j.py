@@ -21,11 +21,9 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any, Set
 import sys
 sys.path.append(str(Path(__file__).parent.parent / "src"))
-try:
-    from knowledge_graph.git_manager import GitRepositoryManager
-except ImportError:
-    # Fallback if running standalone
-    GitRepositoryManager = None
+
+# Import GitRepositoryManager - must succeed for Git metadata collection
+from knowledge_graph.git_manager import GitRepositoryManager
 import ast
 
 from dotenv import load_dotenv
@@ -819,7 +817,9 @@ class DirectNeo4jExtractor:
         self.neo4j_password = neo4j_password
         self.driver = None
         self.analyzer = Neo4jCodeAnalyzer()
-        self.git_manager = GitRepositoryManager() if GitRepositoryManager else None
+        # Initialize GitRepositoryManager for Git metadata collection
+        self.git_manager = GitRepositoryManager()
+        logger.info("Git metadata collection enabled with GitRepositoryManager")
     
     async def initialize(self):
         """Initialize Neo4j connection"""
@@ -1072,22 +1072,31 @@ class DirectNeo4jExtractor:
         
         if self.git_manager:
             try:
+                logger.info(f"Extracting Git metadata from {repo_dir}")
+                
                 # Get repository info
                 metadata["info"] = await self.git_manager.get_repository_info(repo_dir)
+                logger.debug(f"Repository info: {metadata['info']}")
                 
                 # Get branches
                 metadata["branches"] = await self.git_manager.get_branches(repo_dir)
+                logger.debug(f"Found {len(metadata['branches'])} branches")
                 
                 # Get tags
                 metadata["tags"] = await self.git_manager.get_tags(repo_dir)
+                logger.debug(f"Found {len(metadata['tags'])} tags")
                 
                 # Get recent commits (last 10)
                 metadata["recent_commits"] = await self.git_manager.get_commits(repo_dir, limit=10)
+                logger.debug(f"Found {len(metadata['recent_commits'])} recent commits")
                 
-                logger.info(f"Extracted Git metadata: {len(metadata['branches'])} branches, "
+                logger.info(f"Successfully extracted Git metadata: {len(metadata['branches'])} branches, "
                           f"{len(metadata['tags'])} tags, {len(metadata['recent_commits'])} commits")
             except Exception as e:
-                logger.warning(f"Could not extract Git metadata: {e}")
+                logger.error(f"Failed to extract Git metadata: {e}", exc_info=True)
+                logger.warning("Continuing without Git metadata")
+        else:
+            logger.warning("GitRepositoryManager not available - skipping Git metadata extraction")
         
         return metadata
     
@@ -1425,6 +1434,7 @@ class DirectNeo4jExtractor:
             
             # Create Branch nodes if metadata available
             if git_metadata and git_metadata.get("branches"):
+                logger.info(f"Creating {len(git_metadata['branches'][:10])} Branch nodes in Neo4j")
                 for branch in git_metadata["branches"][:10]:  # Limit to 10 branches
                     await session.run("""
                         CREATE (b:Branch {
@@ -1449,6 +1459,7 @@ class DirectNeo4jExtractor:
             
             # Create Commit nodes if metadata available
             if git_metadata and git_metadata.get("recent_commits"):
+                logger.info(f"Creating {len(git_metadata['recent_commits'])} Commit nodes in Neo4j")
                 for commit in git_metadata["recent_commits"]:
                     await session.run("""
                         CREATE (c:Commit {
@@ -1474,6 +1485,8 @@ class DirectNeo4jExtractor:
                         CREATE (r)-[:HAS_COMMIT]->(c)
                     """, repo_name=repo_name, commit_hash=commit["hash"])
                     relationships_created += 1
+            else:
+                logger.warning("No Git metadata available - Branch and Commit nodes will not be created")
             
             logger.info(f"Created {nodes_created} nodes and {relationships_created} relationships")
     async def search_graph(self, query_type: str, **kwargs):
