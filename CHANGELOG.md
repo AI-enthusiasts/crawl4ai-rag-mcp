@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2025-08-09] - Fixed Neo4j Dependencies Import Issue
+
+### Fixed
+
+- **Neo4j import warning in production Docker**:
+  - Enhanced import error handling in `src/core/context.py` with proper path resolution
+  - Added sys.path manipulation to ensure knowledge_graph module can be imported
+  - Improved logging to show specific import errors for better debugging
+  - Fixed Dockerfile to remove obsolete knowledge_graphs directory copy instruction
+  - Updated Dockerfile directory creation to align with consolidated module structure
+  
+### Technical Details
+
+- The warning "Knowledge graph dependencies not available" was caused by import path issues after module consolidation
+- Solution adds proper path resolution and detailed error logging
+- Dockerfile was still trying to copy non-existent `/build/knowledge_graphs` directory
+
 ## [2025-08-09] - Knowledge Graph Module Consolidation
 
 ### Changed

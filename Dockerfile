@@ -85,14 +85,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder --chown=appuser:appuser /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder --chown=appuser:appuser /usr/local/bin /usr/local/bin
 
-# Copy application code
+# Copy application code (includes knowledge_graph module)
 COPY --from=builder --chown=appuser:appuser /build/src ./src
 
-# Copy knowledge graph modules
-COPY --from=builder --chown=appuser:appuser /build/knowledge_graphs ./knowledge_graphs
-
 # Create necessary directories with proper permissions
-RUN mkdir -p /app/data /app/logs /app/analysis_scripts /app/knowledge_graphs/repos \
+RUN mkdir -p /app/data /app/logs /app/analysis_scripts /app/repos \
     && chown -R appuser:appuser /app
 
 # Add metadata labels
