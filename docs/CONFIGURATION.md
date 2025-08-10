@@ -72,6 +72,7 @@ profiles: ["dev"]
 ```
 
 Usage:
+
 ```bash
 # Start specific profile
 docker compose --profile core up -d
@@ -108,7 +109,56 @@ CHUNK_SIZE=2000
 CHUNK_OVERLAP=200
 MIN_CHUNK_SIZE=100
 MAX_CHUNK_SIZE=5000
+
+# Contextual Embeddings (Enhanced RAG)
+USE_CONTEXTUAL_EMBEDDINGS=false  # Enable contextual embeddings for better search accuracy
+CONTEXTUAL_EMBEDDING_MODEL=gpt-4o-mini  # Model for generating context (gpt-4o-mini, gpt-3.5-turbo, gpt-4)
+CONTEXTUAL_EMBEDDING_MAX_TOKENS=200  # Max tokens for context generation (1-4096)
+CONTEXTUAL_EMBEDDING_TEMPERATURE=0.3  # Temperature for context generation (0.0-2.0)
+CONTEXTUAL_EMBEDDING_MAX_DOC_CHARS=25000  # Max document size for context (positive integer)
+CONTEXTUAL_EMBEDDING_MAX_WORKERS=10  # Parallel processing threads (1-20)
 ```
+
+#### Contextual Embeddings Configuration
+
+Contextual embeddings enhance search accuracy by adding document context to each chunk before embedding. This feature uses an LLM to generate contextual summaries that situate chunks within their source documents.
+
+**When to Enable:**
+
+- Technical documentation with cross-references
+- Long-form content where chunks lose meaning in isolation
+- Academic or research documents
+- Code documentation
+
+**Configuration Examples:**
+
+```env
+# High Quality (Slower, More Expensive)
+USE_CONTEXTUAL_EMBEDDINGS=true
+CONTEXTUAL_EMBEDDING_MODEL=gpt-4
+CONTEXTUAL_EMBEDDING_MAX_TOKENS=300
+CONTEXTUAL_EMBEDDING_TEMPERATURE=0.5
+
+# Balanced (Recommended)
+USE_CONTEXTUAL_EMBEDDINGS=true
+CONTEXTUAL_EMBEDDING_MODEL=gpt-4o-mini
+CONTEXTUAL_EMBEDDING_MAX_TOKENS=200
+CONTEXTUAL_EMBEDDING_TEMPERATURE=0.3
+
+# Fast Processing (Lower Quality)
+USE_CONTEXTUAL_EMBEDDINGS=true
+CONTEXTUAL_EMBEDDING_MODEL=gpt-3.5-turbo
+CONTEXTUAL_EMBEDDING_MAX_TOKENS=100
+CONTEXTUAL_EMBEDDING_TEMPERATURE=0.2
+```
+
+**Performance Impact:**
+
+- Processing time: 1.5-2x standard embeddings
+- API costs: ~$0.06-0.60 per 1000 chunks depending on model
+- Memory: Increases with worker count
+
+For detailed information, see [Contextual Embeddings Documentation](./CONTEXTUAL_EMBEDDINGS.md).
 
 ### RAG Strategy
 

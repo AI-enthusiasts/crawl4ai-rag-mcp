@@ -75,6 +75,26 @@ make ps  # Shows status across all environments
 
 ## Testing Sequence
 
+**IMPORTANT**: These tests assume you, Claude Code, are already connected to the MCP server. All tools should be called using the `mcp__crawl4ai-docker__` prefix.
+
+After each test, monitor logs in a separate terminal:
+
+```bash
+make dev-logs-grep
+```
+
+### Test Result Documentation
+
+For each test, document in your results file:
+
+- Test ID and name
+- Exact tool invocation used
+- Expected result (from this plan)
+- Actual result
+- Status: ✅ PASSED or ❌ FAILED
+- If failed: exact error message and relevant logs
+- Execution time
+
 ### Phase 1: Tool-by-Tool Testing
 
 #### Test 1.1: get_available_sources
@@ -99,6 +119,7 @@ Parameters: (none)
 
 - Tool executes without errors
 - Valid JSON response with proper structure
+- Check logs: `make dev-logs-grep PATTERN="get_available_sources"`
 
 **IMPORTANT**: All tests require MATERIAL PASSES - the tool must return actual, relevant results as expected, not just execute without errors. Empty results when content is expected = FAILED test.
 
@@ -275,7 +296,7 @@ Success Criteria:
 
 #### Test 2.10: parse_github_repository
 
-**Purpose**: Test GitHub parsing
+**Purpose**: Test GitHub parsing (requires USE_KNOWLEDGE_GRAPH=true)
 
 ```yaml
 Tool: mcp__crawl4ai-docker__parse_github_repository
@@ -344,7 +365,7 @@ Prerequisites:
 ```yaml
 Tool: mcp__crawl4ai-docker__update_parsed_repository
 Parameters:
-  repo_url: "https://github.com/agent0ai/agent-zero"
+  repo_url: "https://github.com/agent0ai/agent-zerod"
 Expected Result:
   - Repository updated with latest changes
   - Changed files identified (if any)
@@ -751,7 +772,27 @@ Success Criteria:
 
 ## Monitoring During Tests
 
-None
+### Docker Logs
+
+```bash
+# Monitor main service (follow mode)
+make dev-logs
+
+# Check all containers for patterns (last 100 lines)
+make dev-logs-grep  # Default: ERROR|WARNING|embedding|success
+
+# Monitor specific issues across all containers
+make dev-logs-grep PATTERN="ERROR|WARNING|401|403|500"
+
+# Monitor embedding generation across all containers
+make dev-logs-grep PATTERN="embedding"
+
+# Search for specific tool execution
+make dev-logs-grep PATTERN="get_available_sources|scrape_urls"
+
+# Check for timeout or connection issues
+make dev-logs-grep PATTERN="timeout|connection|refused"
+```
 
 ### Key Metrics to Track
 

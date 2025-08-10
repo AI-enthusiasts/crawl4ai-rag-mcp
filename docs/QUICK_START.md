@@ -26,6 +26,7 @@ nano .env  # or use your favorite editor
 ```
 
 Add your API keys:
+
 ```env
 OPENAI_API_KEY=your_openai_key_here
 ANTHROPIC_API_KEY=your_anthropic_key_here  # Optional
@@ -41,9 +42,9 @@ That's it! 🎉
 
 ## 🌐 Access Points
 
-- **MCP Server**: http://localhost:8051
-- **Qdrant Dashboard**: http://localhost:6333/dashboard
-- **API Documentation**: http://localhost:8051/docs
+- **MCP Server**: <http://localhost:8051>
+- **Qdrant Dashboard**: <http://localhost:6333/dashboard>
+- **API Documentation**: <http://localhost:8051/docs>
 
 ## 🛠️ Basic Commands
 
@@ -109,6 +110,7 @@ answer = perform_rag_query(
 ## 🚨 Troubleshooting
 
 ### Services won't start
+
 ```bash
 # Check Docker is running
 docker --version
@@ -122,12 +124,14 @@ make logs
 ```
 
 ### Memory issues
+
 ```bash
 # Increase Docker memory allocation
 # Docker Desktop → Settings → Resources → Memory: 6GB+
 ```
 
 ### Permission errors
+
 ```bash
 # Fix directory permissions
 sudo chown -R $USER:$USER ~/crawl4ai-mcp
@@ -143,6 +147,7 @@ sudo chown -R $USER:$USER ~/crawl4ai-mcp
 ## 💡 Pro Tips
 
 1. **Use profiles for different environments:**
+
    ```bash
    make start           # Minimal setup (core profile)
    docker compose --profile full up -d   # Full features
@@ -150,11 +155,13 @@ sudo chown -R $USER:$USER ~/crawl4ai-mcp
    ```
 
 2. **Monitor resource usage:**
+
    ```bash
    docker stats
    ```
 
 3. **Quick aliases (after restart):**
+
    ```bash
    crawl4ai-start   # Start services
    crawl4ai-stop    # Stop services

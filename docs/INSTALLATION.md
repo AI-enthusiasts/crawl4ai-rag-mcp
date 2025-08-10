@@ -46,6 +46,7 @@ curl -sSL https://raw.githubusercontent.com/krashnicov/crawl4ai-mcp/main/scripts
 ```
 
 This script will:
+
 - Check dependencies
 - Clone the repository
 - Set up directories
@@ -75,12 +76,14 @@ docker run -d \
 Step-by-step manual installation:
 
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/krashnicov/crawl4ai-mcp.git
    cd crawl4ai-mcp
    ```
 
 2. **Create directories:**
+
    ```bash
    mkdir -p data/{qdrant,neo4j,valkey}
    mkdir -p logs
@@ -88,6 +91,7 @@ Step-by-step manual installation:
    ```
 
 3. **Configure environment:**
+
    ```bash
    cp .env.example .env
    # Edit .env with your API keys
@@ -95,6 +99,7 @@ Step-by-step manual installation:
    ```
 
 4. **Start services:**
+
    ```bash
    docker compose --profile core up -d
    ```
@@ -104,12 +109,14 @@ Step-by-step manual installation:
 For contributors and developers:
 
 1. **Clone with submodules:**
+
    ```bash
    git clone --recursive https://github.com/krashnicov/crawl4ai-mcp.git
    cd crawl4ai-mcp
    ```
 
 2. **Install Python dependencies:**
+
    ```bash
    # Install UV package manager
    curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -119,6 +126,7 @@ For contributors and developers:
    ```
 
 3. **Start development environment:**
+
    ```bash
    make dev  # Or: docker compose --profile dev up --watch
    ```
@@ -201,18 +209,21 @@ services:
 ### Check Installation
 
 1. **Verify services are running:**
+
    ```bash
    make status
    # Or: docker compose ps
    ```
 
 2. **Check health endpoints:**
+
    ```bash
    curl http://localhost:8051/health
    curl http://localhost:6333/readyz
    ```
 
 3. **View logs:**
+
    ```bash
    make logs
    # Or: docker compose logs -f
@@ -302,6 +313,7 @@ tar czf crawl4ai-backup.tar.gz data/
 ### Common Issues
 
 **Port conflicts:**
+
 ```bash
 # Find process using port
 lsof -i :8051
@@ -309,18 +321,21 @@ lsof -i :8051
 ```
 
 **Permission denied:**
+
 ```bash
 # Fix ownership
 sudo chown -R $USER:$USER .
 ```
 
 **Out of memory:**
+
 ```bash
 # Increase Docker memory
 # Docker Desktop → Settings → Resources → Memory
 ```
 
 **Slow performance:**
+
 ```bash
 # Check resource usage
 docker stats

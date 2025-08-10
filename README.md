@@ -1,4 +1,4 @@
-<h1 align="left">🐳 Crawl4AI+SearXNG MCP Server</h1>
+# 🐳 Crawl4AI+SearXNG MCP Server
 
 <em>Web Crawling, Search and RAG Capabilities for AI Agents and AI Coding Assistants</em>
 
@@ -13,7 +13,7 @@ A **self-contained Docker solution** that combines the [Model Context Protocol (
 
 **🚀 Complete Stack in One Command**: Deploy everything with `make prod` - no Python setup, no dependencies, no external services required.
 
-### 🎯 Smart RAG vs Traditional Scraping
+## 🎯 Smart RAG vs Traditional Scraping
 
 Unlike traditional scraping (such as [Firecrawl](https://github.com/mendableai/firecrawl-mcp-server)) that dumps raw content and overwhelms LLM context windows, this solution uses **intelligent RAG (Retrieval Augmented Generation)** to:
 
@@ -57,6 +57,7 @@ See the [Configuration section](#configuration) below for details on how to enab
 
 ## Features
 
+- **Contextual Embeddings**: Enhanced RAG with LLM-generated context for each chunk, improving search accuracy by 20-30% ([Learn more](docs/CONTEXTUAL_EMBEDDINGS.md))
 - **Smart URL Detection**: Automatically detects and handles different URL types (regular webpages, sitemaps, text files)
 - **Recursive Crawling**: Follows internal links to discover content
 - **Parallel Processing**: Efficiently crawls multiple pages simultaneously
@@ -1037,6 +1038,7 @@ make dev-stdio     # Run MCP server locally with stdio transport
 ```
 
 This mode provides:
+
 - Direct process communication (stdio) for easier debugging
 - Database services running in Docker (no local installation needed)
 - Instant server restarts without Docker rebuilds

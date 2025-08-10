@@ -5,6 +5,7 @@ This guide explains how to set up and use the hybrid development environment wit
 ## Overview
 
 The hybrid development setup allows you to:
+
 - Run the MCP server locally with **stdio transport** for direct process communication
 - Keep database services (Qdrant, Neo4j, SearXNG, Valkey) running in Docker containers
 - Simplify testing and debugging without network overhead
@@ -31,12 +32,14 @@ stdio (Standard Input/Output) mode offers several advantages for development:
 ### Initial Setup
 
 1. **Create the development environment file** (already created):
+
    ```bash
    # The .env.dev file has been created with stdio configuration
    # It sets TRANSPORT=stdio and configures localhost URLs for services
    ```
 
 2. **Install Python dependencies locally**:
+
    ```bash
    uv sync
    ```
@@ -55,27 +58,31 @@ make dev-hybrid
 ### Step-by-Step Usage
 
 1. **Start database services only**:
+
    ```bash
    make dev-services
    ```
-   
+
    This starts:
-   - Qdrant (vector database) on http://localhost:6333
-   - Neo4j (graph database) on http://localhost:7474
-   - SearXNG (search engine) on http://localhost:8080
+   - Qdrant (vector database) on <http://localhost:6333>
+   - Neo4j (graph database) on <http://localhost:7474>
+   - SearXNG (search engine) on <http://localhost:8080>
    - Valkey (cache) on localhost:6379
 
 2. **Run the MCP server in stdio mode**:
+
    ```bash
    make dev-stdio
    ```
-   
+
    Or directly:
+
    ```bash
    export $(cat .env.dev | grep -v '^#' | xargs) && uv run python src/main.py
    ```
 
 3. **Configure your MCP client** to use stdio mode with the command:
+
    ```json
    {
      "command": "uv",
@@ -89,11 +96,13 @@ make dev-hybrid
 ### Additional Commands
 
 - **View service logs**:
+
   ```bash
   make dev-services-logs
   ```
 
 - **Stop services**:
+
   ```bash
   make dev-services-down
   ```
@@ -115,8 +124,8 @@ The `.env.dev` file configures:
 | Setting | Production (.env) | Development (.env.dev) |
 |---------|------------------|----------------------|
 | TRANSPORT | http | stdio |
-| SEARXNG_URL | http://searxng:8080 | http://localhost:8080 |
-| QDRANT_URL | http://qdrant:6333 | http://localhost:6333 |
+| SEARXNG_URL | <http://searxng:8080> | <http://localhost:8080> |
+| QDRANT_URL | <http://qdrant:6333> | <http://localhost:6333> |
 | NEO4J_URI | bolt://neo4j:7687 | bolt://localhost:7687 |
 | DEBUG | false | true |
 
@@ -158,11 +167,13 @@ mcp-cli --stdio "uv run python src/main.py"
 If services are not accessible on localhost:
 
 1. Check services are running:
+
    ```bash
    docker compose ps
    ```
 
 2. Verify port bindings:
+
    ```bash
    docker compose port qdrant 6333
    docker compose port neo4j 7687
@@ -170,6 +181,7 @@ If services are not accessible on localhost:
    ```
 
 3. Check service health:
+
    ```bash
    docker compose ps --format "table {{.Service}}\t{{.Status}}"
    ```
@@ -177,17 +189,20 @@ If services are not accessible on localhost:
 ### MCP Server Won't Start
 
 1. Ensure `.env.dev` exists:
+
    ```bash
    ls -la .env.dev
    ```
 
 2. Verify environment variables are loaded:
+
    ```bash
    export $(cat .env.dev | grep -v '^#' | xargs) && echo $TRANSPORT
    # Should output: stdio
    ```
 
 3. Check Python dependencies:
+
    ```bash
    uv sync
    ```
@@ -197,11 +212,13 @@ If services are not accessible on localhost:
 If the MCP server can't connect to services:
 
 1. Ensure services are healthy:
+
    ```bash
    make dev-services-logs
    ```
 
 2. Test service connectivity:
+
    ```bash
    # Test Qdrant
    curl http://localhost:6333/dashboard
@@ -296,6 +313,7 @@ make dev-hybrid
 ## Summary
 
 The hybrid stdio development setup provides the best of both worlds:
+
 - **Fast iteration** with local Python execution
 - **No database hassle** with Docker-managed services  
 - **Easy debugging** with direct process communication

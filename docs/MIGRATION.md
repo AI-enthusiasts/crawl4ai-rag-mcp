@@ -1,6 +1,7 @@
 # 📋 Migration Guide: Upgrading Production Environment
 
 ## Overview
+
 This guide helps you migrate from the old multi-file Docker Compose setup to the new unified deployment infrastructure.
 
 ## Pre-Migration Checklist

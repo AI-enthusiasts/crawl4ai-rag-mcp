@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - Contextual Embeddings Implementation
+
+### Added
+
+- **Contextual Embeddings Feature** - Complete implementation of enhanced RAG with contextual embeddings
+  - Core implementation in `src/utils/embeddings.py`:
+    - `generate_contextual_embedding()` function with configurable LLM context generation
+    - `process_chunk_with_context()` for parallel chunk processing  
+    - Updated `add_documents_to_database()` with ThreadPoolExecutor parallel processing
+  - Comprehensive test suite:
+    - Fixed all test import paths and mock configurations in `tests/test_utils.py`
+    - Added new integration tests in `tests/test_contextual_embeddings_integration.py`
+    - Full test coverage for contextual embedding functionality
+  - Documentation:
+    - Created comprehensive guide in `docs/CONTEXTUAL_EMBEDDINGS.md`
+    - Updated README.md to highlight the feature
+    - Enhanced `docs/CONFIGURATION.md` with detailed configuration options
+  - Configuration:
+    - 6 new environment variables for fine-tuning (model, tokens, temperature, etc.)
+    - Graceful fallback to standard embeddings on failure
+    - Parallel processing with configurable worker threads
+
+### Fixed
+
+- **Test Suite Import Paths**:
+  - Corrected OpenAI mock paths from `utils.openai` to module-specific paths
+  - Fixed function signature mismatches in `test_process_chunk_with_context`
+  - Updated mock configurations for ThreadPoolExecutor and concurrent.futures
+  - All 36 tests in test_utils.py now passing
+
 ## [2025-08-09] - Fixed Neo4j Dependencies Import Issue
 
 ### Fixed
