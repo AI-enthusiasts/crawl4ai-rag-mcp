@@ -83,10 +83,15 @@ The server provides essential web crawling and search tools:
 
 ### Knowledge Graph Tools (requires `USE_KNOWLEDGE_GRAPH=true`, see below)
 
-7. **`parse_github_repository`**: Parse a GitHub repository into a Neo4j knowledge graph, extracting classes, methods, functions, and their relationships for hallucination detection
-8. **`check_ai_script_hallucinations`**: Analyze Python scripts for AI hallucinations by validating imports, method calls, and class usage against the knowledge graph
-9. **`query_knowledge_graph`**: Explore and query the Neo4j knowledge graph with commands like `repos`, `classes`, `methods`, and custom Cypher queries
-10. **`get_script_analysis_info`**: Get information about script analysis setup, available paths, and usage instructions for hallucination detection tools
+**🚀 NEW: Multi-Language Repository Parsing** - The system now supports comprehensive analysis of repositories containing Python, JavaScript, TypeScript, Go, and other languages. See [Multi-Language Parsing Documentation](docs/MULTI_LANGUAGE_PARSING.md) for complete details.
+
+7. **`parse_github_repository`**: Parse a GitHub repository into a Neo4j knowledge graph, extracting classes, methods, functions, and their relationships across **multiple programming languages** (Python, JavaScript, TypeScript, Go, etc.)
+8. **`parse_local_repository`**: Parse local Git repositories directly without cloning, supporting **multi-language codebases**
+9. **`parse_repository_branch`**: Parse specific branches of repositories for version-specific analysis
+10. **`analyze_code_cross_language`**: **NEW!** Perform semantic search across multiple programming languages to find similar patterns (e.g., "authentication logic" across Python, JavaScript, and Go)
+11. **`check_ai_script_hallucinations`**: Analyze Python scripts for AI hallucinations by validating imports, method calls, and class usage against the knowledge graph
+12. **`query_knowledge_graph`**: Explore and query the Neo4j knowledge graph with commands like `repos`, `classes`, `methods`, and custom Cypher queries
+13. **`get_script_analysis_info`**: Get information about script analysis setup, available paths, and usage instructions for hallucination detection tools
 
 ## 🔍 Code Search and Validation
 
@@ -110,7 +115,7 @@ The system provides sophisticated code search and validation capabilities by com
 
 ### Enhanced Tools for Code Search and Validation
 
-#### 10. **`smart_code_search`** (requires both `USE_KNOWLEDGE_GRAPH=true` and `USE_AGENTIC_RAG=true`)
+#### 14. **`smart_code_search`** (requires both `USE_KNOWLEDGE_GRAPH=true` and `USE_AGENTIC_RAG=true`)
 
 Intelligent code search that combines Qdrant semantic search with Neo4j structural validation:
 
@@ -120,7 +125,7 @@ Intelligent code search that combines Qdrant semantic search with Neo4j structur
 - **Validation Modes**: Choose between "fast", "balanced", or "thorough" validation
 - **Intelligent Fallback**: Works even when one system is unavailable
 
-#### 11. **`extract_and_index_repository_code`** (requires both systems)
+#### 15. **`extract_and_index_repository_code`** (requires both systems)
 
 Bridge Neo4j knowledge graph data into Qdrant for searchable code examples:
 
@@ -129,7 +134,7 @@ Bridge Neo4j knowledge graph data into Qdrant for searchable code examples:
 - **Rich Metadata**: Preserve class/method relationships and context
 - **Batch Processing**: Efficient indexing of large repositories
 
-#### 12. **`check_ai_script_hallucinations_enhanced`** (requires both systems)
+#### 16. **`check_ai_script_hallucinations_enhanced`** (requires both systems)
 
 Advanced hallucination detection using dual validation:
 
@@ -177,886 +182,328 @@ The hallucination detection tools require access to Python scripts. The Docker c
 
 - **`./analysis_scripts/user_scripts/`** - Place your Python scripts here (recommended)
 - **`./analysis_scripts/test_scripts/`** - For test scripts
-- **`/tmp/`** - Temporary scripts (automatically mapped to container)
+- **`./analysis_scripts/validation_results/`** - Results are automatically saved here
 
-**How to Use:**
+**Quick Start:**
 
-1. **Place your script in the appropriate directory:**
+1. Create a script: `echo "import pandas as pd" > ./analysis_scripts/user_scripts/test.py`
+2. Run validation: Use the `check_ai_script_hallucinations` tool with `script_path="test.py"`
+3. Check results: View detailed analysis in `./analysis_scripts/validation_results/`
 
-   ```bash
-   cp my_ai_script.py ./analysis_scripts/user_scripts/
-   ```
+**Path Translation:** The system automatically translates relative paths to container paths, making it convenient to reference scripts by filename.
 
-2. **Call the hallucination detection tool:**
+## Quick Start
 
-   ```json
-   {
-     "tool": "check_ai_script_hallucinations",
-     "arguments": {
-       "script_path": "analysis_scripts/user_scripts/my_ai_script.py"
-     }
-   }
-   ```
+### Prerequisites
 
-3. **Alternative paths work automatically:**
-   - `"script_path": "/tmp/test.py"` - Uses /tmp mount
-   - `"script_path": "my_script.py"` - Defaults to user_scripts directory
+- Docker and Docker Compose
+- Make (optional, for convenience commands)
+- 8GB+ available RAM for all services
 
-4. **Use the helper tool for setup info:**
+### 1. Start the Stack
 
-   ```json
-   {
-     "tool": "get_script_analysis_info",
-     "arguments": {}
-   }
-   ```
-
-**Results** are saved to `./analysis_scripts/validation_results/` for review.
-
-### Simple Usage Examples
-
-**Find validated code examples**:
-
-```json
-{
-  "tool": "smart_code_search",
-  "arguments": {
-    "query": "database connection with async context manager",
-    "min_confidence": 0.6,
-    "validation_mode": "fast"
-  }
-}
-```
-
-**Detect AI hallucinations**:
-
-```json
-{
-  "tool": "check_ai_script_hallucinations_enhanced", 
-  "arguments": {
-    "script_path": "/tmp/ai_generated_code.py",
-    "include_code_suggestions": true
-  }
-}
-```
-
-For complete setup instructions, configuration options, and advanced usage patterns, see the [Neo4j-Qdrant Integration Guide](docs/NEO4J_QDRANT_INTEGRATION.md).
-
-## Prerequisites
-
-**Required:**
-
-- [Docker and Docker Compose](https://www.docker.com/products/docker-desktop/) - This is a Docker-only solution
-- [OpenAI API key](https://platform.openai.com/api-keys) - For generating embeddings
-- **Vector Database** (choose one):
-  - [Supabase account](https://supabase.com/) - Cloud-hosted PostgreSQL with pgvector (default)
-  - [Qdrant](https://qdrant.tech/) - Self-hosted vector database (runs in Docker)
-
-**Optional:**
-
-- [Neo4j instance](https://neo4j.com/) - For knowledge graph functionality (see [Knowledge Graph Setup](#knowledge-graph-setup))
-- Custom domain - For production HTTPS deployment
-
-## Installation
-
-This is a **Docker-only solution** - no Python environment setup required!
-
-### Quick Start
-
-1. **Clone this repository:**
-
-   ```bash
-   git clone https://github.com/coleam00/mcp-crawl4ai-rag.git
-   cd mcp-crawl4ai-rag
-   ```
-
-2. **Configure environment:**
-
-   ```bash
-   cp .env.example .env
-   # Edit .env with your API keys (see Configuration section below)
-   ```
-
-3. **Deploy the complete stack:**
-
-   ```bash
-   make prod  # For production
-   # or
-   make dev-bg  # For development with watch mode
-   ```
-
-That's it! Your complete search, crawl, and RAG stack is now running:
-
-- **MCP Server**: <http://localhost:8051>
-- **SearXNG Search**: <http://localhost:8080> (internal)
-- **Caddy Proxy**: Handles HTTPS and routing
-
-### What Gets Deployed
-
-The Docker Compose stack includes:
-
-- **MCP Crawl4AI Server** - Main application server
-- **SearXNG** - Private search engine instance
-- **Valkey** - Redis-compatible cache for SearXNG
-- **Caddy** - Reverse proxy with automatic HTTPS
-
-## Database Setup *IMPORTANT!*
-
-Before running the server, you need to set up the database with the pgvector extension:
-
-1. Go to the SQL Editor in your Supabase dashboard (create a new project first if necessary)
-
-2. Create a new query and paste the contents of `crawled_pages.sql`
-
-3. Run the query to create the necessary tables and functions
-
-## Knowledge Graph Setup (Optional)
-
-To enable AI hallucination detection and repository analysis features, you need to set up Neo4j.
-
-**Note:** The knowledge graph functionality works fully with Docker and supports all features.
-
-### Neo4j Setup Options
-
-**Option 1: Local AI Package (Recommended)**
-
-The easiest way to get Neo4j running is with the [Local AI Package](https://github.com/coleam00/local-ai-packaged):
-
-1. **Clone and start Neo4j**:
-
-   ```bash
-   git clone https://github.com/coleam00/local-ai-packaged.git
-   cd local-ai-packaged
-   # Follow repository instructions to start Neo4j with Docker Compose
-   ```
-
-2. **Connection details for Docker**:
-   - URI: `bolt://host.docker.internal:7687` (for Docker containers)
-   - URI: `bolt://localhost:7687` (for local access)
-   - Username: `neo4j`
-   - Password: Check Local AI Package documentation
-
-**Option 2: Neo4j Docker**
-
-Run Neo4j directly with Docker:
+**Production deployment:**
 
 ```bash
-docker run -d \
-  --name neo4j \
-  -p 7474:7474 -p 7687:7687 \
-  -e NEO4J_AUTH=neo4j/your-password \
-  neo4j:latest
+git clone https://github.com/krashnicov/crawl4aimcp.git
+cd crawl4aimcp
+make prod  # Starts all services in production mode
 ```
 
-**Option 3: Neo4j Desktop**
+**Development deployment:**
 
-Use Neo4j Desktop for a local GUI-based installation:
+```bash
+make dev   # Starts services with hot reloading and debug logging
+```
 
-1. **Download and install**: [Neo4j Desktop](https://neo4j.com/download/)
-2. **Create a new database** with your preferred settings
-3. **Connection details**:
-   - URI: `bolt://host.docker.internal:7687` (for Docker containers)
-   - URI: `bolt://localhost:7687` (for local access)
-   - Username: `neo4j`
-   - Password: Whatever you set during database creation
+### 2. Configure Claude Desktop (or other MCP client)
+
+Add the MCP server to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "crawl4ai-mcp": {
+      "command": "docker",
+      "args": [
+        "exec", "-i", "crawl4aimcp-mcp-1",
+        "uv", "run", "python", "src/main.py"
+      ],
+      "env": {
+        "USE_KNOWLEDGE_GRAPH": "true"
+      }
+    }
+  }
+}
+```
+
+### 3. Test the Connection
+
+Try these commands in Claude to verify everything works:
+
+```
+Use the search tool to find information about "FastAPI authentication"
+```
+
+```
+Use the scrape_urls tool to scrape https://fastapi.tiangolo.com/tutorial/security/
+```
+
+```
+Parse this GitHub repository: https://github.com/fastapi/fastapi
+```
+
+### 4. Multi-Language Repository Analysis
+
+Test the new multi-language capabilities:
+
+```
+Parse a multi-language repository: https://github.com/microsoft/vscode
+```
+
+```
+Search for authentication patterns across Python, JavaScript, and TypeScript
+```
+
+## 🏗️ Architecture
+
+The system consists of several Docker services working together:
+
+### Core Services
+
+- **MCP Server**: FastMCP-based server exposing all tools
+- **Crawl4AI**: Advanced web crawling and content extraction
+- **SearXNG**: Privacy-focused search engine (no external API keys)
+- **Supabase**: PostgreSQL + pgvector for embeddings and RAG
+- **Neo4j**: (Optional) Knowledge graph for code structure and hallucination detection
+- **Qdrant**: (Optional) Alternative vector database with advanced features
+
+### Data Flow
+
+```
+Search Query → SearXNG → URL Extraction → Crawl4AI → Content Processing → Vector Storage → RAG Query → Results
+```
+
+```
+Repository → Multi-Language Parser → Neo4j Knowledge Graph → Code Validation → Hallucination Detection
+```
 
 ## Configuration
 
-Configure the Docker stack by editing your `.env` file (copy from `.env.example`):
+The system supports extensive configuration through environment variables:
+
+### Core Configuration
 
 ```bash
-# ========================================
-# MCP SERVER CONFIGURATION
-# ========================================
-TRANSPORT=sse
-HOST=0.0.0.0
-PORT=8051
+# Basic Configuration
+USE_SUPABASE=true                    # Enable Supabase for vector storage
+USE_QDRANT=false                     # Use Qdrant instead of Supabase (optional)
+USE_KNOWLEDGE_GRAPH=true             # Enable Neo4j for code analysis
+USE_AGENTIC_RAG=true                 # Enable advanced RAG features
 
-# ========================================
-# INTEGRATED SEARXNG CONFIGURATION
-# ========================================
-# Pre-configured for Docker Compose - SearXNG runs internally
-SEARXNG_URL=http://searxng:8080
-SEARXNG_USER_AGENT=MCP-Crawl4AI-RAG-Server/1.0
-SEARXNG_DEFAULT_ENGINES=google,bing,duckduckgo
-SEARXNG_TIMEOUT=30
+# Search Configuration  
+SEARXNG_URL=http://searxng:8080      # Internal SearXNG URL
+CRAWL4AI_URL=http://crawl4ai:8000    # Internal Crawl4AI URL
 
-# Optional: Custom domain for production HTTPS
-SEARXNG_HOSTNAME=http://localhost
-# SEARXNG_TLS=your-email@example.com  # For Let's Encrypt
-
-# ========================================
-# AI SERVICES CONFIGURATION
-# ========================================
-# Required: OpenAI API for embeddings
-OPENAI_API_KEY=your_openai_api_key
-
-# LLM for summaries and contextual embeddings
-MODEL_CHOICE=gpt-4.1-nano-2025-04-14
-
-# ========================================
-# VECTOR DATABASE CONFIGURATION
-# ========================================
-# Choose your vector database: supabase or qdrant
-VECTOR_DATABASE=supabase
-
-# Option 1: Supabase (cloud-hosted PostgreSQL with pgvector)
-SUPABASE_URL=your_supabase_project_url
-SUPABASE_SERVICE_KEY=your_supabase_service_key
-
-# Option 2: Qdrant (self-hosted, runs in Docker)
-# Qdrant service is included in the docker compose setup
-QDRANT_URL=http://qdrant:6333
-QDRANT_API_KEY=  # Optional, leave empty for local development
-
-# ========================================
-# RAG ENHANCEMENT STRATEGIES
-# ========================================
-USE_CONTEXTUAL_EMBEDDINGS=false
-USE_HYBRID_SEARCH=false
-USE_AGENTIC_RAG=false
-USE_RERANKING=false
-USE_KNOWLEDGE_GRAPH=false
-
-# Optional: Neo4j for knowledge graph (if USE_KNOWLEDGE_GRAPH=true)
-# Use host.docker.internal:7687 for Docker Desktop on Windows/Mac
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=your_neo4j_password
+# Multi-Language Repository Parsing
+NEO4J_BATCH_SIZE=50                  # Batch size for large repository processing
+NEO4J_BATCH_TIMEOUT=120              # Timeout for batch operations
+REPO_MAX_SIZE_MB=500                 # Maximum repository size
+REPO_MAX_FILE_COUNT=10000            # Maximum number of files
 ```
 
-### Key Configuration Notes
-
-**🔍 SearXNG Integration**: The stack includes a pre-configured SearXNG instance that runs automatically. No external setup required!
-
-**🐳 Docker Networking**: The default configuration uses Docker internal networking (`http://searxng:8080`) which works out of the box.
-
-**🔐 Production Setup**: For production, set `SEARXNG_HOSTNAME` to your domain and `SEARXNG_TLS` to your email for automatic HTTPS.
-
-### Choosing a Vector Database
-
-This solution supports two vector database options:
-
-#### Supabase (Default)
-
-- **Pros**: Cloud-hosted, no infrastructure management, built-in authentication, scales automatically
-- **Cons**: Requires account creation, potential latency for remote queries, usage limits on free tier
-- **Best for**: Production deployments, teams, when you want managed infrastructure
-
-#### Qdrant (Self-hosted)
-
-- **Pros**: Runs locally in Docker, no external accounts needed, full control over data, no usage limits
-- **Cons**: Requires more memory/CPU, you manage backups and scaling
-- **Best for**: Local development, privacy-sensitive applications, when you want complete control
-
-**To use Qdrant instead of Supabase:**
-
-1. Set `VECTOR_DATABASE=qdrant` in your `.env` file
-2. Run `make prod` or `make dev-bg`
-
-### RAG Strategy Options
-
-The Crawl4AI RAG MCP server supports four powerful RAG strategies that can be enabled independently:
-
-#### 1. **USE_CONTEXTUAL_EMBEDDINGS**
-
-When enabled, this strategy enhances each chunk's embedding with additional context from the entire document. The system passes both the full document and the specific chunk to an LLM (configured via `MODEL_CHOICE`) to generate enriched context that gets embedded alongside the chunk content.
-
-- **When to use**: Enable this when you need high-precision retrieval where context matters, such as technical documentation where terms might have different meanings in different sections.
-- **Trade-offs**: Slower indexing due to LLM calls for each chunk, but significantly better retrieval accuracy.
-- **Cost**: Additional LLM API calls during indexing.
-
-#### 2. **USE_HYBRID_SEARCH**
-
-Combines traditional keyword search with semantic vector search to provide more comprehensive results. The system performs both searches in parallel and intelligently merges results, prioritizing documents that appear in both result sets.
-
-- **When to use**: Enable this when users might search using specific technical terms, function names, or when exact keyword matches are important alongside semantic understanding.
-- **Trade-offs**: Slightly slower search queries but more robust results, especially for technical content.
-- **Cost**: No additional API costs, just computational overhead.
-
-#### 3. **USE_AGENTIC_RAG**
-
-Enables specialized code example extraction and storage. When crawling documentation, the system identifies code blocks (≥300 characters), extracts them with surrounding context, generates summaries, and stores them in a separate vector database table specifically designed for code search.
-
-- **When to use**: Essential for AI coding assistants that need to find specific code examples, implementation patterns, or usage examples from documentation.
-- **Trade-offs**: Significantly slower crawling due to code extraction and summarization, requires more storage space.
-- **Cost**: Additional LLM API calls for summarizing each code example.
-- **Benefits**: Provides a dedicated `search_code_examples` tool that AI agents can use to find specific code implementations.
-
-#### 4. **USE_RERANKING**
-
-Applies cross-encoder reranking to search results after initial retrieval. Uses a lightweight cross-encoder model (`cross-encoder/ms-marco-MiniLM-L-6-v2`) to score each result against the original query, then reorders results by relevance.
-
-- **When to use**: Enable this when search precision is critical and you need the most relevant results at the top. Particularly useful for complex queries where semantic similarity alone might not capture query intent.
-- **Trade-offs**: Adds ~100-200ms to search queries depending on result count, but significantly improves result ordering.
-- **Cost**: No additional API costs - uses a local model that runs on CPU.
-- **Benefits**: Better result relevance, especially for complex queries. Works with both regular RAG search and code example search.
-
-#### 5. **USE_KNOWLEDGE_GRAPH**
-
-Enables AI hallucination detection and repository analysis using Neo4j knowledge graphs. When enabled, the system can parse GitHub repositories into a graph database and validate AI-generated code against real repository structures. **Fully compatible with Docker** - all functionality works within the containerized environment.
-
-- **When to use**: Enable this for AI coding assistants that need to validate generated code against real implementations, or when you want to detect when AI models hallucinate non-existent methods, classes, or incorrect usage patterns.
-- **Trade-offs**: Requires Neo4j setup and additional dependencies. Repository parsing can be slow for large codebases, and validation requires repositories to be pre-indexed.
-- **Cost**: No additional API costs for validation, but requires Neo4j infrastructure (can use free local installation or cloud AuraDB).
-- **Benefits**: Provides three powerful tools: `parse_github_repository` for indexing codebases, `check_ai_script_hallucinations` for validating AI-generated code, and `query_knowledge_graph` for exploring indexed repositories.
-
-**Usage with MCP Tools:**
-
-You can tell the AI coding assistant to add a Python GitHub repository to the knowledge graph:
-
-"Add <https://github.com/pydantic/pydantic-ai.git> to the knowledge graph"
-
-Make sure the repo URL ends with .git.
-
-You can also have the AI coding assistant check for hallucinations with scripts it creates using the MCP `check_ai_script_hallucinations` tool.
-
-### Recommended Configurations
-
-**For general documentation RAG:**
-
-```
-USE_CONTEXTUAL_EMBEDDINGS=false
-USE_HYBRID_SEARCH=true
-USE_AGENTIC_RAG=false
-USE_RERANKING=true
-```
-
-**For AI coding assistant with code examples:**
-
-```
-USE_CONTEXTUAL_EMBEDDINGS=true
-USE_HYBRID_SEARCH=true
-USE_AGENTIC_RAG=true
-USE_RERANKING=true
-USE_KNOWLEDGE_GRAPH=false
-```
-
-**For AI coding assistant with hallucination detection:**
-
-```
-USE_CONTEXTUAL_EMBEDDINGS=true
-USE_HYBRID_SEARCH=true
-USE_AGENTIC_RAG=true
-USE_RERANKING=true
-USE_KNOWLEDGE_GRAPH=true
-```
-
-**For fast, basic RAG:**
-
-```
-USE_CONTEXTUAL_EMBEDDINGS=false
-USE_HYBRID_SEARCH=true
-USE_AGENTIC_RAG=false
-USE_RERANKING=false
-USE_KNOWLEDGE_GRAPH=false
-```
-
-## Running the Server
-
-The complete stack is managed through Docker Compose:
-
-### Start the Stack
+### Advanced RAG Configuration
 
 ```bash
-make prod  # For production
-# or
-make dev-bg  # For development
+# Contextual Embeddings (improves search accuracy by 20-30%)
+USE_CONTEXTUAL_EMBEDDINGS=false      # Requires OpenAI API or compatible LLM
+LLM_PROVIDER=openai                  # openai, anthropic, groq, etc.
+OPENAI_API_KEY=your_key_here         # Required for contextual embeddings
+
+# Hybrid Search (combines vector + keyword search)
+USE_HYBRID_SEARCH=false              # Requires PostgreSQL full-text search
+
+# Cross-encoder Reranking (improves result relevance)
+USE_RERANKING=false                  # Uses sentence-transformers reranking
+RERANKING_MODEL=cross-encoder/ms-marco-MiniLM-L-12-v2
 ```
 
-### View Logs
+## Multi-Language Repository Support
+
+The system now provides comprehensive support for multi-language repositories:
+
+### Supported Languages
+
+- **Python** (.py) - Classes, functions, methods, imports, docstrings
+- **JavaScript** (.js, .jsx, .mjs, .cjs) - ES6+ features, React components
+- **TypeScript** (.ts, .tsx) - Interfaces, types, enums, generics  
+- **Go** (.go) - Structs, interfaces, methods, packages
+
+### Key Features
+
+- **Unified Knowledge Graph**: All languages stored in single Neo4j instance
+- **Cross-Language Search**: Find similar patterns across different languages
+- **Language-Aware Analysis**: Respects language-specific syntax and conventions
+- **Repository Size Safety**: Built-in validation prevents resource exhaustion
+- **Batch Processing**: Optimized for large multi-language repositories
+
+### Example Multi-Language Workflow
 
 ```bash
-# View logs
-make logs  # Choose environment when prompted
-# or directly:
-make dev-logs  # For development logs
-make prod-logs  # For production logs
+# Parse a full-stack repository
+parse_github_repository("https://github.com/microsoft/vscode")
+
+# Search across languages
+analyze_code_cross_language(
+  query="authentication middleware",
+  languages=["python", "javascript", "typescript", "go"]
+)
+
+# Explore repository structure
+query_knowledge_graph("explore vscode")
 ```
 
-### Stop the Stack
+For complete documentation, see [Multi-Language Parsing Guide](docs/MULTI_LANGUAGE_PARSING.md).
+
+## Docker Services Detail
+
+### Service URLs (Development)
+
+- **MCP Server**: Internal only (accessed via Docker exec)
+- **SearXNG**: <http://localhost:4040>
+- **Crawl4AI**: <http://localhost:8000>
+- **Supabase Studio**: <http://localhost:54323>
+- **Neo4j Browser**: <http://localhost:7474>
+- **Qdrant Dashboard**: <http://localhost:6333/dashboard> (if enabled)
+
+### Volume Mounts
+
+```
+./analysis_scripts/          → /app/analysis_scripts/
+./data/supabase/             → /var/lib/postgresql/data
+./data/neo4j/                → /data
+./data/qdrant/               → /qdrant/storage
+```
+
+## Performance and Scaling
+
+### Resource Requirements
+
+**Minimum (Development):**
+
+- 4GB RAM
+- 10GB disk space
+- 2 CPU cores
+
+**Recommended (Production):**
+
+- 8GB+ RAM  
+- 50GB+ disk space
+- 4+ CPU cores
+
+### Optimization Settings
 
 ```bash
-make down  # Stops all environments
-# or specifically:
-make dev-down  # Stop development
-make prod-down  # Stop production
+# Large Repository Processing
+export NEO4J_BATCH_SIZE=100
+export NEO4J_BATCH_TIMEOUT=300
+export REPO_MAX_SIZE_MB=1000
+
+# High-Volume Crawling
+export CRAWL4AI_MAX_CONCURRENT=20
+export SUPABASE_MAX_CONNECTIONS=20
 ```
-
-### Restart Services
-
-```bash
-# Restart services
-make restart  # Choose environment when prompted
-# or directly:
-make dev-restart  # Restart development
-make prod-restart  # Restart production
-```
-
-The MCP server will be available at `http://localhost:8051` for SSE connections.
-
-## Integration with MCP Clients
-
-After starting the Docker stack with `make prod` or `make dev-bg`, your MCP server will be available for integration.
-
-### HTTP Configuration (Docker Default)
-
-The Docker stack runs with HTTP transport by default. For complete configuration instructions, see [MCP_CLIENT_CONFIG.md](MCP_CLIENT_CONFIG.md).
-
-**Quick Claude Desktop Config:**
-
-```json
-{
-  "mcpServers": {
-    "crawl4ai-docker": {
-      "url": "http://localhost:8051",
-      "transport": "http"
-    }
-  }
-}
-```
-
-**Windsurf (alternative syntax):**
-
-```json
-{
-  "mcpServers": {
-    "crawl4ai-rag": {
-      "transport": "sse",
-      "serverUrl": "http://localhost:8051/sse"
-    }
-  }
-}
-```
-
-**Claude Code CLI:**
-
-```bash
-claude mcp add-json crawl4ai-rag '{"type":"http","url":"http://localhost:8051/sse"}' --scope user
-```
-
-### Docker Networking Notes
-
-- **Same machine**: Use `http://localhost:8051/sse`
-- **Different container**: Use `http://host.docker.internal:8051/sse`
-- **Remote access**: Replace `localhost` with your server's IP address
-
-### Production Deployment
-
-For production use with custom domains:
-
-1. **Update your `.env`**:
-
-   ```bash
-   SEARXNG_HOSTNAME=https://yourdomain.com
-   SEARXNG_TLS=your-email@example.com
-   ```
-
-2. **Access via HTTPS**:
-
-   ```
-   https://yourdomain.com:8051/sse
-   ```
-
-### Health Check
-
-Verify the server is running:
-
-```bash
-curl http://localhost:8051/health
-```
-
-## Knowledge Graph Architecture
-
-The knowledge graph system stores repository code structure in Neo4j with the following components:
-
-### Core Components (`knowledge_graphs/` folder)
-
-- **`parse_repo_into_neo4j.py`**: Clones and analyzes GitHub repositories, extracting Python classes, methods, functions, and imports into Neo4j nodes and relationships
-- **`ai_script_analyzer.py`**: Parses Python scripts using AST to extract imports, class instantiations, method calls, and function usage
-- **`knowledge_graph_validator.py`**: Validates AI-generated code against the knowledge graph to detect hallucinations (non-existent methods, incorrect parameters, etc.)
-- **`hallucination_reporter.py`**: Generates comprehensive reports about detected hallucinations with confidence scores and recommendations
-- **`query_knowledge_graph.py`**: Interactive CLI tool for exploring the knowledge graph (functionality now integrated into MCP tools)
-
-### Knowledge Graph Schema
-
-The Neo4j database stores code structure as:
-
-**Nodes:**
-
-- `Repository`: GitHub repositories
-- `File`: Python files within repositories  
-- `Class`: Python classes with methods and attributes
-- `Method`: Class methods with parameter information
-- `Function`: Standalone functions
-- `Attribute`: Class attributes
-
-**Relationships:**
-
-- `Repository` -[:CONTAINS]-> `File`
-- `File` -[:DEFINES]-> `Class`
-- `File` -[:DEFINES]-> `Function`
-- `Class` -[:HAS_METHOD]-> `Method`
-- `Class` -[:HAS_ATTRIBUTE]-> `Attribute`
-
-### Workflow
-
-1. **Repository Parsing**: Use `parse_github_repository` tool to clone and analyze open-source repositories
-2. **Code Validation**: Use `check_ai_script_hallucinations` tool to validate AI-generated Python scripts
-3. **Knowledge Exploration**: Use `query_knowledge_graph` tool to explore available repositories, classes, and methods
 
 ## Troubleshooting
 
-### Docker Issues
+### Common Issues
 
-**Container won't start:**
+**1. Services not starting:**
 
 ```bash
-# Check logs for specific errors
-make logs  # Choose environment
+# Check service status
+docker-compose ps
 
-# Restart problematic services
-make restart  # Choose environment
+# View logs
+docker-compose logs mcp
+docker-compose logs searxng
 ```
 
-**SearXNG not accessible:**
+**2. MCP connection issues:**
 
 ```bash
-# Check if SearXNG is running
-make logs  # Choose environment, then view searxng logs
+# Test MCP server directly
+docker exec -it crawl4aimcp-mcp-1 uv run python src/main.py
 
-# Open shell to verify networking
-make shell  # Choose environment
+# Check Claude Desktop logs
+tail -f ~/Library/Logs/Claude/mcp*.log
 ```
 
-**Port conflicts:**
+**3. Multi-language parsing issues:**
 
 ```bash
-# Check what's using ports
-netstat -tulpn | grep -E ":(8051|8080)"
+# Check Neo4j connection
+docker-compose logs neo4j
 
-# Change ports in docker-compose.yml if needed
-ports:
-  - "8052:8051"  # Changed from 8051:8051
+# Verify language analyzers
+docker exec crawl4aimcp-mcp-1 python -c "from src.knowledge_graph.analyzers.factory import AnalyzerFactory; print(AnalyzerFactory().get_supported_languages())"
 ```
 
-### Common Configuration Issues
-
-**Environment variables not loading:**
-
-- Ensure `.env` file is in the root directory
-- Verify no spaces around `=` in `.env` file
-- Check for special characters that need quoting
-
-**API connection failures:**
-
-- Verify `OPENAI_API_KEY` is valid and has credits
-- Check `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` are correct
-- Test API connectivity from within container:
-
-  ```bash
-  make shell  # Choose environment
-  # Then run: curl -H "Authorization: Bearer $OPENAI_API_KEY" https://api.openai.com/v1/models
-  ```
-
-**Neo4j connection issues:**
-
-- Use `host.docker.internal:7687` instead of `localhost:7687` for Neo4j running on host
-- Verify Neo4j is running and accessible
-- Check firewall settings for port 7687
-
-### Performance Optimization
-
-**Memory usage:**
+**4. Repository too large:**
 
 ```bash
-# Monitor resource usage
-docker stats
-
-# Adjust memory limits in docker-compose.yml
-deploy:
-  resources:
-    limits:
-      memory: 2G
-```
-
-**Disk space:**
-
-```bash
-# Clean up Docker
-docker system prune -a
-
-# Check volume usage
-docker volume ls
+# Increase limits
+export REPO_MAX_SIZE_MB=1000
+export REPO_MAX_FILE_COUNT=15000
 ```
 
 ### Getting Help
 
-1. **Check logs first**: `make logs`
-2. **Test connectivity**: `make shell` then use `curl` commands
-3. **Reset everything**: `make clean-all && make prod`
+- **Documentation**: Check the `/docs` directory for detailed guides
+- **Issues**: Report bugs on GitHub Issues
+- **Logs**: All services log to Docker, accessible via `docker-compose logs [service]`
 
-## Testing
+## Development
 
-The project includes comprehensive unit and integration tests with a fully isolated test environment. All tests run independently without interfering with development or production environments.
+### Contributing
 
-### 📋 Deprecation Warnings
+1. Fork the repository
+2. Create a feature branch
+3. Make changes with proper documentation
+4. Add tests for new functionality
+5. Submit a pull request
 
-**Important**: Before running tests, review the [Deprecation Warnings Documentation](docs/DEPRECATION_WARNINGS.md) to track any warnings from dependencies. Current known warnings are from external dependencies (Pydantic, fake_http_header) and do not affect functionality.
+### Adding Language Support
 
-### 🚀 Quick Start
+To add support for new programming languages:
 
-**Validate test environment and run tests**:
+1. Create analyzer in `src/knowledge_graph/analyzers/`
+2. Extend `AnalyzerFactory` to recognize file extensions
+3. Add language-specific patterns and parsing logic
+4. Update documentation and tests
 
-```bash
-# Validate entire test setup (recommended first run)
-./scripts/validate-test-environment.sh
+See the [Language Analyzer Development Guide](docs/QA/LANGUAGE_ANALYZER_DEVELOPMENT.md) for details.
 
-# Quick unit tests (no external dependencies, ~30 seconds)
-make test-unit
-
-# Full test suite with coverage (includes integration tests, ~2 minutes)
-make test-ci
-```
-
-### 📋 Test Environment Setup
-
-The test environment uses completely isolated services with dedicated ports and configurations:
-
-- **Qdrant Test**: `localhost:6333` (isolated vector database)
-- **Neo4j Test**: `localhost:7474` / `localhost:7687` (isolated graph database)  
-- **SearXNG Test**: `localhost:8081` (isolated search engine)
-- **Test Configuration**: `.env.test` (optimized for fast testing)
-
-**Manual setup**:
+### Testing
 
 ```bash
-# 1. Ensure test configuration exists
-ls .env.test  # Should exist (created automatically)
+# Run unit tests
+make test
 
-# 2. Start isolated test services
-make docker-test-up-wait
+# Run specific language analyzer tests  
+make test-analyzers
 
-# 3. Verify services are ready
-make test-db-connect
+# Run integration tests
+make test-integration
 ```
 
-### 🧪 Running Tests
+## License
 
-**Quick development tests**:
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-```bash
-make test-quick      # Core unit tests only (~15 seconds)
-make test-unit       # All unit tests (~30 seconds)
-make test-coverage   # Unit tests with coverage report
-```
+## Credits
 
-**Integration tests** (require Docker services):
-
-```bash
-make test-integration    # All integration tests (~1 minute)
-make test-searxng       # SearXNG-specific integration tests
-make test-qdrant        # Qdrant-specific integration tests  
-make test-neo4j         # Neo4j-specific integration tests
-```
-
-**Comprehensive testing**:
-
-```bash
-make test-all        # All tests (unit + integration)
-make test-ci         # Full CI suite with coverage
-make test-coverage-ci # All tests with coverage (mimics CI)
-```
-
-**Specialized testing**:
-
-```bash
-make test-file FILE=tests/test_example.py    # Test specific file
-make test-mark MARK=integration              # Test specific marker
-make test-debug                              # Verbose debugging output
-make test-pdb                               # Run with PDB debugger
-```
-
-### 🔧 Test Environment Management
-
-**Service management**:
-
-```bash
-make docker-test-up           # Start test services
-make docker-test-up-wait      # Start and wait for readiness
-make docker-test-down         # Stop and clean test services
-make docker-test-status       # Show service status
-make docker-test-logs         # View service logs
-```
-
-**Service health checks**:
-
-```bash
-make test-db-connect         # Test database connectivity
-curl http://localhost:6333/readyz   # Qdrant health
-curl http://localhost:8081/healthz  # SearXNG health
-```
-
-### 📊 Coverage and CI
-
-**Coverage reports**:
-
-```bash
-make test-coverage           # Generate HTML coverage report
-# View: open htmlcov/index.html
-
-make test-coverage-ci        # CI-style coverage with XML output
-```
-
-**CI Integration**:
-
-- **GitHub Actions**: Automated testing on push/PR
-- **Multi-Python**: Tests run on Python 3.12 and 3.13
-- **Matrix Testing**: Unit tests grouped by component
-- **Integration Testing**: Full service stack testing
-- **Coverage Threshold**: 80% minimum required (enforced in GitHub Actions)
-- **Coverage Reporting**: Automatic coverage reports generated as artifacts with PR comments
-- **Security Scanning**: Trivy vulnerability scanning
-
-### 🏗️ Test Structure
-
-**Test organization**:
-
-```
-tests/
-├── test_utils.py      # Core utility tests
-├── test_database_factory.py      # Database factory tests  
-├── test_crawl4ai_mcp.py          # MCP server tests
-├── test_supabase_adapter.py      # Supabase integration
-├── test_qdrant_adapter.py        # Qdrant integration
-├── test_database_interface.py    # Database interface tests
-└── test_integration_simple.py    # Basic integration tests
-```
-
-**Test markers**:
-
-- `@pytest.mark.unit`: Unit tests (fast, no external deps)
-- `@pytest.mark.integration`: Integration tests (require services)
-- `@pytest.mark.searxng`: SearXNG-specific tests
-- `@pytest.mark.performance`: Performance/benchmark tests
-
-**Test isolation**:
-
-- ✅ Separate test databases and collections
-- ✅ Isolated Docker network (`test-network`)  
-- ✅ Different ports to avoid conflicts
-- ✅ Independent configuration (`.env.test`)
-- ✅ Cleanup between test runs
-
-### 🔍 Development Testing
-
-**Watch mode** (for active development):
-
-```bash
-make test-watch             # Re-run tests on file changes
-make test-debug             # Verbose output for troubleshooting
-```
-
-**Performance testing**:
-
-```bash
-make test-performance       # Run performance benchmarks
-# Add custom benchmarks with @pytest.mark.performance
-```
-
-### 🧹 Cleanup
-
-**Clean test artifacts**:
-
-```bash
-make clean                  # Remove test caches and reports
-make clean-all              # Remove everything including Docker volumes
-make docker-test-down       # Stop test services and remove volumes
-```
-
-**Reset test environment**:
-
-```bash
-make docker-test-down && make docker-test-up-wait
-```
-
-### 🚨 Troubleshooting Tests
-
-**Common issues**:
-
-1. **Services not ready**:
-
-   ```bash
-   make docker-test-logs      # Check service startup logs
-   make test-db-connect       # Verify connectivity
-   ```
-
-2. **Port conflicts**:
-
-   ```bash
-   # Check what's using test ports
-   lsof -i :6333 -i :7474 -i :7687 -i :8081
-   ```
-
-3. **Test failures**:
-
-   ```bash
-   make test-debug            # Verbose test output
-   make test-pdb             # Interactive debugging
-   ```
-
-4. **Environment issues**:
-
-   ```bash
-   ./scripts/validate-test-environment.sh  # Full validation
-   ```
-
-**Performance optimization**:
-
-- Unit tests run in parallel by default
-- Integration tests use optimized service configurations
-- Test data is minimized for speed
-- Services use resource limits for consistency
-
-## Development & Customization
-
-This Docker stack provides a foundation for building more complex MCP servers.
-
-### Development Modes
-
-#### 1. Hybrid Development with stdio Mode (Recommended for Testing)
-
-Run the MCP server locally with stdio transport for easier testing and debugging:
-
-```bash
-# Quick start: Run services in Docker + MCP server locally
-make dev-hybrid
-
-# Or step by step:
-make dev-services  # Start database services in Docker
-make dev-stdio     # Run MCP server locally with stdio transport
-```
-
-This mode provides:
-
-- Direct process communication (stdio) for easier debugging
-- Database services running in Docker (no local installation needed)
-- Instant server restarts without Docker rebuilds
-- Better integration with MCP clients like Claude Desktop
-
-See [docs/DEVELOPMENT_STDIO.md](docs/DEVELOPMENT_STDIO.md) for detailed setup instructions.
-
-#### 2. Full Docker Development (HTTP Mode)
-
-Traditional Docker-based development with HTTP transport:
-
-```bash
-make dev-bg  # Start everything in Docker with watch mode
-```
-
-### Customization Options
-
-1. **Modify the MCP server**: Edit files in `src/` and rebuild: `make dev-rebuild`
-2. **Add custom tools**: Extend `src/tools.py` with `@mcp.tool()` decorators
-3. **Customize SearXNG**: Edit `searxng/settings.yml` and restart
-4. **Add services**: Extend `docker-compose.yml` with additional containers
+- **Original MCP Crawl4AI RAG**: [coleam00/mcp-crawl4ai-rag](https://github.com/coleam00/mcp-crawl4ai-rag)
+- **Crawl4AI**: [unclecode/crawl4ai](https://github.com/unclecode/crawl4ai)  
+- **SearXNG**: [searxng/searxng](https://github.com/searxng/searxng)
+- **FastMCP**: [jlowin/fastmcp](https://github.com/jlowin/fastmcp)

@@ -24,6 +24,9 @@ import ast
 # Import GitRepositoryManager from same package
 from .git_manager import GitRepositoryManager
 
+# Import analyzer factory for multi-language support
+from .analyzers import AnalyzerFactory
+
 from dotenv import load_dotenv
 from neo4j import AsyncGraphDatabase
 
@@ -817,7 +820,22 @@ class DirectNeo4jExtractor:
         self.analyzer = Neo4jCodeAnalyzer()
         # Initialize GitRepositoryManager for Git metadata collection
         self.git_manager = GitRepositoryManager()
+        # Initialize analyzer factory for multi-language support
+        self.analyzer_factory = AnalyzerFactory()
+        # Transaction batching configuration
+        self.batch_size = int(os.environ.get("NEO4J_BATCH_SIZE", "50"))
+        self.batch_timeout_seconds = int(os.environ.get("NEO4J_BATCH_TIMEOUT", "120"))
+        
+        # Repository size limits from environment
+        self.repo_max_size_mb = int(os.environ.get("REPO_MAX_SIZE_MB", "500"))
+        self.repo_max_file_count = int(os.environ.get("REPO_MAX_FILE_COUNT", "10000"))
+        self.repo_min_free_space_gb = float(os.environ.get("REPO_MIN_FREE_SPACE_GB", "1.0"))
+        self.repo_allow_size_override = os.environ.get("REPO_ALLOW_SIZE_OVERRIDE", "false").lower() == "true"
+        
         logger.info("Git metadata collection enabled with GitRepositoryManager")
+        logger.info(f"Multi-language support enabled for: {', '.join(self.analyzer_factory.get_supported_languages())}")
+        logger.info(f"Repository limits - Max size: {self.repo_max_size_mb}MB, Max files: {self.repo_max_file_count}, "
+                   f"Min free space: {self.repo_min_free_space_gb}GB, Allow override: {self.repo_allow_size_override}")
     
     async def initialize(self):
         """Initialize Neo4j connection"""
@@ -1013,23 +1031,77 @@ class DirectNeo4jExtractor:
         if self.driver:
             await self.driver.close()
     
-    async def clone_repo(self, repo_url: str, target_dir: str, branch: Optional[str] = None) -> str:
-        """Clone repository with enhanced Git support"""
+    async def validate_before_processing(self, repo_url: str) -> tuple[bool, dict]:
+        """
+        Validate repository before processing.
+        
+        Args:
+            repo_url: Repository URL to validate
+            
+        Returns:
+            Tuple of (is_valid, info) with validation details
+        """
+        if not self.git_manager:
+            logger.warning("GitRepositoryManager not available, skipping validation")
+            return True, {"warning": "Validation skipped - GitRepositoryManager not available"}
+        
+        try:
+            is_valid, info = await self.git_manager.validate_repository_size(
+                url=repo_url,
+                max_size_mb=self.repo_max_size_mb,
+                max_file_count=self.repo_max_file_count,
+                min_free_space_gb=self.repo_min_free_space_gb
+            )
+            
+            if not is_valid and not self.repo_allow_size_override:
+                logger.error(f"Repository validation failed: {info.get('errors', [])}")
+                return False, info
+            elif not is_valid and self.repo_allow_size_override:
+                logger.warning(f"Repository exceeds limits but override is enabled: {info.get('errors', [])}")
+                info["override_applied"] = True
+                return True, info
+            
+            return is_valid, info
+        except Exception as e:
+            logger.error(f"Error during validation: {e}")
+            return False, {"errors": [str(e)]}
+    
+    async def clone_repo(self, repo_url: str, target_dir: str, branch: Optional[str] = None, force: bool = False) -> str:
+        """Clone repository with size validation and enhanced Git support
+        
+        Args:
+            repo_url: Repository URL to clone
+            target_dir: Target directory for cloning
+            branch: Optional branch to clone
+            force: Force clone even if size validation fails
+            
+        Returns:
+            Path to the cloned repository
+            
+        Raises:
+            RuntimeError: If validation fails (unless force=True)
+        """
         logger.info(f"Cloning repository to: {target_dir}")
         
-        # Use GitRepositoryManager if available for enhanced features
+        # Use GitRepositoryManager with validation if available
         if self.git_manager:
             try:
-                import asyncio
-                # GitRepositoryManager provides branch support and better error handling
-                result = await self.git_manager.clone_repository(
-                    url=repo_url, 
+                # Use the new validation method
+                result = await self.git_manager.clone_repository_with_validation(
+                    url=repo_url,
                     target_dir=target_dir,
                     branch=branch,
                     depth=1,  # Keep shallow clone for performance
-                    single_branch=True if branch else False
+                    single_branch=True if branch else False,
+                    max_size_mb=self.repo_max_size_mb,
+                    max_file_count=self.repo_max_file_count,
+                    min_free_space_gb=self.repo_min_free_space_gb,
+                    force=force or self.repo_allow_size_override
                 )
                 return result
+            except RuntimeError as e:
+                # Re-raise validation errors
+                raise
             except Exception as e:
                 logger.warning(f"GitRepositoryManager failed, falling back to subprocess: {e}")
         
@@ -1119,8 +1191,66 @@ class DirectNeo4jExtractor:
         
         return python_files
     
-    async def analyze_repository(self, repo_url: str, temp_dir: str = None, branch: str = None):
-        """Analyze repository and create nodes/relationships in Neo4j"""
+    def get_code_files(self, repo_path: str) -> Dict[str, List[Path]]:
+        """Get all supported code files, organized by language"""
+        code_files = {
+            'python': [],
+            'javascript': [],
+            'typescript': [],
+            'go': []
+        }
+        
+        exclude_dirs = {
+            'tests', 'test', '__pycache__', '.git', 'venv', 'env',
+            'node_modules', 'build', 'dist', '.pytest_cache', 'docs',
+            'examples', 'example', 'demo', 'benchmark', 'vendor',
+            '.next', '.nuxt', 'coverage', 'lib', 'out'
+        }
+        
+        supported_extensions = self.analyzer_factory.get_supported_extensions()
+        
+        for root, dirs, files in os.walk(repo_path):
+            dirs[:] = [d for d in dirs if d not in exclude_dirs and not d.startswith('.')]
+            
+            for file in files:
+                file_path = Path(root) / file
+                ext = file_path.suffix.lower()
+                
+                # Skip test files and large files
+                if (ext in supported_extensions and 
+                    not file.startswith('test_') and
+                    not file.endswith('.test' + ext) and
+                    not file.endswith('.spec' + ext) and
+                    file_path.stat().st_size < 500_000):
+                    
+                    # Categorize by language
+                    if ext == '.py':
+                        if not any(skip in str(file_path) for skip in ['migrations/', 'pb2.py', '_pb2_grpc.py']):
+                            code_files['python'].append(file_path)
+                    elif ext in ['.js', '.jsx', '.mjs', '.cjs']:
+                        if not any(skip in str(file_path) for skip in ['.min.js', '.bundle.js', 'webpack']):
+                            code_files['javascript'].append(file_path)
+                    elif ext in ['.ts', '.tsx']:
+                        if not any(skip in str(file_path) for skip in ['.d.ts', '.min.js']):
+                            code_files['typescript'].append(file_path)
+                    elif ext == '.go':
+                        if not any(skip in str(file_path) for skip in ['_test.go', '.pb.go']):
+                            code_files['go'].append(file_path)
+        
+        return code_files
+    
+    async def analyze_repository(self, repo_url: str, temp_dir: str = None, branch: str = None, force: bool = False):
+        """Analyze repository and create nodes/relationships in Neo4j
+        
+        Args:
+            repo_url: Repository URL to analyze
+            temp_dir: Optional temporary directory for cloning
+            branch: Optional branch to analyze
+            force: Force analysis even if repository exceeds size limits
+            
+        Raises:
+            RuntimeError: If repository validation fails (unless force=True)
+        """
         repo_name = repo_url.split('/')[-1].replace('.git', '')
         logger.info(f"Analyzing repository: {repo_name}")
         
@@ -1133,34 +1263,70 @@ class DirectNeo4jExtractor:
             temp_dir = str(script_dir / "repos" / repo_name)
         
         # Clone and analyze
-        repo_path = Path(await self.clone_repo(repo_url, temp_dir, branch))
+        repo_path = Path(await self.clone_repo(repo_url, temp_dir, branch, force=force))
         
         try:
-            logger.info("Getting Python files...")
-            python_files = self.get_python_files(str(repo_path))
-            logger.info(f"Found {len(python_files)} Python files to analyze")
+            # Get all code files, organized by language
+            logger.info("Getting code files for all supported languages...")
+            code_files = self.get_code_files(str(repo_path))
             
-            # First pass: identify project modules
+            total_files = sum(len(files) for files in code_files.values())
+            logger.info(f"Found {total_files} code files to analyze:")
+            for lang, files in code_files.items():
+                if files:
+                    logger.info(f"  - {lang}: {len(files)} files")
+            
+            # First pass: identify project modules (for Python)
             logger.info("Identifying project modules...")
             project_modules = set()
-            for file_path in python_files:
+            for file_path in code_files.get('python', []):
                 relative_path = str(file_path.relative_to(repo_path))
                 module_parts = relative_path.replace('/', '.').replace('.py', '').split('.')
                 if len(module_parts) > 0 and not module_parts[0].startswith('.'):
                     project_modules.add(module_parts[0])
             
-            logger.info(f"Identified project modules: {sorted(project_modules)}")
+            if project_modules:
+                logger.info(f"Identified Python project modules: {sorted(project_modules)}")
             
             # Second pass: analyze files and collect data
-            logger.info("Analyzing Python files...")
             modules_data = []
-            for i, file_path in enumerate(python_files):
-                if i % 20 == 0:
-                    logger.info(f"Analyzing file {i+1}/{len(python_files)}: {file_path.name}")
+            file_counter = 0
+            
+            # Analyze Python files
+            for file_path in code_files.get('python', []):
+                if file_counter % 20 == 0:
+                    logger.info(f"Analyzing file {file_counter+1}/{total_files}: {file_path.name}")
+                file_counter += 1
                 
                 analysis = self.analyzer.analyze_python_file(file_path, repo_path, project_modules)
                 if analysis:
+                    analysis['language'] = 'Python'
                     modules_data.append(analysis)
+            
+            # Analyze JavaScript/TypeScript files
+            js_analyzer = self.analyzer_factory.get_analyzer('.js')
+            for lang, ext in [('javascript', '.js'), ('typescript', '.ts')]:
+                for file_path in code_files.get(lang, []):
+                    if file_counter % 20 == 0:
+                        logger.info(f"Analyzing file {file_counter+1}/{total_files}: {file_path.name}")
+                    file_counter += 1
+                    
+                    if js_analyzer:
+                        analysis = await js_analyzer.analyze_file(str(file_path), str(repo_path))
+                        if analysis:
+                            modules_data.append(analysis)
+            
+            # Analyze Go files
+            go_analyzer = self.analyzer_factory.get_analyzer('.go')
+            for file_path in code_files.get('go', []):
+                if file_counter % 20 == 0:
+                    logger.info(f"Analyzing file {file_counter+1}/{total_files}: {file_path.name}")
+                file_counter += 1
+                
+                if go_analyzer:
+                    analysis = await go_analyzer.analyze_file(str(file_path), str(repo_path))
+                    if analysis:
+                        modules_data.append(analysis)
             
             logger.info(f"Found {len(modules_data)} files with content")
             
@@ -1205,9 +1371,124 @@ class DirectNeo4jExtractor:
                     logger.warning(f"Cleanup failed: {e}. Directory may remain at {temp_dir}")
                     # Don't fail the whole process due to cleanup issues
     
+
+    async def analyze_local_repository(self, local_path: str, repo_name: str):
+        """
+        Analyze a local Git repository without cloning.
+        
+        Args:
+            local_path: Absolute path to the local repository
+            repo_name: Repository name for Neo4j storage
+        """
+        from pathlib import Path
+        import shutil
+        
+        logger.info(f"Analyzing local repository: {repo_name} at {local_path}")
+        
+        # Clear existing data for this repository before re-processing
+        await self.clear_repository_data(repo_name)
+        
+        repo_path = Path(local_path)
+        
+        try:
+            # Get all code files, organized by language
+            logger.info("Getting code files for all supported languages...")
+            code_files = self.get_code_files(str(repo_path))
+            
+            total_files = sum(len(files) for files in code_files.values())
+            logger.info(f"Found {total_files} code files to analyze:")
+            for lang, files in code_files.items():
+                if files:
+                    logger.info(f"  - {lang}: {len(files)} files")
+            
+            # First pass: identify project modules (for Python)
+            logger.info("Identifying project modules...")
+            project_modules = set()
+            for file_path in code_files.get('python', []):
+                module_name = self.analyzer._get_importable_module_name(
+                    Path(file_path), repo_path, Path(file_path).relative_to(repo_path)
+                )
+                if module_name and not module_name.startswith('test') and '__pycache__' not in module_name:
+                    project_modules.add(module_name.split('.')[0])
+            
+            logger.info(f"Identified {len(project_modules)} project modules: {sorted(project_modules)}")
+            
+            # Second pass: analyze all files
+            logger.info("Analyzing code structure...")
+            all_modules = []
+            
+            for lang, files in code_files.items():
+                if not files:
+                    continue
+                
+                logger.info(f"Analyzing {len(files)} {lang} files...")
+                analyzer = self.analyzer_factory.get_analyzer(lang)
+                
+                for file_path in files:
+                    try:
+                        file_path_obj = Path(file_path)
+                        logger.debug(f"Processing {lang} file: {file_path_obj.relative_to(repo_path)}")
+                        
+                        # Use language-specific analyzer
+                        if lang == 'python':
+                            # Use Python analyzer with project modules context
+                            module_data = self.analyzer.analyze_python_file(
+                                file_path_obj, repo_path, project_modules
+                            )
+                        else:
+                            # Use appropriate analyzer for other languages
+                            module_data = analyzer.analyze_file(
+                                file_path_obj, repo_path
+                            )
+                        
+                        if module_data:
+                            # Add language information
+                            module_data['language'] = lang
+                            all_modules.append(module_data)
+                    
+                    except Exception as e:
+                        logger.warning(f"Failed to analyze {file_path}: {e}")
+                        continue
+            
+            logger.info(f"Successfully analyzed {len(all_modules)} files")
+            
+            # Get Git metadata for local repository
+            git_metadata = {}
+            if self.git_manager:
+                try:
+                    logger.info("Collecting Git metadata...")
+                    
+                    # Get repository info
+                    repo_info = await self.git_manager.get_repository_info(local_path)
+                    
+                    # Get branches
+                    branches = await self.git_manager.get_branches(local_path)
+                    
+                    # Get recent commits
+                    commits = await self.git_manager.get_commits(local_path, limit=50)
+                    
+                    git_metadata = {
+                        "info": repo_info,
+                        "branches": branches,
+                        "commits": commits,
+                    }
+                    
+                    logger.info(f"Collected metadata: {len(branches)} branches, {len(commits)} commits")
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to collect Git metadata: {e}")
+            
+            # Create Neo4j graph
+            logger.info("Creating Neo4j graph...")
+            await self._create_graph(repo_name, all_modules, git_metadata)
+            
+            logger.info(f"Analysis complete for local repository: {repo_name}")
+            
+        except Exception as e:
+            logger.exception(f"Error analyzing local repository {local_path}: {e}")
+            raise
     async def _create_graph(self, repo_name: str, modules_data: List[Dict], git_metadata: Dict = None):
         """Create all nodes and relationships in Neo4j"""
-        
         async with self.driver.session() as session:
             # Create Repository node with enhanced metadata
             repo_properties = {
@@ -1249,12 +1530,16 @@ class DirectNeo4jExtractor:
             relationships_created = 0
             
             for i, mod in enumerate(modules_data):
-                # 1. Create File node
+                # Determine the language of this module
+                language = mod.get('language', 'Python')
+                
+                # 1. Create File node with language support
                 await session.run("""
                     CREATE (f:File {
                         name: $name,
                         path: $path,
                         module_name: $module_name,
+                        language: $language,
                         line_count: $line_count,
                         created_at: datetime()
                     })
@@ -1262,7 +1547,8 @@ class DirectNeo4jExtractor:
                     name=mod['file_path'].split('/')[-1],
                     path=mod['file_path'],
                     module_name=mod['module_name'],
-                    line_count=mod['line_count']
+                    language=language,
+                    line_count=mod.get('line_count', 0)
                 )
                 nodes_created += 1
                 
@@ -1274,13 +1560,25 @@ class DirectNeo4jExtractor:
                 """, repo_name=repo_name, file_path=mod['file_path'])
                 relationships_created += 1
                 
-                # 3. Create Class nodes and relationships
-                for cls in mod['classes']:
-                    # Create Class node using MERGE to avoid duplicates
-                    await session.run("""
-                        MERGE (c:Class {full_name: $full_name})
-                        ON CREATE SET c.name = $name, c.created_at = datetime()
-                    """, name=cls['name'], full_name=cls['full_name'])
+                # 3. Create Class nodes and relationships (or Structs for Go)
+                for cls in mod.get('classes', []) + mod.get('structs', []):
+                    # Determine if this is a struct (Go) or class
+                    is_struct = cls.get('type') == 'struct'
+                    node_label = 'Struct' if is_struct else 'Class'
+                    
+                    # Create Class/Struct node using MERGE to avoid duplicates
+                    await session.run(f"""
+                        MERGE (c:CodeElement:{node_label} {{full_name: $full_name}})
+                        ON CREATE SET c.name = $name, 
+                                     c.language = $language,
+                                     c.exported = $exported,
+                                     c.created_at = datetime()
+                    """, 
+                        name=cls['name'], 
+                        full_name=cls.get('full_name', f"{mod['module_name']}.{cls['name']}"),
+                        language=language,
+                        exported=cls.get('exported', True)
+                    )
                     nodes_created += 1
                     
                     # Connect File to Class
@@ -1384,12 +1682,22 @@ class DirectNeo4jExtractor:
                         relationships_created += 1
                 
                 # 6. Create Function nodes (top-level) - use MERGE to avoid duplicates
-                for func in mod['functions']:
+                for func in mod.get('functions', []):
                     func_id = f"{mod['file_path']}::{func['name']}"
+                    # Determine function type and properties
+                    func_type = func.get('type', 'function')
+                    is_async = func.get('async', False)
+                    is_generator = func.get('generator', False)
+                    
                     await session.run("""
-                        MERGE (f:Function {func_id: $func_id})
+                        MERGE (f:CodeElement:Function {func_id: $func_id})
                         ON CREATE SET f.name = $name,
                                      f.full_name = $full_name,
+                                     f.language = $language,
+                                     f.exported = $exported,
+                                     f.async = $is_async,
+                                     f.generator = $is_generator,
+                                     f.type = $func_type,
                                      f.args = $args,
                                      f.params_list = $params_list,
                                      f.params_detailed = $params_detailed,
@@ -1397,12 +1705,17 @@ class DirectNeo4jExtractor:
                                      f.created_at = datetime()
                     """, 
                         name=func['name'], 
-                        full_name=func['full_name'],
+                        full_name=func.get('full_name', f"{mod['module_name']}.{func['name']}"),
                         func_id=func_id,
-                        args=func['args'],
+                        language=language,
+                        exported=func.get('exported', True),
+                        is_async=is_async,
+                        is_generator=is_generator,
+                        func_type=func_type,
+                        args=func.get('args', []),
                         params_list=func.get('params_list', []),  # Simple format for backwards compatibility
                         params_detailed=func.get('params_detailed', []),  # Detailed format
-                        return_type=func['return_type']
+                        return_type=func.get('return_type', 'Any')
                     )
                     nodes_created += 1
                     
@@ -1414,8 +1727,68 @@ class DirectNeo4jExtractor:
                     """, file_path=mod['file_path'], func_id=func_id)
                     relationships_created += 1
                 
-                # 7. Create Import relationships
-                for import_name in mod['imports']:
+                # 7. Create Interface nodes (TypeScript/Go)
+                for interface in mod.get('interfaces', []):
+                    interface_id = f"{mod['file_path']}::{interface['name']}"
+                    await session.run("""
+                        MERGE (i:CodeElement:Interface {interface_id: $interface_id})
+                        ON CREATE SET i.name = $name,
+                                     i.full_name = $full_name,
+                                     i.language = $language,
+                                     i.exported = $exported,
+                                     i.extends = $extends,
+                                     i.created_at = datetime()
+                    """,
+                        interface_id=interface_id,
+                        name=interface['name'],
+                        full_name=f"{mod['module_name']}.{interface['name']}",
+                        language=language,
+                        exported=interface.get('exported', True),
+                        extends=interface.get('extends', None)
+                    )
+                    nodes_created += 1
+                    
+                    # Connect File to Interface
+                    await session.run("""
+                        MATCH (f:File {path: $file_path})
+                        MATCH (i:Interface {interface_id: $interface_id})
+                        MERGE (f)-[:DEFINES]->(i)
+                    """, file_path=mod['file_path'], interface_id=interface_id)
+                    relationships_created += 1
+                
+                # 8. Create Type nodes (TypeScript type aliases, Go types)
+                for type_def in mod.get('types', []):
+                    type_id = f"{mod['file_path']}::{type_def['name']}"
+                    await session.run("""
+                        MERGE (t:CodeElement:Type {type_id: $type_id})
+                        ON CREATE SET t.name = $name,
+                                     t.full_name = $full_name,
+                                     t.language = $language,
+                                     t.exported = $exported,
+                                     t.kind = $kind,
+                                     t.base = $base,
+                                     t.created_at = datetime()
+                    """,
+                        type_id=type_id,
+                        name=type_def['name'],
+                        full_name=f"{mod['module_name']}.{type_def['name']}",
+                        language=language,
+                        exported=type_def.get('exported', True),
+                        kind=type_def.get('kind', 'alias'),
+                        base=type_def.get('base', None)
+                    )
+                    nodes_created += 1
+                    
+                    # Connect File to Type
+                    await session.run("""
+                        MATCH (f:File {path: $file_path})
+                        MATCH (t:Type {type_id: $type_id})
+                        MERGE (f)-[:DEFINES]->(t)
+                    """, file_path=mod['file_path'], type_id=type_id)
+                    relationships_created += 1
+                
+                # 9. Create Import relationships
+                for import_name in mod.get('imports', []):
                     # Try to find the target file
                     await session.run("""
                         MATCH (source:File {path: $source_path})
@@ -1487,6 +1860,120 @@ class DirectNeo4jExtractor:
                 logger.warning("No Git metadata available - Branch and Commit nodes will not be created")
             
             logger.info(f"Created {nodes_created} nodes and {relationships_created} relationships")
+    async def _process_modules_in_batches(self, repo_name: str, modules_data: List[Dict], 
+                                          batch_size: int = None) -> tuple[int, int]:
+        """
+        Process modules in batches to prevent memory issues with large repositories.
+        
+        Args:
+            repo_name: Repository name
+            modules_data: List of module data dictionaries
+            batch_size: Number of modules to process per batch (defaults to self.batch_size)
+            
+        Returns:
+            Tuple of (nodes_created, relationships_created)
+        """
+        batch_size = batch_size or self.batch_size
+        total_modules = len(modules_data)
+        nodes_created = 0
+        relationships_created = 0
+        
+        logger.info(f"Processing {total_modules} modules in batches of {batch_size}")
+        
+        for batch_start in range(0, total_modules, batch_size):
+            batch_end = min(batch_start + batch_size, total_modules)
+            batch = modules_data[batch_start:batch_end]
+            
+            logger.info(f"Processing batch {batch_start//batch_size + 1}/{(total_modules + batch_size - 1)//batch_size} "
+                       f"(modules {batch_start + 1}-{batch_end}/{total_modules})")
+            
+            # Process this batch in a transaction
+            async with self.driver.session() as session:
+                try:
+                    # Use explicit transaction with timeout
+                    tx_config = {
+                        "timeout": self.batch_timeout_seconds
+                    }
+                    
+                    async with session.begin_transaction(**tx_config) as tx:
+                        batch_nodes, batch_rels = await self._process_batch_transaction(
+                            tx, repo_name, batch, batch_start, total_modules
+                        )
+                        await tx.commit()
+                        
+                    nodes_created += batch_nodes
+                    relationships_created += batch_rels
+                    
+                    logger.info(f"Batch {batch_start//batch_size + 1} completed: "
+                               f"{batch_nodes} nodes, {batch_rels} relationships")
+                    
+                except Exception as e:
+                    logger.error(f"Error processing batch {batch_start//batch_size + 1}: {e}")
+                    logger.warning(f"Attempting to continue with next batch...")
+                    # Continue with next batch on error
+                    continue
+        
+        return nodes_created, relationships_created
+
+    async def _process_batch_transaction(self, tx, repo_name: str, batch: List[Dict], 
+                                        batch_start: int, total_modules: int) -> tuple[int, int]:
+        """
+        Process a single batch of modules within a transaction.
+        
+        Args:
+            tx: Neo4j transaction object
+            repo_name: Repository name
+            batch: List of modules in this batch
+            batch_start: Starting index of this batch
+            total_modules: Total number of modules
+            
+        Returns:
+            Tuple of (nodes_created, relationships_created)
+        """
+        nodes_created = 0
+        relationships_created = 0
+        
+        for i, mod in enumerate(batch):
+            module_index = batch_start + i
+            
+            # Process each module within the transaction
+            # This is a simplified version - the full implementation would process
+            # all the classes, methods, functions, etc. as in the original _create_graph
+            
+            # 1. Create File node
+            language = mod.get('language', 'Python')
+            await tx.run("""
+                CREATE (f:File {
+                    name: $name,
+                    path: $path,
+                    module_name: $module_name,
+                    language: $language,
+                    line_count: $line_count,
+                    created_at: datetime()
+                })
+            """, 
+                name=mod['file_path'].split('/')[-1],
+                path=mod['file_path'],
+                module_name=mod['module_name'],
+                language=language,
+                line_count=mod.get('line_count', 0)
+            )
+            nodes_created += 1
+            
+            # 2. Connect File to Repository
+            await tx.run("""
+                MATCH (r:Repository {name: $repo_name})
+                MATCH (f:File {path: $file_path})
+                CREATE (r)-[:CONTAINS]->(f)
+            """, repo_name=repo_name, file_path=mod['file_path'])
+            relationships_created += 1
+            
+            # Log progress within batch
+            if (i + 1) % 10 == 0:
+                logger.debug(f"  Processed {i + 1}/{len(batch)} modules in current batch")
+        
+        return nodes_created, relationships_created
+
     async def search_graph(self, query_type: str, **kwargs):
         """Search the Neo4j graph directly"""
         async with self.driver.session() as session:

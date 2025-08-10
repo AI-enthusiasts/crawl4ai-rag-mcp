@@ -115,6 +115,17 @@ class Settings:
     def use_knowledge_graph(self) -> bool:
         """Check if knowledge graph is enabled."""
         return os.getenv("USE_KNOWLEDGE_GRAPH", "false").lower() == "true"
+    
+    # Neo4j batch processing settings
+    @property
+    def neo4j_batch_size(self) -> int:
+        """Get Neo4j batch size for transaction processing."""
+        return int(os.getenv("NEO4J_BATCH_SIZE", "50"))
+    
+    @property
+    def neo4j_batch_timeout(self) -> int:
+        """Get Neo4j batch timeout in seconds."""
+        return int(os.getenv("NEO4J_BATCH_TIMEOUT", "120"))
 
     # SearXNG settings
     @property
@@ -159,6 +170,28 @@ class Settings:
         """Get transport mode."""
         return os.getenv("TRANSPORT", "http")
 
+
+    # Repository size limits
+    @property
+    def repo_max_size_mb(self) -> int:
+        """Get maximum repository size in MB (default 500MB)."""
+        return int(os.getenv("REPO_MAX_SIZE_MB", "500"))
+    
+    @property
+    def repo_max_file_count(self) -> int:
+        """Get maximum file count for repository (default 10,000)."""
+        return int(os.getenv("REPO_MAX_FILE_COUNT", "10000"))
+    
+    @property
+    def repo_min_free_space_gb(self) -> float:
+        """Get minimum free disk space required in GB (default 1GB)."""
+        return float(os.getenv("REPO_MIN_FREE_SPACE_GB", "1.0"))
+    
+    @property
+    def repo_allow_size_override(self) -> bool:
+        """Check if size limits can be overridden (default False)."""
+        return os.getenv("REPO_ALLOW_SIZE_OVERRIDE", "false").lower() == "true"
+
     # Knowledge graph validation
     def has_neo4j_config(self) -> bool:
         """Check if Neo4j environment variables are configured."""
@@ -190,6 +223,12 @@ class Settings:
             "has_neo4j": self.has_neo4j_config(),
             "has_searxng": bool(self.searxng_url),
             "has_openai": bool(self.openai_api_key),
+            "neo4j_batch_size": self.neo4j_batch_size,
+            "neo4j_batch_timeout": self.neo4j_batch_timeout,
+            "repo_max_size_mb": self.repo_max_size_mb,
+            "repo_max_file_count": self.repo_max_file_count,
+            "repo_min_free_space_gb": self.repo_min_free_space_gb,
+            "repo_allow_size_override": self.repo_allow_size_override,
         }
 
 
