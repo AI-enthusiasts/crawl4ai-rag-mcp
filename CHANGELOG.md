@@ -9,9 +9,12 @@ All notable changes to this project will be documented in this file.
 - **Eliminated update-alternatives warnings during Docker builds**
   - Added dpkg configuration to exclude documentation files (`/etc/dpkg/dpkg.cfg.d/01_nodoc`)
   - Configured both builder and production stages to prevent man page installation
+  - Enhanced with stderr filtering to suppress warnings from postinst scripts
+  - Uses `grep -v "update-alternatives: warning"` to filter harmless warnings while preserving real errors
   - Suppresses warnings like "skip creation of /usr/share/man/man1/lzma.1.gz because associated file doesn't exist"
   - Reduces Docker image size by excluding unnecessary documentation
   - Applied to both Dockerfile stages for consistency
+  - Test results: Reduced warnings from 10 to 0
 
 ## [2025-08-10] - Comprehensive Test Suite for Repository Parsing
 

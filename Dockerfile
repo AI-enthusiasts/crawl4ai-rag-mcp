@@ -21,12 +21,14 @@ RUN mkdir -p /etc/dpkg/dpkg.cfg.d && \
     echo 'path-exclude=/usr/share/linda/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc
 
 # Install build dependencies with cache mount
+# Filter out harmless update-alternatives warnings about missing man pages
 RUN --mount=type=cache,target=/var/cache/apt \
-    apt-get update && apt-get install -y --no-install-recommends \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
     build-essential \
     git \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+    curl 2>&1 | grep -v "update-alternatives: warning" || true && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install Python package manager
 RUN --mount=type=cache,target=/root/.cache/pip \
@@ -76,7 +78,9 @@ RUN mkdir -p /etc/dpkg/dpkg.cfg.d && \
     echo 'path-exclude=/usr/share/linda/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc
 
 # Install runtime dependencies including Chromium dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Filter out harmless update-alternatives warnings about missing man pages
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
     git \
     # Dependencies for Chromium/Playwright
     libglib2.0-0 \
@@ -99,9 +103,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcairo2 \
     libx11-6 \
     libx11-xcb1 \
-    libxcb1 \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd -m -u 1000 -s /bin/bash appuser
+    libxcb1 2>&1 | grep -v "update-alternatives: warning" || true && \
+    rm -rf /var/lib/apt/lists/* && \
+    useradd -m -u 1000 -s /bin/bash appuser
 
 # Copy Python packages from builder
 COPY --from=builder --chown=appuser:appuser /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
