@@ -18,17 +18,6 @@ PYTHON := uv run python
 PYTEST := uv run pytest
 RUFF := uv run ruff
 
-# Colors for output
-GREEN := \033[0;32m
-YELLOW := \033[1;33m
-RED := \033[0;31m
-BLUE := \033[0;34m
-NC := \033[0m # No Color
-COLOR_GREEN := $(GREEN)
-COLOR_YELLOW := $(YELLOW)
-COLOR_RED := $(RED)
-COLOR_RESET := $(NC)
-
 # ============================================
 # PHONY Targets (Best Practice)
 # ============================================
@@ -42,6 +31,8 @@ COLOR_RESET := $(NC)
 .PHONY: clean-all env-check deps ps
 .PHONY: prod-down prod-logs prod-ps prod-restart
 .PHONY: start-full start-dev volumes backup restore
+.PHONY: dev-services dev-stdio dev-hybrid dev-services-down dev-services-logs dev-setup-stdio
+.PHONY: help-legacy test-quick
 
 # ============================================
 # Default Target
@@ -49,29 +40,29 @@ COLOR_RESET := $(NC)
 .DEFAULT_GOAL := help
 
 help: ## Show this help message
-	@echo "$(BLUE)╔════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║   Crawl4AI MCP Server - Make Commands     ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════╝$(NC)"
+	@echo "╔════════════════════════════════════════════╗"
+	@echo "║   Crawl4AI MCP Server - Make Commands     ║"
+	@echo "╚════════════════════════════════════════════╝"
 	@echo ""
-	@echo "$(GREEN)Quick Start:$(NC)"
-	@echo "  $(YELLOW)make install$(NC)        # First-time setup"
-	@echo "  $(YELLOW)make start$(NC)          # Start services"
-	@echo "  $(YELLOW)make logs$(NC)           # View logs"
-	@echo "  $(YELLOW)make stop$(NC)           # Stop services"
+	@echo "Quick Start:"
+	@echo "  make install        # First-time setup"
+	@echo "  make start          # Start services"
+	@echo "  make logs           # View logs"
+	@echo "  make stop           # Stop services"
 	@echo ""
-	@echo "$(GREEN)Available commands:$(NC)"
+	@echo "Available commands:"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		sort | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(YELLOW)%-20s$(NC) %s\n", $$1, $$2}'
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
 	@echo ""
-	@echo "$(BLUE)For detailed help on legacy commands, run: make help-legacy$(NC)"
+	@echo "For detailed help on legacy commands, run: make help-legacy"
 
 help-legacy: ## Show legacy command help
-	@echo "$(COLOR_GREEN)Legacy Development Commands$(COLOR_RESET)"
+	@echo "Legacy Development Commands"
 	@echo "============================================"
 	@echo ""
-	@echo "$(COLOR_YELLOW)Development Environment:$(COLOR_RESET)"
+	@echo "Development Environment:"
 	@echo "  make dev             - Start development with watch mode"
 	@echo "  make dev-bg          - Start development in background"
 	@echo "  make dev-logs        - View development logs"
@@ -79,7 +70,7 @@ help-legacy: ## Show legacy command help
 	@echo "  make dev-restart     - Restart development services"
 	@echo "  make dev-rebuild     - Rebuild development environment"
 	@echo ""
-	@echo "$(COLOR_YELLOW)Testing:$(COLOR_RESET)"
+	@echo "Testing:"
 	@echo "  make test-unit       - Run unit tests"
 	@echo "  make test-integration- Run integration tests"
 	@echo "  make test-all        - Run all tests"
@@ -89,51 +80,51 @@ help-legacy: ## Show legacy command help
 # Installation & Setup (NEW)
 # ============================================
 dirs: ## Create required directories
-	@echo "$(GREEN)Creating directory structure...$(NC)"
+	@echo "Creating directory structure..."
 	@mkdir -p data
 	@mkdir -p logs
 	@mkdir -p analysis_scripts/{user_scripts,validation_results}
 	@mkdir -p docker/neo4j/import
 	@mkdir -p notebooks
-	@echo "$(GREEN)✓ Directories created$(NC)"
+	@echo "✓ Directories created"
 
 env-setup: ## Setup environment file
 	@if [ ! -f .env ]; then \
-		echo "$(YELLOW)Creating .env from template...$(NC)"; \
+		echo "Creating .env from template..."; \
 		cp .env.example .env; \
-		echo "$(GREEN)✓ Environment file created$(NC)"; \
-		echo "$(YELLOW)⚠ Please edit .env with your API keys$(NC)"; \
+		echo "✓ Environment file created"; \
+		echo "⚠ Please edit .env with your API keys"; \
 	else \
-		echo "$(GREEN)✓ Environment file exists$(NC)"; \
+		echo "✓ Environment file exists"; \
 	fi
 
 env-check: ## Validate environment variables
-	@echo "$(COLOR_GREEN)Checking environment configuration...$(COLOR_RESET)"
+	@echo "Checking environment configuration..."
 	@if [ ! -f .env ]; then \
-		echo "$(COLOR_RED)Error: .env file not found$(COLOR_RESET)"; \
-		echo "$(COLOR_YELLOW)Creating from template...$(COLOR_RESET)"; \
+		echo "Error: .env file not found"; \
+		echo "Creating from template..."; \
 		cp .env.example .env; \
-		echo "$(COLOR_GREEN)✓ Created .env file - please configure your API keys$(COLOR_RESET)"; \
+		echo "✓ Created .env file - please configure your API keys"; \
 		exit 1; \
 	fi
-	@echo "$(COLOR_GREEN)✓ Environment configured$(COLOR_RESET)"
+	@echo "✓ Environment configured"
 
 install: dirs env-setup ## One-click installation
-	@echo "$(BLUE)╔════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║     Installing Crawl4AI MCP Server        ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════╝$(NC)"
+	@echo "╔════════════════════════════════════════════╗"
+	@echo "║     Installing Crawl4AI MCP Server        ║"
+	@echo "╚════════════════════════════════════════════╝"
 	@echo ""
-	@echo "$(GREEN)Checking Docker...$(NC)"
-	@docker --version || (echo "$(RED)✗ Docker not installed$(NC)" && exit 1)
-	@docker compose version || (echo "$(RED)✗ Docker Compose not installed$(NC)" && exit 1)
-	@echo "$(GREEN)✓ Docker ready$(NC)"
+	@echo "Checking Docker..."
+	@docker --version || (echo "✗ Docker not installed" && exit 1)
+	@docker compose version || (echo "✗ Docker Compose not installed" && exit 1)
+	@echo "✓ Docker ready"
 	@echo ""
-	@echo "$(GREEN)Pulling images...$(NC)"
+	@echo "Pulling images..."
 	@docker compose pull
 	@echo ""
-	@echo "$(GREEN)✅ Installation complete!$(NC)"
+	@echo "✅ Installation complete!"
 	@echo ""
-	@echo "$(YELLOW)Next steps:$(NC)"
+	@echo "Next steps:"
 	@echo "  1. Edit .env file with your API keys"
 	@echo "  2. Run 'make start' to start services"
 	@echo ""
@@ -141,31 +132,31 @@ install: dirs env-setup ## One-click installation
 quickstart: install start ## Complete setup and start
 
 update: ## Pull latest code and rebuild production image
-	@echo "$(BLUE)╔════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║   Updating Crawl4AI MCP Server            ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════╝$(NC)"
+	@echo "╔════════════════════════════════════════════╗"
+	@echo "║   Updating Crawl4AI MCP Server            ║"
+	@echo "╚════════════════════════════════════════════╝"
 	@echo ""
-	@echo "$(GREEN)Pulling latest code from git...$(NC)"
+	@echo "Pulling latest code from git..."
 	@git pull
 	@echo ""
-	@echo "$(GREEN)Building new production image...$(NC)"
+	@echo "Building new production image..."
 	@$(MAKE) build-prod
 	@echo ""
-	@echo "$(GREEN)✅ Update complete!$(NC)"
+	@echo "✅ Update complete!"
 	@echo ""
-	@echo "$(YELLOW)Run 'make restart' to apply changes$(NC)"
+	@echo "Run 'make restart' to apply changes"
 
 # ============================================
 # Service Management (NEW SIMPLIFIED)
 # ============================================
 start: ## Start core services (includes Neo4j)
-	@echo "$(GREEN)Starting services...$(NC)"
+	@echo "Starting services..."
 	@docker compose --profile core up -d
-	@echo "$(GREEN)Waiting for services to be ready...$(NC)"
+	@echo "Waiting for services to be ready..."
 	@sleep 5
 	@$(MAKE) health
 	@echo ""
-	@echo "$(GREEN)🚀 Services running at:$(NC)"
+	@echo "🚀 Services running at:"
 	@echo "  • MCP Server: http://localhost:8051"
 	@echo "  • Qdrant Dashboard: http://localhost:6333/dashboard"
 	@echo "  • Neo4j Browser: http://localhost:7474"
@@ -176,13 +167,13 @@ start-full: ## Start full services (same as core now)
 	@$(MAKE) start
 
 start-dev: ## Start development environment with all tools
-	@echo "$(GREEN)Starting development environment...$(NC)"
+	@echo "Starting development environment..."
 	@docker compose --profile dev up -d
-	@echo "$(GREEN)Waiting for services to be ready...$(NC)"
+	@echo "Waiting for services to be ready..."
 	@sleep 5
 	@$(MAKE) health
 	@echo ""
-	@echo "$(GREEN)🚀 Development services running at:$(NC)"
+	@echo "🚀 Development services running at:"
 	@echo "  • MCP Server: http://localhost:8051"
 	@echo "  • Qdrant Dashboard: http://localhost:6333/dashboard"
 	@echo "  • Neo4j Browser: http://localhost:7474"
@@ -192,9 +183,9 @@ start-dev: ## Start development environment with all tools
 	@echo ""
 
 stop: ## Stop all services
-	@echo "$(YELLOW)Stopping services...$(NC)"
+	@echo "Stopping services..."
 	@docker compose --profile core --profile dev down
-	@echo "$(GREEN)✓ Services stopped$(NC)"
+	@echo "✓ Services stopped"
 
 restart: stop start ## Restart services
 
@@ -202,7 +193,7 @@ logs: ## View service logs
 	@docker compose logs -f --tail=100
 
 health: ## Check service health
-	@echo "$(GREEN)Checking service health...$(NC)"
+	@echo "Checking service health..."
 	@docker compose ps --format "table {{.Name}}\t{{.Status}}"
 
 status: health ## Alias for health
@@ -213,29 +204,29 @@ ps: status ## Show running containers
 # Volume Management (NEW)
 # ============================================
 volumes: ## List all Docker volumes for this project
-	@echo "$(GREEN)Project volumes:$(NC)"
+	@echo "Project volumes:"
 	@docker volume ls | grep -E "crawl4ai" || echo "No volumes found"
 
 backup: ## Backup data volumes to ./backups directory
-	@echo "$(GREEN)Creating backup...$(NC)"
+	@echo "Creating backup..."
 	@mkdir -p backups/$(shell date +%Y%m%d-%H%M%S)
 	@cd backups/$(shell date +%Y%m%d-%H%M%S) && \
 		docker run --rm -v crawl4ai_mcp_qdrant-data:/data -v $$(pwd):/backup alpine tar czf /backup/qdrant-data.tar.gz -C /data . && \
 		docker run --rm -v crawl4ai_mcp_valkey-data:/data -v $$(pwd):/backup alpine tar czf /backup/valkey-data.tar.gz -C /data . && \
 		docker run --rm -v crawl4ai_mcp_neo4j-data:/data -v $$(pwd):/backup alpine tar czf /backup/neo4j-data.tar.gz -C /data .
-	@echo "$(GREEN)✓ Backup complete in backups/$(NC)"
+	@echo "✓ Backup complete in backups/"
 
 restore: ## Restore data volumes from backup (specify BACKUP_DIR)
 	@if [ -z "$(BACKUP_DIR)" ]; then \
-		echo "$(RED)Error: Specify BACKUP_DIR=backups/YYYYMMDD-HHMMSS$(NC)"; \
+		echo "Error: Specify BACKUP_DIR=backups/YYYYMMDD-HHMMSS"; \
 		exit 1; \
 	fi
-	@echo "$(YELLOW)Restoring from $(BACKUP_DIR)...$(NC)"
+	@echo "Restoring from $(BACKUP_DIR)..."
 	@docker compose --profile core --profile dev down
 	@docker run --rm -v crawl4ai_mcp_qdrant-data:/data -v $$(pwd)/$(BACKUP_DIR):/backup alpine tar xzf /backup/qdrant-data.tar.gz -C /data
 	@docker run --rm -v crawl4ai_mcp_valkey-data:/data -v $$(pwd)/$(BACKUP_DIR):/backup alpine tar xzf /backup/valkey-data.tar.gz -C /data
 	@docker run --rm -v crawl4ai_mcp_neo4j-data:/data -v $$(pwd)/$(BACKUP_DIR):/backup alpine tar xzf /backup/neo4j-data.tar.gz -C /data
-	@echo "$(GREEN)✓ Restore complete$(NC)"
+	@echo "✓ Restore complete"
 
 # ============================================
 # Development Environment (UPDATED)
@@ -243,24 +234,24 @@ restore: ## Restore data volumes from backup (specify BACKUP_DIR)
 dev: start-dev ## Start development environment
 
 dev-bg: ## Start development in background with watch
-	@echo "$(COLOR_GREEN)Starting development environment in background...$(COLOR_RESET)"
+	@echo "Starting development environment in background..."
 	@docker compose --profile dev up -d --build
-	@echo "$(COLOR_GREEN)Starting watch mode...$(COLOR_RESET)"
+	@echo "Starting watch mode..."
 	@docker compose --profile dev watch
 
 dev-logs: ## View development logs
 	@docker compose logs -f mcp-crawl4ai
 
 dev-down: ## Stop development environment
-	@echo "$(COLOR_YELLOW)Stopping development environment...$(COLOR_RESET)"
+	@echo "Stopping development environment..."
 	@docker compose --profile dev down
 
 dev-restart: ## Restart development services
-	@echo "$(COLOR_YELLOW)Restarting development services...$(COLOR_RESET)"
+	@echo "Restarting development services..."
 	@docker compose restart mcp-crawl4ai
 
 dev-rebuild: ## Rebuild development environment
-	@echo "$(COLOR_YELLOW)Rebuilding development environment...$(COLOR_RESET)"
+	@echo "Rebuilding development environment..."
 	@docker compose --profile dev down
 	@docker compose build --no-cache mcp-crawl4ai
 	@$(MAKE) dev
@@ -269,50 +260,50 @@ dev-rebuild: ## Rebuild development environment
 # Hybrid Development (stdio mode)
 # ============================================
 dev-services: ## Start only database services (for stdio development)
-	@echo "$(COLOR_GREEN)Starting database services for stdio development...$(COLOR_RESET)"
+	@echo "Starting database services for stdio development..."
 	@docker compose --profile services-only up -d
-	@echo "$(COLOR_GREEN)Services started. Waiting for health checks...$(COLOR_RESET)"
+	@echo "Services started. Waiting for health checks..."
 	@sleep 5
-	@echo "$(COLOR_CYAN)Services available at:$(COLOR_RESET)"
+	@echo "Services available at:"
 	@echo "  - Qdrant:   http://localhost:6333/dashboard"
 	@echo "  - Neo4j:    http://localhost:7474"
 	@echo "  - SearXNG:  http://localhost:8080"
 	@echo "  - Valkey:   localhost:6379"
 	@echo ""
-	@echo "$(COLOR_GREEN)Run 'make dev-stdio' to start MCP server in stdio mode$(COLOR_RESET)"
+	@echo "Run 'make dev-stdio' to start MCP server in stdio mode"
 
 dev-stdio: ## Run MCP server locally with stdio transport
-	@echo "$(COLOR_GREEN)Starting MCP server in stdio mode...$(COLOR_RESET)"
-	@echo "$(COLOR_CYAN)Using configuration from .env.dev$(COLOR_RESET)"
+	@echo "Starting MCP server in stdio mode..."
+	@echo "Using configuration from .env.dev"
 	@if [ ! -f .env.dev ]; then \
-		echo "$(COLOR_RED)Error: .env.dev not found. Run 'make dev-setup-stdio' first.$(COLOR_RESET)"; \
+		echo "Error: .env.dev not found. Run 'make dev-setup-stdio' first."; \
 		exit 1; \
 	fi
 	@export $$(cat .env.dev | grep -v '^\#' | xargs) && uv run python src/main.py
 
 dev-hybrid: dev-services ## Start services and run MCP in stdio mode
-	@echo "$(COLOR_GREEN)Starting hybrid development environment...$(COLOR_RESET)"
+	@echo "Starting hybrid development environment..."
 	@$(MAKE) dev-stdio
 
 dev-services-down: ## Stop database services
-	@echo "$(COLOR_YELLOW)Stopping database services...$(COLOR_RESET)"
+	@echo "Stopping database services..."
 	@docker compose --profile services-only down
 
 dev-services-logs: ## View logs for database services
 	@docker compose --profile services-only logs -f
 
 dev-setup-stdio: ## Initial setup for stdio development
-	@echo "$(COLOR_GREEN)Setting up stdio development environment...$(COLOR_RESET)"
+	@echo "Setting up stdio development environment..."
 	@if [ ! -f .env.dev ]; then \
-		echo "$(COLOR_CYAN)Creating .env.dev from template...$(COLOR_RESET)"; \
+		echo "Creating .env.dev from template..."; \
 		cp .env.example .env.dev; \
 		sed -i 's/TRANSPORT=.*/TRANSPORT=stdio/' .env.dev; \
 		sed -i 's|SEARXNG_URL=.*|SEARXNG_URL=http://localhost:8080|' .env.dev; \
 		sed -i 's|QDRANT_URL=.*|QDRANT_URL=http://localhost:6333|' .env.dev; \
 		sed -i 's|NEO4J_URI=.*|NEO4J_URI=bolt://localhost:7687|' .env.dev; \
-		echo "$(COLOR_GREEN).env.dev created. Please update OPENAI_API_KEY if needed.$(COLOR_RESET)"; \
+		echo ".env.dev created. Please update OPENAI_API_KEY if needed."; \
 	else \
-		echo "$(COLOR_YELLOW).env.dev already exists.$(COLOR_RESET)"; \
+		echo ".env.dev already exists."; \
 	fi
 
 # ============================================
@@ -334,7 +325,7 @@ prod-restart: restart ## Restart production services (alias for restart)
 test: test-unit ## Run unit tests (alias)
 
 test-unit: ## Run unit tests only
-	@echo "$(COLOR_GREEN)Running unit tests...$(COLOR_RESET)"
+	@echo "Running unit tests..."
 	@if [ -f /.dockerenv ]; then \
 		$(PYTEST) tests/unit -v --tb=short; \
 	else \
@@ -342,18 +333,18 @@ test-unit: ## Run unit tests only
 	fi
 
 test-integration: ## Run integration tests
-	@echo "$(COLOR_GREEN)Running integration tests with Docker services...$(COLOR_RESET)"
+	@echo "Running integration tests with Docker services..."
 	$(DOCKER_COMPOSE) --profile core up -d
 	$(DOCKER_COMPOSE) run --rm mcp-crawl4ai $(PYTEST) tests/integration -v
 	$(DOCKER_COMPOSE) --profile core down
 
 test-all: ## Run all tests
-	@echo "$(COLOR_GREEN)Running all tests...$(COLOR_RESET)"
+	@echo "Running all tests..."
 	$(MAKE) test-unit
 	$(MAKE) test-integration
 
 test-coverage: ## Run tests with coverage
-	@echo "$(COLOR_GREEN)Running tests with coverage...$(COLOR_RESET)"
+	@echo "Running tests with coverage..."
 	@docker compose run --rm mcp-crawl4ai uv run pytest --cov=src --cov-fail-under=80
 
 test-quick: ## Run quick unit tests
@@ -363,30 +354,30 @@ test-quick: ## Run quick unit tests
 # Docker Build & Release (NEW)
 # ============================================
 build-local: ## Build Docker image locally
-	@echo "$(GREEN)Building local Docker image...$(NC)"
+	@echo "Building local Docker image..."
 	@docker compose build mcp-crawl4ai
-	@echo "$(GREEN)✓ Local build complete$(NC)"
+	@echo "✓ Local build complete"
 
 build-prod: ## Build production image (use after pulling repo updates)
-	@echo "$(BLUE)╔════════════════════════════════════════════╗$(NC)"
-	@echo "$(BLUE)║   Building Production Docker Image        ║$(NC)"
-	@echo "$(BLUE)╚════════════════════════════════════════════╝$(NC)"
+	@echo "╔════════════════════════════════════════════╗"
+	@echo "║   Building Production Docker Image        ║"
+	@echo "╚════════════════════════════════════════════╝"
 	@echo ""
-	@echo "$(GREEN)Pulling latest base images...$(NC)"
+	@echo "Pulling latest base images..."
 	@docker compose pull
 	@echo ""
-	@echo "$(GREEN)Building production image with no cache...$(NC)"
+	@echo "Building production image with no cache..."
 	@docker compose build --no-cache mcp-crawl4ai
 	@echo ""
-	@echo "$(GREEN)✅ Production image built successfully!$(NC)"
+	@echo "✅ Build complete!"
 	@echo ""
-	@echo "$(YELLOW)Next steps:$(NC)"
+	@echo "Next steps:"
 	@echo "  1. Run 'make stop' to stop existing services"
 	@echo "  2. Run 'make start' to start with new image"
 	@echo "  3. Run 'make health' to verify services"
 
 docker-build: ## Build Docker image for multiple platforms
-	@echo "$(GREEN)Building $(IMAGE):$(VERSION)...$(NC)"
+	@echo "Building multi-platform Docker image..."
 	@docker buildx create --use --name multiarch || true
 	@docker buildx build \
 		--platform $(PLATFORMS) \
@@ -395,16 +386,16 @@ docker-build: ## Build Docker image for multiple platforms
 		--cache-from type=registry,ref=$(IMAGE):buildcache \
 		--cache-to type=registry,ref=$(IMAGE):buildcache,mode=max \
 		--load .
-	@echo "$(GREEN)✓ Build complete$(NC)"
+	@echo "✓ Multi-platform build complete"
 
 docker-push: ## Push to Docker Hub
-	@echo "$(GREEN)Pushing $(IMAGE):$(VERSION)...$(NC)"
+	@echo "Pushing to Docker Hub..."
 	@docker push $(IMAGE):$(VERSION)
 	@docker push $(IMAGE):latest
-	@echo "$(GREEN)✓ Push complete$(NC)"
+	@echo "✓ Push complete"
 
 docker-scan: ## Security scan with Trivy
-	@echo "$(GREEN)Running security scan...$(NC)"
+	@echo "Running security scan..."
 	@docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
 		aquasec/trivy image --severity HIGH,CRITICAL $(IMAGE):$(VERSION)
 
@@ -415,8 +406,8 @@ push: docker-push ## Alias for docker-push
 security-scan: docker-scan ## Alias for docker-scan
 
 release: test security-scan build push ## Complete release process
-	@echo "$(GREEN)✅ Release $(VERSION) complete!$(NC)"
-	@echo "$(YELLOW)Don't forget to:$(NC)"
+	@echo "✅ Release complete!"
+	@echo "Next steps:"
 	@echo "  1. Create GitHub release"
 	@echo "  2. Update changelog"
 	@echo "  3. Tag the commit"
@@ -433,38 +424,38 @@ python: ## Open Python REPL
 		docker compose run --rm mcp-crawl4ai python
 
 lint: ## Run code linting
-	@echo "$(COLOR_GREEN)Running linting...$(COLOR_RESET)"
+	@echo "Running linter..."
 	@docker compose run --rm mcp-crawl4ai uv run ruff check src/ tests/
 
 format: ## Format code
-	@echo "$(COLOR_GREEN)Formatting code...$(COLOR_RESET)"
+	@echo "Formatting code..."
 	@docker compose run --rm mcp-crawl4ai uv run ruff format src/ tests/
 
 deps: ## Install/update dependencies
-	@echo "$(COLOR_GREEN)Installing dependencies...$(COLOR_RESET)"
+	@echo "Installing dependencies..."
 	@uv sync
 
 # ============================================
 # Cleanup
 # ============================================
 clean: ## Clean test artifacts and caches
-	@echo "$(COLOR_YELLOW)Cleaning test artifacts and caches...$(COLOR_RESET)"
+	@echo "Cleaning test artifacts..."
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
 	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	@find . -type f -name ".coverage" -delete 2>/dev/null || true
 	@rm -rf htmlcov coverage.xml .coverage.* 2>/dev/null || true
-	@echo "$(COLOR_GREEN)✓ Cleanup complete$(COLOR_RESET)"
+	@echo "✓ Cleanup complete"
 
 clean-all: stop clean ## Clean everything including volumes
-	@echo "$(RED)⚠ WARNING: This will delete all data!$(NC)"
+	@echo "⚠ WARNING: This will delete all data!"
 	@read -p "Are you sure? (y/N) " -n 1 -r; \
 	echo ""; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		docker compose --profile core --profile dev down -v; \
 		rm -rf data logs; \
-		echo "$(GREEN)✓ Full cleanup complete$(NC)"; \
+		echo "✓ All data cleaned"; \
 	else \
-		echo "$(YELLOW)Cancelled$(NC)"; \
+		echo "Cancelled"; \
 	fi
