@@ -11,6 +11,15 @@ WORKDIR /build
 # Set UV to use copy mode instead of hardlinking to avoid warnings
 ENV UV_LINK_MODE=copy
 
+# Configure dpkg to exclude documentation to prevent update-alternatives warnings
+RUN mkdir -p /etc/dpkg/dpkg.cfg.d && \
+    echo 'path-exclude=/usr/share/doc/*' > /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/man/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/groff/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/info/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/lintian/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/linda/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc
+
 # Install build dependencies with cache mount
 RUN --mount=type=cache,target=/var/cache/apt \
     apt-get update && apt-get install -y --no-install-recommends \
@@ -56,6 +65,15 @@ RUN trivy fs --exit-code 0 --severity HIGH,CRITICAL --no-progress /scan || true
 FROM python:3.12-slim AS production
 
 WORKDIR /app
+
+# Configure dpkg to exclude documentation to prevent update-alternatives warnings
+RUN mkdir -p /etc/dpkg/dpkg.cfg.d && \
+    echo 'path-exclude=/usr/share/doc/*' > /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/man/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/groff/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/info/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/lintian/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/linda/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc
 
 # Install runtime dependencies including Chromium dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \

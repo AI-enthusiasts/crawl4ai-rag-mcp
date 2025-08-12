@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2025-08-12] - Docker Build Optimization
+
+### Fixed
+
+- **Eliminated update-alternatives warnings during Docker builds**
+  - Added dpkg configuration to exclude documentation files (`/etc/dpkg/dpkg.cfg.d/01_nodoc`)
+  - Configured both builder and production stages to prevent man page installation
+  - Suppresses warnings like "skip creation of /usr/share/man/man1/lzma.1.gz because associated file doesn't exist"
+  - Reduces Docker image size by excluding unnecessary documentation
+  - Applied to both Dockerfile stages for consistency
+
 ## [2025-08-10] - Comprehensive Test Suite for Repository Parsing
 
 ### Added
@@ -63,7 +74,7 @@ Successfully completed the Git repository parsing enhancement project, achieving
 export NEO4J_BATCH_SIZE=50          # Modules per batch
 export NEO4J_BATCH_TIMEOUT=120      # Seconds per batch
 
-# Repository Limits  
+# Repository Limits
 export REPO_MAX_SIZE_MB=500         # Max repo size
 export REPO_MAX_FILE_COUNT=10000    # Max file count
 export REPO_MIN_FREE_SPACE_GB=1     # Min disk space
@@ -88,7 +99,6 @@ export REPO_ALLOW_SIZE_OVERRIDE=false  # Override flag
     - `REPO_MAX_FILE_COUNT` - Maximum file count (default: 10,000)
     - `REPO_MIN_FREE_SPACE_GB` - Minimum free disk space required (default: 1GB)
     - `REPO_ALLOW_SIZE_OVERRIDE` - Allow overriding limits (default: false)
-  
 - **GitRepositoryManager Enhancements** in `src/knowledge_graph/git_manager.py`:
   - Added `validate_repository_size()` method for pre-clone validation
   - Added `clone_repository_with_validation()` method with size checks
@@ -166,7 +176,7 @@ export REPO_ALLOW_SIZE_OVERRIDE=false  # Override flag
 - **Contextual Embeddings Feature** - Complete implementation of enhanced RAG with contextual embeddings
   - Core implementation in `src/utils/embeddings.py`:
     - `generate_contextual_embedding()` function with configurable LLM context generation
-    - `process_chunk_with_context()` for parallel chunk processing  
+    - `process_chunk_with_context()` for parallel chunk processing
     - Updated `add_documents_to_database()` with ThreadPoolExecutor parallel processing
   - Comprehensive test suite:
     - Fixed all test import paths and mock configurations in `tests/test_utils.py`
@@ -201,7 +211,7 @@ export REPO_ALLOW_SIZE_OVERRIDE=false  # Override flag
   - Updated Dockerfile directory creation to align with consolidated module structure
   - **Resolved circular import issue** causing "cannot import name 'MCPToolError' from partially initialized module 'core'" error
   - Implemented lazy loading for knowledge_graph modules to break circular dependency chain
-  
+
 ### Technical Details
 
 - The warning "Knowledge graph dependencies not available" was caused by import path issues after module consolidation
@@ -468,7 +478,6 @@ export REPO_ALLOW_SIZE_OVERRIDE=false  # Override flag
 - **New utility modules** for better code organization:
   - `src/utils/code_analysis.py` - Functions for extracting and analyzing code blocks from markdown
   - `src/utils/summarization.py` - AI-powered content summarization utilities
-  
 - **Restored missing functions** from pre-refactoring backup:
   - `extract_code_blocks()` - Extract code blocks with language detection from markdown
   - `generate_code_example_summary()` - Generate AI summaries of code examples with context
@@ -483,12 +492,10 @@ export REPO_ALLOW_SIZE_OVERRIDE=false  # Override flag
   - Replaced deprecated `openai.api_key` global assignment with secure client instantiation pattern
   - Fixed potential information disclosure in error messages by using structured logging
   - Removed hardcoded embedding dimensions (1536) - now dynamically determined by model
-  
 - **Code quality improvements**:
   - Eliminated function duplication between `text_processing.py` and `code_analysis.py`
   - Replaced all print statements with proper logging using centralized logger
   - Fixed stub implementations that were causing silent failures
-  
 - **Import structure**:
   - Updated `src/utils/__init__.py` to properly export all utility functions
   - Fixed circular import potential in module structure
@@ -565,7 +572,7 @@ export REPO_ALLOW_SIZE_OVERRIDE=false  # Override flag
 
 - Created `analysis_scripts/` directory structure for script analysis
   - `user_scripts/` - For user Python scripts
-  - `test_scripts/` - For test scripts  
+  - `test_scripts/` - For test scripts
   - `validation_results/` - For storing analysis results
 - Added Docker volume mounts in `docker-compose.dev.yml`:
   - `./analysis_scripts:/app/analysis_scripts:rw` - Script directories
@@ -614,7 +621,6 @@ export REPO_ALLOW_SIZE_OVERRIDE=false  # Override flag
   - Added batch_size and batch_timeout_seconds attributes to DirectNeo4jExtractor.**init**()
   - Refactored module processing to use transaction batching
   - Improved error handling with per-batch failure recovery
-  
 - **src/config/settings.py**:
   - Added `neo4j_batch_size` property for batch size configuration
   - Added `neo4j_batch_timeout` property for timeout configuration
@@ -627,4 +633,4 @@ export REPO_ALLOW_SIZE_OVERRIDE=false  # Override flag
 - **Better Observability**: Progress logging shows batch processing status
 - **Backward Compatibility**: Default values ensure existing workflows continue unchanged
 - **Performance Tuning**: Batch size can be adjusted based on available memory and repository size
-EOF < /dev/null
+  EOF < /dev/null
