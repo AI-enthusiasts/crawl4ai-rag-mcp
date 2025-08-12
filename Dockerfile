@@ -8,6 +8,9 @@ FROM python:3.12-slim AS builder
 
 WORKDIR /build
 
+# Set UV to use copy mode instead of hardlinking to avoid warnings
+ENV UV_LINK_MODE=copy
+
 # Install build dependencies with cache mount
 RUN --mount=type=cache,target=/var/cache/apt \
     apt-get update && apt-get install -y --no-install-recommends \
@@ -30,6 +33,7 @@ COPY src/__init__.py src/
 COPY src/main.py src/
 
 # Install dependencies with cache mount
+# UV will use the pytorch-cpu index configured in pyproject.toml
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system -e .
 

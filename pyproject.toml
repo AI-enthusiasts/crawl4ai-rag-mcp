@@ -5,6 +5,7 @@ description = "MCP server for integrating web crawling and RAG into AI agents an
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "torch>=2.0.0",  # Explicitly specify torch first to control version
     "crawl4ai==0.6.2",
     "fastmcp>=2.11.0",
     "supabase==2.15.1",
@@ -264,3 +265,22 @@ ignore_errors = true
 [tool.bandit]
 exclude_dirs = ["tests", "scripts"]
 skips = ["B101", "B601"]  # Skip assert and shell injection in specific contexts
+
+# ========================================
+# UV CONFIGURATION FOR CPU-ONLY PYTORCH
+# ========================================
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu" },
+]
+torchvision = [
+    { index = "pytorch-cpu" },
+]
+torchaudio = [
+    { index = "pytorch-cpu" },
+]
