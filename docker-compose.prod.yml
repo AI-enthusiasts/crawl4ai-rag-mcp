@@ -33,7 +33,9 @@ services:
   # Main Application - Crawl4AI MCP Server
   # ------------------------------------------
   mcp-crawl4ai:
-    image: ${REGISTRY:-docker.io}/krashnicov/crawl4ai-mcp:${VERSION:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
       - SERVICE_FQDN_MCP_CRAWL4AI_8051
@@ -53,8 +55,8 @@ services:
       # Database Configuration
       - VECTOR_DATABASE=${VECTOR_DATABASE:-qdrant}
       - QDRANT_API_KEY=$SERVICE_PASSWORD_64_QDRANT
-      - NEO4J_USERNAME=$SERVICE_USER_NEO4J
-      - NEO4J_PASSWORD=$SERVICE_PASSWORDWITHSYMBOLS_64_NEO4J
+      - NEO4J_USERNAME=neo4j
+      - NEO4J_PASSWORD=$SERVICE_PASSWORD_64_NEO4J
       - VALKEY_PASSWORD=$SERVICE_PASSWORDWITHSYMBOLS_64_VALKEY
       
       # API Keys (Required - must be set in Coolify UI)
@@ -85,8 +87,8 @@ services:
       - USE_KNOWLEDGE_GRAPH=${USE_KNOWLEDGE_GRAPH:-false}
       
       # Neo4j Batch Processing
-      - NEO4J_BATCH_SIZE=${NEO4J_BATCH_SIZE:-50}
-      - NEO4J_BATCH_TIMEOUT=${NEO4J_BATCH_TIMEOUT:-120}
+      - NEO4J_BATCH_SIZE=${REPO_BATCH_SIZE:-50}
+      - NEO4J_BATCH_TIMEOUT=${REPO_BATCH_TIMEOUT:-120}
       
       # Repository Size Limits
       - REPO_MAX_SIZE_MB=${REPO_MAX_SIZE_MB:-500}
@@ -274,7 +276,7 @@ services:
     image: neo4j:5.25-community
     restart: unless-stopped
     environment:
-      - NEO4J_AUTH=$SERVICE_USER_NEO4J/$SERVICE_PASSWORDWITHSYMBOLS_64_NEO4J
+      - NEO4J_AUTH=neo4j/$SERVICE_PASSWORD_64_NEO4J
       - NEO4J_server_memory_heap_initial__size=512M
       - NEO4J_server_memory_heap_max__size=1G
       - NEO4J_server_memory_pagecache_size=512M
@@ -313,20 +315,7 @@ services:
 # Coolify Deployment Guide
 # ============================================
 # 
-# 1. AUTOMATIC PASSWORD GENERATION:
-#    All passwords are auto-generated using Coolify Magic Variables with high security:
-#    - $SERVICE_PASSWORD_64_QDRANT - Qdrant API key (64 chars, no symbols)
-#    - $SERVICE_PASSWORDWITHSYMBOLS_64_VALKEY - Valkey/Redis password (64 chars with symbols)
-#    - $SERVICE_PASSWORDWITHSYMBOLS_64_NEO4J - Neo4j password (64 chars with symbols)
-#    - $SERVICE_USER_NEO4J - Neo4j username (16 chars random)
-#    - $SERVICE_REALBASE64_64_SEARXNG - SearXNG secret key (64-char base64)
-#    
-#    Security levels:
-#    - 64 characters with symbols = ~384 bits entropy (VERY HIGH - suitable for external access)
-#    - 64 characters without symbols = ~320 bits entropy (HIGH - suitable for API keys)
-#    - Base64 64 characters = ~384 bits entropy (VERY HIGH)
-#
-# 2. REQUIRED ENVIRONMENT VARIABLES:
+# REQUIRED ENVIRONMENT VARIABLES:
 #    Set these in Coolify UI before deployment:
 #    - OPENAI_API_KEY (required) - Used for embeddings, summarization, and contextual embeddings
 #    - ANTHROPIC_API_KEY (optional) - For Claude models if needed
@@ -356,17 +345,21 @@ services:
 #       - Creating vector embeddings for documents and code
 #       - Model: text-embedding-3-small (default) or text-embedding-3-large
 #       - Configurable via EMBEDDING_MODEL
+#       - Used by: All RAG operations, vector search
 #    
 #    b) Contextual Embeddings (optional):
-#       - Enhances chunk retrieval by adding context
+#       - Enhances chunk retrieval by adding document context
 #       - Model: gpt-4o-mini (default)
 #       - Enable via USE_CONTEXTUAL_EMBEDDINGS=true
 #       - Configurable via CONTEXTUAL_EMBEDDING_MODEL
+#       - Used by: Enhanced RAG processing
 #    
-#    c) Summarization:
+#    c) Content Summarization (MODEL_CHOICE):
 #       - Generates summaries for sources and documentation
+#       - Generates summaries for code examples
 #       - Model: gpt-4o-mini (default)
 #       - Configurable via MODEL_CHOICE
+#       - Used by: Source summaries, code example descriptions
 #
 # 5. OPENAI MODEL CONFIGURATION:
 #    Available models and their use cases:
@@ -404,8 +397,8 @@ services:
 #    - USE_CONTEXTUAL_EMBEDDINGS=false - Enable contextual embeddings (increases cost, default: false)
 #
 # 8. NEO4J CONFIGURATION:
-#    - NEO4J_BATCH_SIZE=50 - Batch size for Neo4j transactions
-#    - NEO4J_BATCH_TIMEOUT=120 - Timeout in seconds for batch operations
+#    - REPO_BATCH_SIZE=50 - Batch size for Neo4j transactions
+#    - REPO_BATCH_TIMEOUT=120 - Timeout in seconds for batch operations
 #
 # 9. REPOSITORY LIMITS:
 #    - REPO_MAX_SIZE_MB=500 - Maximum repository size in MB
