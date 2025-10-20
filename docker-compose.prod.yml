@@ -1,0 +1,458 @@
+# ============================================
+# Crawl4AI MCP Server - Coolify Optimized
+# ============================================
+# This docker-compose file is optimized for Coolify deployment with:
+# - Automatic password generation using Magic Environment Variables
+# - Proper health checks for all services
+# - Secure defaults and best practices
+# - No hardcoded secrets
+# ============================================
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  crawl4ai-network:
+    driver: bridge
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  qdrant-data:
+  neo4j-data:
+  valkey-data:
+  searxng-cache:
+  neo4j-logs:
+
+# ============================================
+# Services
+# ============================================
+services:
+  # ------------------------------------------
+  # Main Application - Crawl4AI MCP Server
+  # ------------------------------------------
+  mcp-crawl4ai:
+    image: ${REGISTRY:-docker.io}/krashnicov/crawl4ai-mcp:${VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      - SERVICE_FQDN_MCP_CRAWL4AI_8051
+      - ENVIRONMENT=production
+      
+      # Service Configuration
+      - TRANSPORT=${TRANSPORT:-http}
+      - HOST=0.0.0.0
+      - PORT=${PORT:-8051}
+      
+      # Internal Service URLs
+      - SEARXNG_URL=http://searxng:8080
+      - QDRANT_URL=http://qdrant:6333
+      - NEO4J_URI=bolt://neo4j:7687
+      - VALKEY_URL=redis://:${SERVICE_PASSWORDWITHSYMBOLS_64_VALKEY}@valkey:6379
+      
+      # Database Configuration
+      - VECTOR_DATABASE=${VECTOR_DATABASE:-qdrant}
+      - QDRANT_API_KEY=$SERVICE_PASSWORD_64_QDRANT
+      - NEO4J_USERNAME=$SERVICE_USER_NEO4J
+      - NEO4J_PASSWORD=$SERVICE_PASSWORDWITHSYMBOLS_64_NEO4J
+      - VALKEY_PASSWORD=$SERVICE_PASSWORDWITHSYMBOLS_64_VALKEY
+      
+      # API Keys (Required - must be set in Coolify UI)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:?}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      
+      # OpenAI API Configuration (Optional - for custom endpoints/organizations)
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
+      - OPENAI_ORG_ID=${OPENAI_ORG_ID:-}
+      - OPENAI_PROJECT_ID=${OPENAI_PROJECT_ID:-}
+      
+      # OpenAI Model Configuration
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
+      - MODEL_CHOICE=${MODEL_CHOICE:-gpt-4o-mini}
+      - CONTEXTUAL_EMBEDDING_MODEL=${CONTEXTUAL_EMBEDDING_MODEL:-gpt-4o-mini}
+      
+      # Contextual Embeddings Configuration
+      - USE_CONTEXTUAL_EMBEDDINGS=${USE_CONTEXTUAL_EMBEDDINGS:-false}
+      - CONTEXTUAL_EMBEDDING_MAX_TOKENS=${CONTEXTUAL_EMBEDDING_MAX_TOKENS:-200}
+      - CONTEXTUAL_EMBEDDING_TEMPERATURE=${CONTEXTUAL_EMBEDDING_TEMPERATURE:-0.3}
+      - CONTEXTUAL_EMBEDDING_MAX_DOC_CHARS=${CONTEXTUAL_EMBEDDING_MAX_DOC_CHARS:-25000}
+      - CONTEXTUAL_EMBEDDING_MAX_WORKERS=${CONTEXTUAL_EMBEDDING_MAX_WORKERS:-10}
+      
+      # Feature Flags
+      - USE_RERANKING=${USE_RERANKING:-true}
+      - ENHANCED_CONTEXT=${ENHANCED_CONTEXT:-true}
+      - USE_AGENTIC_RAG=${USE_AGENTIC_RAG:-false}
+      - USE_KNOWLEDGE_GRAPH=${USE_KNOWLEDGE_GRAPH:-false}
+      
+      # Neo4j Batch Processing
+      - NEO4J_BATCH_SIZE=${NEO4J_BATCH_SIZE:-50}
+      - NEO4J_BATCH_TIMEOUT=${NEO4J_BATCH_TIMEOUT:-120}
+      
+      # Repository Size Limits
+      - REPO_MAX_SIZE_MB=${REPO_MAX_SIZE_MB:-500}
+      - REPO_MAX_FILE_COUNT=${REPO_MAX_FILE_COUNT:-10000}
+      - REPO_MIN_FREE_SPACE_GB=${REPO_MIN_FREE_SPACE_GB:-1.0}
+      - REPO_ALLOW_SIZE_OVERRIDE=${REPO_ALLOW_SIZE_OVERRIDE:-false}
+      
+      # SearXNG Configuration
+      - SEARXNG_USER_AGENT=${SEARXNG_USER_AGENT:-MCP-Crawl4AI-RAG-Server/1.0}
+      - SEARXNG_TIMEOUT=${SEARXNG_TIMEOUT:-30}
+      - SEARXNG_DEFAULT_ENGINES=${SEARXNG_DEFAULT_ENGINES:-}
+      
+      # Debug Mode
+      - MCP_DEBUG=${MCP_DEBUG:-false}
+    volumes:
+      - ./data:/app/data:rw
+      - ./logs:/app/logs:rw
+      - ./analysis_scripts:/app/analysis_scripts:rw
+    networks:
+      - crawl4ai-network
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      searxng:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s = socket.socket(); s.settimeout(1); s.connect(('localhost', 8051)); s.close()"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ------------------------------------------
+  # Vector Database - Qdrant
+  # ------------------------------------------
+  qdrant:
+    image: qdrant/qdrant:v1.15.1
+    restart: unless-stopped
+    volumes:
+      - qdrant-data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__API_KEY=$SERVICE_PASSWORD_64_QDRANT
+      - QDRANT__SERVICE__GRPC_PORT=6334
+      - QDRANT__LOG_LEVEL=INFO
+      - QDRANT__SERVICE__ENABLE_TLS=false
+    networks:
+      - crawl4ai-network
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/6333 && echo -e 'GET /readyz HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q 'HTTP/1.1 200' <&3"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ------------------------------------------
+  # Cache Layer - Valkey (Redis-compatible)
+  # ------------------------------------------
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    command: >
+      valkey-server
+      --requirepass ${SERVICE_PASSWORDWITHSYMBOLS_64_VALKEY}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1
+      --save 300 10
+      --save 900 100
+    environment:
+      - VALKEY_PASSWORD=$SERVICE_PASSWORDWITHSYMBOLS_64_VALKEY
+    volumes:
+      - valkey-data:/data
+    networks:
+      - crawl4ai-network
+    healthcheck:
+      test: ["CMD", "valkey-cli", "--pass", "${SERVICE_PASSWORDWITHSYMBOLS_64_VALKEY}", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    user: "999:999"
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ------------------------------------------
+  # Search Engine - SearXNG
+  # ------------------------------------------
+  searxng:
+    image: searxng/searxng:latest
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: ./docker/searxng
+        target: /etc/searxng
+        read_only: true
+      - searxng-cache:/var/cache/searxng
+    environment:
+      - SEARXNG_BASE_URL=${SEARXNG_BASE_URL:-http://localhost:8080/}
+      - SEARXNG_SECRET_KEY=$SERVICE_REALBASE64_64_SEARXNG
+    networks:
+      - crawl4ai-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ------------------------------------------
+  # Graph Database - Neo4j
+  # ------------------------------------------
+  neo4j:
+    image: neo4j:5.25-community
+    restart: unless-stopped
+    environment:
+      - NEO4J_AUTH=$SERVICE_USER_NEO4J/$SERVICE_PASSWORDWITHSYMBOLS_64_NEO4J
+      - NEO4J_server_memory_heap_initial__size=512M
+      - NEO4J_server_memory_heap_max__size=1G
+      - NEO4J_server_memory_pagecache_size=512M
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_dbms_security_procedures_allowlist=apoc.*
+    volumes:
+      - neo4j-data:/data
+      - ./docker/neo4j/import:/import:ro
+      - neo4j-logs:/logs
+    networks:
+      - crawl4ai-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:7474"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 5
+    user: "7474:7474"
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ============================================
+# Coolify Deployment Guide
+# ============================================
+# 
+# 1. AUTOMATIC PASSWORD GENERATION:
+#    All passwords are auto-generated using Coolify Magic Variables with high security:
+#    - $SERVICE_PASSWORD_64_QDRANT - Qdrant API key (64 chars, no symbols)
+#    - $SERVICE_PASSWORDWITHSYMBOLS_64_VALKEY - Valkey/Redis password (64 chars with symbols)
+#    - $SERVICE_PASSWORDWITHSYMBOLS_64_NEO4J - Neo4j password (64 chars with symbols)
+#    - $SERVICE_USER_NEO4J - Neo4j username (16 chars random)
+#    - $SERVICE_REALBASE64_64_SEARXNG - SearXNG secret key (64-char base64)
+#    
+#    Security levels:
+#    - 64 characters with symbols = ~384 bits entropy (VERY HIGH - suitable for external access)
+#    - 64 characters without symbols = ~320 bits entropy (HIGH - suitable for API keys)
+#    - Base64 64 characters = ~384 bits entropy (VERY HIGH)
+#
+# 2. REQUIRED ENVIRONMENT VARIABLES:
+#    Set these in Coolify UI before deployment:
+#    - OPENAI_API_KEY (required) - Used for embeddings, summarization, and contextual embeddings
+#    - ANTHROPIC_API_KEY (optional) - For Claude models if needed
+#
+# 3. OPENAI API CONFIGURATION (Optional):
+#    For custom OpenAI-compatible endpoints or organization settings:
+#    
+#    - OPENAI_BASE_URL - Custom API endpoint (e.g., for Azure OpenAI, local models)
+#      Examples:
+#      * Azure OpenAI: https://your-resource.openai.azure.com/
+#      * LocalAI: http://localhost:8080/v1
+#      * OpenRouter: https://openrouter.ai/api/v1
+#      * Together AI: https://api.together.xyz/v1
+#    
+#    - OPENAI_ORG_ID - OpenAI organization ID (for multi-org accounts)
+#      Format: org-xxxxxxxxxxxxxxxxxxxxx
+#    
+#    - OPENAI_PROJECT_ID - OpenAI project ID (for project-based billing)
+#      Format: proj-xxxxxxxxxxxxxxxxxxxxx
+#    
+#    Note: These are automatically read by the OpenAI SDK from environment variables.
+#    Leave empty to use default OpenAI API (https://api.openai.com/v1)
+#
+# 4. OPENAI API KEY USAGE:
+#    The OPENAI_API_KEY is used for:
+#    a) Embeddings Generation:
+#       - Creating vector embeddings for documents and code
+#       - Model: text-embedding-3-small (default) or text-embedding-3-large
+#       - Configurable via EMBEDDING_MODEL
+#    
+#    b) Contextual Embeddings (optional):
+#       - Enhances chunk retrieval by adding context
+#       - Model: gpt-4o-mini (default)
+#       - Enable via USE_CONTEXTUAL_EMBEDDINGS=true
+#       - Configurable via CONTEXTUAL_EMBEDDING_MODEL
+#    
+#    c) Summarization:
+#       - Generates summaries for sources and documentation
+#       - Model: gpt-4o-mini (default)
+#       - Configurable via MODEL_CHOICE
+#
+# 5. OPENAI MODEL CONFIGURATION:
+#    Available models and their use cases:
+#    
+#    Embedding Models (EMBEDDING_MODEL):
+#    - text-embedding-3-small (default) - 1536 dimensions, cost-effective
+#    - text-embedding-3-large - 3072 dimensions, higher quality
+#    - text-embedding-ada-002 - 1536 dimensions, legacy model
+#    
+#    Chat Models (MODEL_CHOICE, CONTEXTUAL_EMBEDDING_MODEL):
+#    - gpt-4o-mini (default) - Fast, cost-effective, good quality
+#    - gpt-4o - Higher quality, more expensive
+#    - gpt-4-turbo - Balanced performance
+#    - gpt-3.5-turbo - Fastest, most economical
+#
+# 6. CONTEXTUAL EMBEDDINGS (Advanced Feature):
+#    Improves retrieval quality by adding document context to chunks.
+#    
+#    Configuration:
+#    - USE_CONTEXTUAL_EMBEDDINGS=true (enable feature)
+#    - CONTEXTUAL_EMBEDDING_MODEL=gpt-4o-mini (model for context generation)
+#    - CONTEXTUAL_EMBEDDING_MAX_TOKENS=200 (context length, 1-4096)
+#    - CONTEXTUAL_EMBEDDING_TEMPERATURE=0.3 (creativity, 0.0-2.0)
+#    - CONTEXTUAL_EMBEDDING_MAX_DOC_CHARS=25000 (document truncation)
+#    - CONTEXTUAL_EMBEDDING_MAX_WORKERS=10 (parallel processing)
+#    
+#    Cost Impact: Adds ~200 tokens per chunk (input + output)
+#    Example: 100 chunks = ~20,000 tokens ≈ $0.003 with gpt-4o-mini
+#
+# 7. FEATURE FLAGS:
+#    - USE_RERANKING=true - Enable result reranking for better relevance (default: true)
+#    - ENHANCED_CONTEXT=true - Enhanced context in responses (default: true)
+#    - USE_AGENTIC_RAG=false - Enable agentic RAG capabilities (default: false)
+#    - USE_KNOWLEDGE_GRAPH=false - Enable Neo4j knowledge graph (requires Neo4j, default: false)
+#    - USE_CONTEXTUAL_EMBEDDINGS=false - Enable contextual embeddings (increases cost, default: false)
+#
+# 8. NEO4J CONFIGURATION:
+#    - NEO4J_BATCH_SIZE=50 - Batch size for Neo4j transactions
+#    - NEO4J_BATCH_TIMEOUT=120 - Timeout in seconds for batch operations
+#
+# 9. REPOSITORY LIMITS:
+#    - REPO_MAX_SIZE_MB=500 - Maximum repository size in MB
+#    - REPO_MAX_FILE_COUNT=10000 - Maximum number of files
+#    - REPO_MIN_FREE_SPACE_GB=1.0 - Minimum free disk space required
+#    - REPO_ALLOW_SIZE_OVERRIDE=false - Allow overriding size limits
+#
+# 10. SEARXNG CONFIGURATION:
+#    - SEARXNG_USER_AGENT - Custom user agent for search requests
+#    - SEARXNG_TIMEOUT=30 - Search timeout in seconds
+#    - SEARXNG_DEFAULT_ENGINES - Comma-separated list of search engines
+#
+# 11. EXPOSED SERVICE:
+#     - Main application will be available via Coolify proxy
+#     - Assign domain in Coolify UI to mcp-crawl4ai service
+#     - Service listens on port 8051
+#
+# 12. PERSISTENT DATA:
+#     All data is stored in Docker volumes:
+#     - qdrant-data: Vector database storage
+#     - neo4j-data: Graph database storage
+#     - valkey-data: Cache storage
+#     - searxng-cache: Search engine cache
+#     - neo4j-logs: Neo4j logs
+#     
+#     Bind mounts (created automatically):
+#     - ./data - Application data
+#     - ./logs - Application logs
+#     - ./analysis_scripts - Analysis scripts
+#     - ./docker/searxng - SearXNG configuration
+#     - ./docker/neo4j/import - Neo4j import directory
+#
+# 13. HEALTH CHECKS:
+#     All services have proper health checks configured
+#     for zero-downtime deployments and rolling updates
+#
+# 14. SECURITY:
+#     - No hardcoded passwords (all auto-generated)
+#     - Non-root users where possible
+#     - Minimal capabilities (cap_drop: ALL)
+#     - Security options enabled (no-new-privileges)
+#     - Read-only mounts where appropriate
+#
+# 15. ALTERNATIVE AI PROVIDERS:
+#     You can use OpenAI-compatible APIs by setting OPENAI_BASE_URL:
+#     
+#     Azure OpenAI:
+#     - OPENAI_BASE_URL=https://your-resource.openai.azure.com/
+#     - OPENAI_API_KEY=your-azure-key
+#     - Note: Model names may differ (e.g., use deployment names)
+#     
+#     LocalAI (self-hosted):
+#     - OPENAI_BASE_URL=http://localhost:8080/v1
+#     - OPENAI_API_KEY=not-needed (or any value)
+#     - EMBEDDING_MODEL=your-local-embedding-model
+#     - MODEL_CHOICE=your-local-chat-model
+#     
+#     OpenRouter (access to multiple models):
+#     - OPENAI_BASE_URL=https://openrouter.ai/api/v1
+#     - OPENAI_API_KEY=your-openrouter-key
+#     - MODEL_CHOICE=openai/gpt-4o-mini (or any supported model)
+#     
+#     Together AI:
+#     - OPENAI_BASE_URL=https://api.together.xyz/v1
+#     - OPENAI_API_KEY=your-together-key
+#     - MODEL_CHOICE=meta-llama/Llama-3-70b-chat-hf
+#     
+#     Groq (fast inference):
+#     - OPENAI_BASE_URL=https://api.groq.com/openai/v1
+#     - OPENAI_API_KEY=your-groq-key
+#     - MODEL_CHOICE=llama-3.1-70b-versatile
+#     - Note: Groq doesn't support embeddings, keep OPENAI_BASE_URL empty for embeddings
+#
+# 16. COST OPTIMIZATION:
+#     To reduce OpenAI API costs:
+#     - Use text-embedding-3-small instead of 3-large
+#     - Use gpt-4o-mini instead of gpt-4o
+#     - Disable contextual embeddings (USE_CONTEXTUAL_EMBEDDINGS=false)
+#     - Reduce CONTEXTUAL_EMBEDDING_MAX_TOKENS if enabled
+#     - Reduce CONTEXTUAL_EMBEDDING_MAX_WORKERS for slower but cheaper processing
+#     
+#     Alternative: Use cheaper providers via OPENAI_BASE_URL:
+#     - Together AI: ~10x cheaper than OpenAI
+#     - Groq: Free tier available, very fast
+#     - LocalAI: Free, self-hosted
+#
+# 17. DEBUG MODE:
+#     - MCP_DEBUG=true - Enable debug logging
+#
+# ============================================
