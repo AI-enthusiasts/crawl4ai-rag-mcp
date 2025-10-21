@@ -37,6 +37,14 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    labels:
+      # Traefik Basic Authentication
+      # Generate password: htpasswd -nbB admin yourpassword
+      # Then set MCP_BASIC_AUTH_USERS in Coolify environment variables
+      # Example: MCP_BASIC_AUTH_USERS=admin:$2y$12$abc123...
+      - "traefik.http.middlewares.mcp-auth.basicauth.users=${MCP_BASIC_AUTH_USERS:?}"
+      - "traefik.http.middlewares.mcp-auth.basicauth.realm=MCP Server"
+      - "traefik.http.routers.mcp-crawl4ai.middlewares=mcp-auth"
     environment:
       - SERVICE_FQDN_MCP_CRAWL4AI_8051
       - ENVIRONMENT=production
