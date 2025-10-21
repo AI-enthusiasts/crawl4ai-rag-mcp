@@ -12,6 +12,17 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
         if request.url.path in ["/health", "/ping", "/healthz"]:
             return await call_next(request)
 
+        # Bypass OAuth2 endpoints (for discovery and registration)
+        oauth2_paths = [
+            "/.well-known/oauth-authorization-server",
+            "/.well-known/oauth-protected-resource",
+            "/authorize",
+            "/token",
+            "/register",
+        ]
+        if any(request.url.path.startswith(path) for path in oauth2_paths):
+            return await call_next(request)
+
         settings = get_settings()
         expected_key = settings.mcp_api_key
 
