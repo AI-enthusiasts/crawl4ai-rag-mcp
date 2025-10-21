@@ -104,8 +104,14 @@ services:
       # Debug Mode
       - MCP_DEBUG=${MCP_DEBUG:-false}
       
-      # Authentication, clients must send: Authentication: Bearer your-secret-api-key-here
+      # Authentication Configuration
+      # API Key authentication (for Claude Desktop)
       - MCP_API_KEY=${MCP_API_KEY:-}
+      
+      # OAuth2 authentication (for Claude Web Custom Connectors)
+      - USE_OAUTH2=${USE_OAUTH2:-false}
+      - OAUTH2_ISSUER=${OAUTH2_ISSUER:-https://localhost:8051}
+      - OAUTH2_SECRET_KEY=${OAUTH2_SECRET_KEY:-$SERVICE_PASSWORD_64_OAUTH2}
     volumes:
       - ./data:/app/data:rw
       - ./logs:/app/logs:rw
@@ -488,10 +494,44 @@ services:
 #     - Groq: Free tier available, very fast
 #     - LocalAI: Free, self-hosted
 #
-# 17. DEBUG MODE:
+# 17. AUTHENTICATION:
+#     Two authentication methods are supported:
+#     
+#     a) API Key Authentication (for Claude Desktop):
+#        - MCP_API_KEY - Set your API key for Bearer token authentication
+#        - Generate: python -c "import secrets; print(secrets.token_urlsafe(32))"
+#        - Usage: Authorization: Bearer your-api-key-here
+#     
+#     b) OAuth2 Authentication (for Claude Web Custom Connectors):
+#        - USE_OAUTH2=true - Enable OAuth2 authentication
+#        - OAUTH2_ISSUER - Your server's public URL (e.g., https://your-domain.com:8051)
+#        - OAUTH2_SECRET_KEY - JWT secret key (auto-generated via $SERVICE_PASSWORD_64_OAUTH2)
+#        - Generate manually: python -c "import secrets; print(secrets.token_urlsafe(32))"
+#     
+#     Both methods can be enabled simultaneously (dual authentication).
+#     OAuth2 is required for Claude Web, API Key is required for Claude Desktop.
+#     
+#     OAuth2 Features:
+#     - Dynamic Client Registration (DCR) - Claude auto-registers
+#     - PKCE (Proof Key for Code Exchange) - Required by MCP spec
+#     - Authorization Code Flow - Standard OAuth2 flow
+#     - JWT Access Tokens - Secure token-based authentication
+#     - Metadata Discovery - Auto-discovery via .well-known endpoints
+#     
+#     OAuth2 Endpoints (auto-configured):
+#     - /.well-known/oauth-authorization-server - Server metadata
+#     - /.well-known/oauth-protected-resource - Resource metadata
+#     - /register - Dynamic Client Registration
+#     - /authorize - User authorization (shows login form)
+#     - /token - Token exchange endpoint
+#     
+#     IMPORTANT: OAuth2 requires HTTPS in production!
+#     Configure TLS/SSL in your reverse proxy (Caddy, Nginx, Traefik, etc.)
+#
+# 18. DEBUG MODE:
 #     - MCP_DEBUG=true - Enable debug logging
 #
-# 18. RESOURCE LIMITS (Production):
+# 19. RESOURCE LIMITS (Production):
 #     Resource limits are configured for production deployment:
 #     
 #     mcp-crawl4ai (Main Application):

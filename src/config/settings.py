@@ -175,6 +175,22 @@ class Settings:
         """Get MCP API key for authentication."""
         return os.getenv("MCP_API_KEY")
 
+    # OAuth2 settings
+    @property
+    def use_oauth2(self) -> bool:
+        """Check if OAuth2 is enabled."""
+        return os.getenv("USE_OAUTH2", "false").lower() == "true"
+
+    @property
+    def oauth2_issuer(self) -> str:
+        """Get OAuth2 issuer URL."""
+        return os.getenv("OAUTH2_ISSUER", f"https://{self.host}:{self.port}")
+
+    @property
+    def oauth2_secret_key(self) -> str:
+        """Get OAuth2 JWT secret key."""
+        return os.getenv("OAUTH2_SECRET_KEY", "change-me-in-production")
+
     # Repository size limits
     @property
     def repo_max_size_mb(self) -> int:
