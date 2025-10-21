@@ -24,11 +24,11 @@ class Settings:
         # Determine which .env file to load
         base_path = Path(__file__).parent.parent.parent
         dotenv_path = base_path / ".env"
-        
+
         # Priority order: .env.dev > .env.test > .env
         dev_env_path = base_path / ".env.dev"
         test_env_path = base_path / ".env.test"
-        
+
         # Check for development environment first
         if dev_env_path.exists() and os.getenv("ENVIRONMENT") != "production":
             dotenv_path = dev_env_path
@@ -115,13 +115,13 @@ class Settings:
     def use_knowledge_graph(self) -> bool:
         """Check if knowledge graph is enabled."""
         return os.getenv("USE_KNOWLEDGE_GRAPH", "false").lower() == "true"
-    
+
     # Neo4j batch processing settings
     @property
     def neo4j_batch_size(self) -> int:
         """Get Neo4j batch size for transaction processing."""
         return int(os.getenv("NEO4J_BATCH_SIZE", "50"))
-    
+
     @property
     def neo4j_batch_timeout(self) -> int:
         """Get Neo4j batch timeout in seconds."""
@@ -170,23 +170,27 @@ class Settings:
         """Get transport mode."""
         return os.getenv("TRANSPORT", "http")
 
+    @property
+    def mcp_api_key(self) -> str | None:
+        """Get MCP API key for authentication."""
+        return os.getenv("MCP_API_KEY")
 
     # Repository size limits
     @property
     def repo_max_size_mb(self) -> int:
         """Get maximum repository size in MB (default 500MB)."""
         return int(os.getenv("REPO_MAX_SIZE_MB", "500"))
-    
+
     @property
     def repo_max_file_count(self) -> int:
         """Get maximum file count for repository (default 10,000)."""
         return int(os.getenv("REPO_MAX_FILE_COUNT", "10000"))
-    
+
     @property
     def repo_min_free_space_gb(self) -> float:
         """Get minimum free disk space required in GB (default 1GB)."""
         return float(os.getenv("REPO_MIN_FREE_SPACE_GB", "1.0"))
-    
+
     @property
     def repo_allow_size_override(self) -> bool:
         """Check if size limits can be overridden (default False)."""

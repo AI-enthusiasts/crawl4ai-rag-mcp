@@ -10,9 +10,11 @@ import sys
 import traceback
 
 from fastmcp import FastMCP
+from starlette.middleware import Middleware
 
 from config import get_settings
 from core import crawl4ai_lifespan, logger
+from middleware import APIKeyMiddleware
 from tools import register_tools
 
 # Get settings instance
@@ -81,7 +83,15 @@ async def main():
                 )
 
                 # Run the HTTP server with the context active
-                await mcp.run_async(transport="http", host=host, port=int(port))
+                # Add API Key middleware if MCP_API_KEY is set
+                middleware = []
+                if settings.mcp_api_key:
+                    middleware.append(Middleware(APIKeyMiddleware))
+                    logger.info("✓ API Key authentication enabled")
+
+                await mcp.run_http_async(
+                    transport="http", host=host, port=int(port), middleware=middleware
+                )
         elif transport == "sse":
             await mcp.run_sse_async()
         else:  # Default to stdio for Claude Desktop compatibility
