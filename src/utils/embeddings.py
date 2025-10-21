@@ -5,19 +5,19 @@ import sys
 import time
 from typing import Any
 
+import anyio
 import openai
 
-
-
 from concurrent.futures import ThreadPoolExecutor
+
 
 def _get_embedding_dimensions(model: str) -> int:
     """
     Get the embedding dimensions for a given OpenAI model.
-    
+
     Args:
         model: The embedding model name
-        
+
     Returns:
         Number of dimensions for the embedding
     """
@@ -27,9 +27,10 @@ def _get_embedding_dimensions(model: str) -> int:
         "text-embedding-3-large": 3072,
         "text-embedding-ada-002": 1536,
     }
-    
+
     # Default to 1536 for unknown models (most common)
     return model_dimensions.get(model, 1536)
+
 
 def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
     """
@@ -42,13 +43,13 @@ def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
         List of embeddings (each embedding is a list of floats)
     """
     from core.logging import logger
-    
+
     if not texts:
         return []
 
     max_retries = 3
     retry_delay = 1.0  # Start with 1 second delay
-    
+
     # Use the embedding model from environment or default
     model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 
@@ -56,7 +57,7 @@ def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
         try:
             # Create OpenAI client instance
             client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-            
+
             response = client.embeddings.create(
                 model=model,
                 input=texts,
@@ -66,7 +67,9 @@ def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
             if retry < max_retries - 1:
                 logger.error(
                     "Error creating batch embeddings (attempt %d/%d): %s",
-                    retry + 1, max_retries, str(e)
+                    retry + 1,
+                    max_retries,
+                    str(e),
                 )
                 logger.info("Retrying in %s seconds...", retry_delay)
                 time.sleep(retry_delay)
@@ -74,7 +77,8 @@ def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
             else:
                 logger.error(
                     "Failed to create batch embeddings after %d attempts: %s",
-                    max_retries, str(e)
+                    max_retries,
+                    str(e),
                 )
                 # Try creating embeddings one by one as fallback
                 logger.info("Attempting to create embeddings individually...")
@@ -84,14 +88,16 @@ def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
                 for i, text in enumerate(texts):
                     try:
                         individual_response = client.embeddings.create(
-                            model=model, input=[text],
+                            model=model,
+                            input=[text],
                         )
                         embeddings.append(individual_response.data[0].embedding)
                         successful_count += 1
                     except Exception as individual_error:
                         logger.error(
                             "Failed to create embedding for text %d: %s",
-                            i, str(individual_error)
+                            i,
+                            str(individual_error),
                         )
                         # Add zero embedding as fallback
                         dimensions = _get_embedding_dimensions(model)
@@ -99,7 +105,8 @@ def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
 
                 logger.info(
                     "Successfully created %d/%d embeddings individually",
-                    successful_count, len(texts)
+                    successful_count,
+                    len(texts),
                 )
                 return embeddings
 
@@ -115,7 +122,7 @@ def create_embedding(text: str) -> list[float]:
         List of floats representing the embedding
     """
     from core.logging import logger
-    
+
     try:
         embeddings = create_embeddings_batch([text])
         if embeddings:
@@ -149,44 +156,56 @@ def generate_contextual_embedding(
         The contextual text that situates the chunk within the document
     """
     from core.logging import logger
-    
+
     # Use environment variables for configuration with validation
     model_choice = os.getenv("CONTEXTUAL_EMBEDDING_MODEL", "gpt-4o-mini")
-    
+
     # Validate and set max_tokens (1-4096 range)
     try:
         max_tokens = int(os.getenv("CONTEXTUAL_EMBEDDING_MAX_TOKENS", "200"))
         if not (1 <= max_tokens <= 4096):
-            logger.warning(f"CONTEXTUAL_EMBEDDING_MAX_TOKENS ({max_tokens}) out of range 1-4096, using default 200")
+            logger.warning(
+                f"CONTEXTUAL_EMBEDDING_MAX_TOKENS ({max_tokens}) out of range 1-4096, using default 200"
+            )
             max_tokens = 200
     except ValueError:
-        logger.warning("CONTEXTUAL_EMBEDDING_MAX_TOKENS must be an integer, using default 200")
+        logger.warning(
+            "CONTEXTUAL_EMBEDDING_MAX_TOKENS must be an integer, using default 200"
+        )
         max_tokens = 200
-    
+
     # Validate and set temperature (0.0-2.0 range)
     try:
         temperature = float(os.getenv("CONTEXTUAL_EMBEDDING_TEMPERATURE", "0.3"))
         if not (0.0 <= temperature <= 2.0):
-            logger.warning(f"CONTEXTUAL_EMBEDDING_TEMPERATURE ({temperature}) out of range 0.0-2.0, using default 0.3")
+            logger.warning(
+                f"CONTEXTUAL_EMBEDDING_TEMPERATURE ({temperature}) out of range 0.0-2.0, using default 0.3"
+            )
             temperature = 0.3
     except ValueError:
-        logger.warning("CONTEXTUAL_EMBEDDING_TEMPERATURE must be a number, using default 0.3")
+        logger.warning(
+            "CONTEXTUAL_EMBEDDING_TEMPERATURE must be a number, using default 0.3"
+        )
         temperature = 0.3
-    
+
     # Validate and set max_doc_chars (positive integer)
     try:
         max_doc_chars = int(os.getenv("CONTEXTUAL_EMBEDDING_MAX_DOC_CHARS", "25000"))
         if max_doc_chars <= 0:
-            logger.warning(f"CONTEXTUAL_EMBEDDING_MAX_DOC_CHARS ({max_doc_chars}) must be positive, using default 25000")
+            logger.warning(
+                f"CONTEXTUAL_EMBEDDING_MAX_DOC_CHARS ({max_doc_chars}) must be positive, using default 25000"
+            )
             max_doc_chars = 25000
     except ValueError:
-        logger.warning("CONTEXTUAL_EMBEDDING_MAX_DOC_CHARS must be a positive integer, using default 25000")
+        logger.warning(
+            "CONTEXTUAL_EMBEDDING_MAX_DOC_CHARS must be a positive integer, using default 25000"
+        )
         max_doc_chars = 25000
 
     try:
         # Truncate full document if it's too long
         truncated_document = full_document[:max_doc_chars]
-        
+
         # Create position info if available
         position_info = ""
         if chunk_index >= 0 and total_chunks > 1:
@@ -206,7 +225,7 @@ Please give a short succinct context to situate this chunk within the overall do
 
         # Create OpenAI client instance
         client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        
+
         # Call the OpenAI API to generate contextual information
         response = client.chat.completions.create(
             model=model_choice,
@@ -232,7 +251,7 @@ Please give a short succinct context to situate this chunk within the overall do
     except Exception as e:
         logger.error(
             "Error generating contextual embedding: %s. Using original chunk instead.",
-            str(e)
+            str(e),
         )
         return chunk
 
@@ -251,7 +270,9 @@ def process_chunk_with_context(args) -> tuple[str, list[float]]:
         - The embedding for the contextual text
     """
     chunk, full_document, chunk_index, total_chunks = args
-    contextual_text = generate_contextual_embedding(chunk, full_document, chunk_index, total_chunks)
+    contextual_text = generate_contextual_embedding(
+        chunk, full_document, chunk_index, total_chunks
+    )
     embedding = create_embedding(contextual_text)
     return contextual_text, embedding
 
@@ -268,10 +289,10 @@ async def add_documents_to_database(
 ) -> None:
     """
     Add documents to the database with embeddings.
-    
+
     This function generates embeddings, stores documents in the vector database,
     and automatically adds source entries for web scraped content.
-    
+
     Args:
         database: VectorDatabase instance (the database adapter)
         urls: List of URLs
@@ -284,33 +305,35 @@ async def add_documents_to_database(
     """
     from core.logging import logger
     from concurrent.futures import as_completed
-    
+
     # Check if we should use contextual embeddings
     use_contextual_embeddings = (
         os.getenv("USE_CONTEXTUAL_EMBEDDINGS", "false").lower() == "true"
     )
-    
+
     if use_contextual_embeddings and url_to_full_document:
         logger.info("Using contextual embeddings for enhanced retrieval")
-        
+
         # Use ThreadPoolExecutor for parallel processing with individual error handling
-        with ThreadPoolExecutor(max_workers=int(os.getenv("CONTEXTUAL_EMBEDDING_MAX_WORKERS", "10"))) as executor:
+        with ThreadPoolExecutor(
+            max_workers=int(os.getenv("CONTEXTUAL_EMBEDDING_MAX_WORKERS", "10"))
+        ) as executor:
             # Submit tasks individually for better error handling
             future_to_index = {}
             total_chunks = len(contents)
-            
+
             for i, (url, content) in enumerate(zip(urls, contents)):
                 full_document = url_to_full_document.get(url, "")
                 args = (content, full_document, i, total_chunks)
                 future = executor.submit(process_chunk_with_context, args)
                 future_to_index[future] = i
-            
+
             # Process results as they complete, with individual error handling
             contextual_contents = contents.copy()  # Start with original contents
             embeddings = [None] * len(contents)  # Pre-allocate embeddings list
             successful_contextual_count = 0
             failed_contextual_count = 0
-            
+
             try:
                 for future in as_completed(future_to_index.keys()):
                     index = future_to_index[future]
@@ -320,37 +343,55 @@ async def add_documents_to_database(
                         embeddings[index] = embedding
                         successful_contextual_count += 1
                     except Exception as e:
-                        logger.warning(f"Failed to generate contextual embedding for chunk {index}: {e}. Using original content.")
+                        logger.warning(
+                            f"Failed to generate contextual embedding for chunk {index}: {e}. Using original content."
+                        )
                         # Keep original content and generate standard embedding
                         embedding = create_embedding(contents[index])
                         embeddings[index] = embedding
                         failed_contextual_count += 1
-                
+
                 # Update contents to use contextual versions where successful
                 contents = contextual_contents
-                
+
                 # Add contextual embedding flag to metadata for successful ones
                 for i, metadata in enumerate(metadatas):
-                    metadata["contextual_embedding"] = (embeddings[i] is not None and i < successful_contextual_count)
-                
-                logger.info(f"Contextual embedding processing: {successful_contextual_count} successful, {failed_contextual_count} failed")
-                
+                    metadata["contextual_embedding"] = (
+                        embeddings[i] is not None and i < successful_contextual_count
+                    )
+
+                logger.info(
+                    f"Contextual embedding processing: {successful_contextual_count} successful, {failed_contextual_count} failed"
+                )
+
             except Exception as e:
-                logger.error(f"Error during contextual embedding processing: {e}. Falling back to standard embeddings.")
+                logger.error(
+                    f"Error during contextual embedding processing: {e}. Falling back to standard embeddings."
+                )
                 # Fall back to standard embedding generation for all
+                import anyio
+
                 embeddings = []
                 for i in range(0, len(contents), batch_size):
-                    batch_texts = contents[i:i + batch_size]
-                    batch_embeddings = create_embeddings_batch(batch_texts)
+                    batch_texts = contents[i : i + batch_size]
+                    # Run in thread to avoid blocking event loop
+                    batch_embeddings = await anyio.to_thread.run_sync(
+                        create_embeddings_batch, batch_texts
+                    )
                     embeddings.extend(batch_embeddings)
     else:
         # Generate embeddings for all contents in batches (standard approach)
+        import anyio
+
         embeddings = []
         for i in range(0, len(contents), batch_size):
-            batch_texts = contents[i:i + batch_size]
-            batch_embeddings = create_embeddings_batch(batch_texts)
+            batch_texts = contents[i : i + batch_size]
+            # Run in thread to avoid blocking event loop
+            batch_embeddings = await anyio.to_thread.run_sync(
+                create_embeddings_batch, batch_texts
+            )
             embeddings.extend(batch_embeddings)
-    
+
     # Store documents with embeddings using the provided database adapter
     await database.add_documents(
         urls=urls,
@@ -360,7 +401,7 @@ async def add_documents_to_database(
         embeddings=embeddings,
         source_ids=source_ids,
     )
-    
+
     # Add source entries for web scraped content
     if source_ids and url_to_full_document:
         await _add_web_sources_to_database(
@@ -371,6 +412,7 @@ async def add_documents_to_database(
             contents=contents,
         )
 
+
 async def search_documents(
     database: Any,  # VectorDatabase instance
     query: str,
@@ -380,20 +422,21 @@ async def search_documents(
 ) -> list[dict[str, Any]]:
     """
     Search for documents using vector similarity.
-    
+
     Args:
         database: VectorDatabase instance (the database adapter)
         query: Search query text
         match_count: Maximum number of results to return
         filter_metadata: Optional metadata filter
         source_filter: Optional source ID filter
-    
+
     Returns:
         List of documents with similarity scores
     """
     # Generate embedding for the query
-    query_embedding = create_embedding(query)
-    
+    # Run in thread to avoid blocking event loop
+    query_embedding = await anyio.to_thread.run_sync(create_embedding, query)
+
     # Search using the database adapter
     return await database.search_documents(
         query_embedding=query_embedding,
@@ -414,7 +457,7 @@ async def add_code_examples_to_database(
 ) -> None:
     """
     Add code examples to the database with embeddings.
-    
+
     Args:
         database: VectorDatabase instance (the database adapter)
         urls: List of URLs
@@ -426,14 +469,19 @@ async def add_code_examples_to_database(
     """
     if not urls:
         return  # Early return for empty lists
-    
+
     # Generate embeddings for summaries in batches
+    import anyio
+
     embeddings = []
     for i in range(0, len(summaries), batch_size):
-        batch_texts = summaries[i:i + batch_size]
-        batch_embeddings = create_embeddings_batch(batch_texts)
+        batch_texts = summaries[i : i + batch_size]
+        # Run in thread to avoid blocking event loop
+        batch_embeddings = await anyio.to_thread.run_sync(
+            create_embeddings_batch, batch_texts
+        )
         embeddings.extend(batch_embeddings)
-    
+
     # Store code examples with embeddings using the database adapter
     await database.add_code_examples(
         urls=urls,
@@ -453,22 +501,23 @@ async def search_code_examples(
 ) -> list[dict[str, Any]]:
     """
     Search for code examples using vector similarity with enhanced query.
-    
+
     Args:
         database: VectorDatabase instance (the database adapter)
         query: Search query text
         match_count: Maximum number of results to return
         source_filter: Optional source ID filter
-    
+
     Returns:
         List of code examples with similarity scores
     """
     # Enhance the query for code search
     enhanced_query = f"Code example for {query}"
-    
+
     # Generate embedding for the enhanced query
-    query_embedding = create_embedding(enhanced_query)
-    
+    # Run in thread to avoid blocking event loop
+    query_embedding = await anyio.to_thread.run_sync(create_embedding, enhanced_query)
+
     # Search using the database adapter
     return await database.search_code_examples(
         query_embedding=query_embedding,
@@ -486,7 +535,7 @@ async def _add_web_sources_to_database(
 ) -> None:
     """
     Add web sources to the sources table for scraped content.
-    
+
     Args:
         database: Database adapter
         urls: List of URLs
@@ -495,27 +544,27 @@ async def _add_web_sources_to_database(
         contents: List of chunk contents for counting
     """
     from core.logging import logger
-    
+
     try:
         # Group by source_id to create source summaries
         source_data = {}
-        
+
         for i, (url, source_id) in enumerate(zip(urls, source_ids)):
             if source_id and source_id not in source_data:
                 # Get full document for this URL
                 full_document = url_to_full_document.get(url, "")
-                
+
                 # Count chunks for this source
                 chunk_count = sum(1 for sid in source_ids if sid == source_id)
-                
+
                 # Generate a simple summary from first 200 characters
                 summary = full_document[:200].strip()
                 if len(full_document) > 200:
                     summary += "..."
-                
+
                 # Word count estimation
                 word_count = len(full_document.split())
-                
+
                 source_data[source_id] = {
                     "url": url,  # Use the first URL for this source
                     "title": source_id,  # Use source_id as title for web sources
@@ -527,14 +576,18 @@ async def _add_web_sources_to_database(
                         "total_content_length": len(full_document),
                     },
                 }
-        
+
         # Add each unique source to the database
         for source_id, data in source_data.items():
             try:
                 # Check database adapter type and use appropriate method
-                if hasattr(database, 'add_source'):
+                if hasattr(database, "add_source"):
                     # Qdrant adapter - needs embedding
-                    source_embedding = create_embeddings_batch([data["description"]])[0]
+                    # Run in thread to avoid blocking event loop
+                    source_embeddings = await anyio.to_thread.run_sync(
+                        create_embeddings_batch, [data["description"]]
+                    )
+                    source_embedding = source_embeddings[0]
                     await database.add_source(
                         source_id=source_id,
                         url=data["url"],
@@ -544,8 +597,8 @@ async def _add_web_sources_to_database(
                         embedding=source_embedding,
                     )
                     logger.info(f"Added web source to Qdrant: {source_id}")
-                    
-                elif hasattr(database, 'update_source_info'):
+
+                elif hasattr(database, "update_source_info"):
                     # Supabase adapter - simpler interface
                     await database.update_source_info(
                         source_id=source_id,
@@ -553,12 +606,12 @@ async def _add_web_sources_to_database(
                         word_count=data["word_count"],
                     )
                     logger.info(f"Added web source to Supabase: {source_id}")
-                    
+
                 else:
                     logger.warning(f"Database adapter does not support adding sources")
-                    
+
             except Exception as e:
                 logger.warning(f"Failed to add web source {source_id}: {e}")
-                
+
     except Exception as e:
         logger.error(f"Error adding web sources to database: {e}")
