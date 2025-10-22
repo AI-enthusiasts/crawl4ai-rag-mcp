@@ -244,7 +244,8 @@ Please give a short succinct context to situate this chunk within the overall do
         )
 
         # Extract the generated context
-        context = response.choices[0].message.content.strip()
+        content = response.choices[0].message.content
+        context = content.strip() if content else ""
 
         # Combine the context with the original chunk
         contextual_text = f"{context}\n---\n{chunk}"
@@ -333,7 +334,10 @@ async def add_documents_to_database(
 
             # Process results as they complete, with individual error handling
             contextual_contents = contents.copy()  # Start with original contents
-            embeddings = [None] * len(contents)  # Pre-allocate embeddings list
+            embeddings: list[list[float]] = []  # Will be populated as results come in
+            embeddings_dict: dict[
+                int, list[float]
+            ] = {}  # Temporary dict for out-of-order results
             successful_contextual_count = 0
             failed_contextual_count = 0
 
