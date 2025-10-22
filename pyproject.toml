@@ -291,3 +291,8 @@ torchvision = [
 torchaudio = [
     { index = "pytorch-cpu" },
 ]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18.2",
+]

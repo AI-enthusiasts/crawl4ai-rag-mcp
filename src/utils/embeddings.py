@@ -53,11 +53,11 @@ def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
     # Use the embedding model from environment or default
     model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 
+    # Create OpenAI client instance once
+    client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
     for retry in range(max_retries):
         try:
-            # Create OpenAI client instance
-            client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
             response = client.embeddings.create(
                 model=model,
                 input=texts,
@@ -82,7 +82,7 @@ def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
                 )
                 # Try creating embeddings one by one as fallback
                 logger.info("Attempting to create embeddings individually...")
-                embeddings = []
+                embeddings: list[list[float]] = []
                 successful_count = 0
 
                 for i, text in enumerate(texts):
@@ -109,6 +109,9 @@ def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
                     len(texts),
                 )
                 return embeddings
+
+    # This should never be reached, but added for type safety
+    return []
 
 
 def create_embedding(text: str) -> list[float]:
