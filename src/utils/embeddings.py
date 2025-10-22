@@ -5,8 +5,8 @@ import sys
 import time
 from typing import Any
 
-import anyio
 import openai
+from anyio.to_thread import run_sync as run_in_thread
 
 from concurrent.futures import ThreadPoolExecutor
 
@@ -376,27 +376,23 @@ async def add_documents_to_database(
                     f"Error during contextual embedding processing: {e}. Falling back to standard embeddings."
                 )
                 # Fall back to standard embedding generation for all
-                import anyio
 
                 embeddings = []
                 for i in range(0, len(contents), batch_size):
                     batch_texts = contents[i : i + batch_size]
                     # Run in thread to avoid blocking event loop
-                    batch_embeddings = await anyio.to_thread.run_sync(
+                    batch_embeddings = await run_in_thread(
                         create_embeddings_batch, batch_texts
                     )
                     embeddings.extend(batch_embeddings)
     else:
         # Generate embeddings for all contents in batches (standard approach)
-        import anyio
 
         embeddings = []
         for i in range(0, len(contents), batch_size):
             batch_texts = contents[i : i + batch_size]
             # Run in thread to avoid blocking event loop
-            batch_embeddings = await anyio.to_thread.run_sync(
-                create_embeddings_batch, batch_texts
-            )
+            batch_embeddings = await run_in_thread(create_embeddings_batch, batch_texts)
             embeddings.extend(batch_embeddings)
 
     # Store documents with embeddings using the provided database adapter
@@ -442,7 +438,7 @@ async def search_documents(
     """
     # Generate embedding for the query
     # Run in thread to avoid blocking event loop
-    query_embedding = await anyio.to_thread.run_sync(create_embedding, query)
+    query_embedding = await run_in_thread(create_embedding, query)
 
     # Search using the database adapter
     return await database.search_documents(
@@ -478,15 +474,12 @@ async def add_code_examples_to_database(
         return  # Early return for empty lists
 
     # Generate embeddings for summaries in batches
-    import anyio
 
     embeddings = []
     for i in range(0, len(summaries), batch_size):
         batch_texts = summaries[i : i + batch_size]
         # Run in thread to avoid blocking event loop
-        batch_embeddings = await anyio.to_thread.run_sync(
-            create_embeddings_batch, batch_texts
-        )
+        batch_embeddings = await run_in_thread(create_embeddings_batch, batch_texts)
         embeddings.extend(batch_embeddings)
 
     # Store code examples with embeddings using the database adapter
@@ -523,7 +516,7 @@ async def search_code_examples(
 
     # Generate embedding for the enhanced query
     # Run in thread to avoid blocking event loop
-    query_embedding = await anyio.to_thread.run_sync(create_embedding, enhanced_query)
+    query_embedding = await run_in_thread(create_embedding, enhanced_query)
 
     # Search using the database adapter
     return await database.search_code_examples(
@@ -591,7 +584,7 @@ async def _add_web_sources_to_database(
                 if hasattr(database, "add_source"):
                     # Qdrant adapter - needs embedding
                     # Run in thread to avoid blocking event loop
-                    source_embeddings = await anyio.to_thread.run_sync(
+                    source_embeddings = await run_in_thread(
                         create_embeddings_batch, [data["description"]]
                     )
                     source_embedding = source_embeddings[0]
