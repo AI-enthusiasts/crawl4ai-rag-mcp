@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class Settings:
     """Central configuration management for the application."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize settings by loading environment variables."""
         self._load_environment()
         self._validate_configuration()
@@ -223,7 +223,7 @@ class Settings:
             ],
         )
 
-    def get_neo4j_config(self) -> dict[str, str]:
+    def get_neo4j_config(self) -> dict[str, Any]:
         """Get Neo4j configuration as a dictionary."""
         return {
             "uri": self.neo4j_uri or "",

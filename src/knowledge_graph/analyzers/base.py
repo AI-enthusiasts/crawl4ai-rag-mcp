@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class CodeAnalyzer(ABC):
     """Abstract base class for language-specific code analyzers."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the code analyzer."""
         self.logger = logger
         self.supported_extensions: List[str] = []

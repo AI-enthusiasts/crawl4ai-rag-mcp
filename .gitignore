@@ -34,4 +34,4 @@ analysis_scripts/validation_results/*
 .idea/misc.xml
 .idea/*.iml
 .idea/inspectionProfiles
-.idea/shelf
+.idea/shelf.mypy_cache/
