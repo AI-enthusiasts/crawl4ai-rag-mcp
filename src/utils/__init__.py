@@ -5,7 +5,13 @@ from .text_processing import (
     extract_section_info,
     smart_chunk_markdown,
 )
-from .url_helpers import extract_domain_from_url, is_sitemap, is_txt, normalize_url, parse_sitemap
+from .url_helpers import (
+    extract_domain_from_url,
+    is_sitemap,
+    is_txt,
+    normalize_url,
+    parse_sitemap,
+)
 from .validation import (
     validate_github_url,
     validate_neo4j_connection,
@@ -60,6 +66,7 @@ __all__ = [
     "is_txt",
     "normalize_url",
     "parse_sitemap",
+    "parse_sitemap_content",
     # Reranking
     "rerank_results",
     # Validation

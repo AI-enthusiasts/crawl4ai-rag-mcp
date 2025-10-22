@@ -3,14 +3,14 @@
 import json
 import logging
 
-import aiohttp
+import httpx
 from fastmcp import Context
 
 from core import MCPToolError
 from core.context import get_app_context
 
 # Import will be done in the function to avoid circular imports
-from utils import is_sitemap, is_txt, normalize_url, parse_sitemap
+from utils import is_sitemap, is_txt, normalize_url, parse_sitemap_content
 
 from .crawling import (
     crawl_markdown_file,
@@ -137,17 +137,17 @@ async def _crawl_sitemap(
     """Crawl a sitemap URL."""
     try:
         # Fetch and parse sitemap
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status != 200:
-                    msg = f"Failed to fetch sitemap: HTTP {response.status}"
-                    raise MCPToolError(
-                        msg,
-                    )
-                content = await response.text()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url)
+            if response.status_code != 200:
+                msg = f"Failed to fetch sitemap: HTTP {response.status_code}"
+                raise MCPToolError(
+                    msg,
+                )
+            content = response.text
 
         # Parse sitemap URLs
-        urls = parse_sitemap(content)
+        urls = parse_sitemap_content(content)
         if not urls:
             return json.dumps(
                 {
@@ -181,7 +181,10 @@ async def _crawl_sitemap(
             for q in query:
                 try:
                     rag_result = await _perform_rag_query_with_context(
-                        ctx, q, source=None, match_count=5,
+                        ctx,
+                        q,
+                        source=None,
+                        match_count=5,
                     )
                     data["query_results"][q] = json.loads(rag_result)
                 except Exception as e:
@@ -316,7 +319,10 @@ async def _crawl_recursive(
             for q in query:
                 try:
                     rag_result = await _perform_rag_query_with_context(
-                        ctx, q, source=None, match_count=5,
+                        ctx,
+                        q,
+                        source=None,
+                        match_count=5,
                     )
                     data["query_results"][q] = json.loads(rag_result)
                 except Exception as e:
