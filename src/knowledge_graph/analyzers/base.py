@@ -77,21 +77,21 @@ class CodeAnalyzer(ABC):
         try:
             # Get relative path from repo root
             rel_path = Path(file_path).relative_to(Path(repo_path))
-            
+
             # Remove file extension
             module_path = rel_path.with_suffix("")
-            
+
             # Convert path to module notation
             module_name = str(module_path).replace("/", ".").replace("\\", ".")
-            
+
             # Remove index/main suffixes for cleaner names
             if module_name.endswith(".index"):
                 module_name = module_name[:-6]
             elif module_name.endswith(".main"):
                 module_name = module_name[:-5]
-                
+
             return module_name
-            
+
         except Exception:
             # Fallback to filename without extension
             return Path(file_path).stem
@@ -135,9 +135,9 @@ class CodeAnalyzer(ABC):
         """
         if start_line >= len(lines):
             return None
-            
+
         line = lines[start_line].strip()
-        
+
         # Check for various docstring formats
         if line.startswith('"""') or line.startswith("'''"):
             quote = line[:3]
@@ -153,14 +153,14 @@ class CodeAnalyzer(ABC):
                         break
                     docstring_lines.append(lines[i])
                 return "\n".join(docstring_lines).strip()
-                
+
         return None
 
     def extract_line_range(
         self,
         lines: List[str],
         start_line: int,
-        end_markers: List[str] = None,
+        end_markers: Optional[List[str]] = None,
     ) -> tuple[int, int]:
         """
         Extract the line range for a code block.
@@ -175,28 +175,28 @@ class CodeAnalyzer(ABC):
         """
         if not end_markers:
             end_markers = []
-            
+
         indent_level = len(lines[start_line]) - len(lines[start_line].lstrip())
         end_line = start_line
-        
+
         for i in range(start_line + 1, len(lines)):
             line = lines[i]
-            
+
             # Check for end markers
             if any(marker in line for marker in end_markers):
                 break
-                
+
             # Check indentation
             if line.strip() and not line.startswith(" " * (indent_level + 1)):
                 # Line with same or less indentation means end of block
                 if len(line) - len(line.lstrip()) <= indent_level:
                     break
-                    
+
             end_line = i
-            
+
         return start_line, end_line
 
-    def sanitize_string(self, s: str) -> str:
+    def sanitize_string(self, s: Optional[str]) -> str:
         """
         Sanitize string for storage.
 
@@ -210,5 +210,6 @@ class CodeAnalyzer(ABC):
             return ""
         # Remove null bytes and control characters
         return "".join(ch for ch in s if ch.isprintable() or ch.isspace())
+
 
 # Create javascript.py file content
