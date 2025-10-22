@@ -11,7 +11,6 @@ import traceback
 
 from fastmcp import FastMCP
 from starlette.middleware import Middleware
-from starlette.middleware.sessions import SessionMiddleware
 
 from config import get_settings
 from core import crawl4ai_lifespan, logger
@@ -92,6 +91,7 @@ async def main():
                     # OAuth2 + API Key dual authentication
                     from pathlib import Path
                     from jinja2 import Environment, FileSystemLoader
+                    from starlette.middleware.sessions import SessionMiddleware
                     from starlette.responses import JSONResponse, RedirectResponse
 
                     from auth import OAuth2Server, DualAuthMiddleware
