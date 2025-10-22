@@ -26,8 +26,7 @@ class AttributeExtractionValidator:
     
     def validate_file(self, file_path: Path, expected_results: Dict[str, Any]) -> Dict[str, Any]:
         """Validate attribute extraction for a single file"""
-        print(f"
-=== Validating: {file_path.name} ===")
+        print(f"=== Validating: {file_path.name} ===")
         
         try:
             # Analyze the file
@@ -255,8 +254,7 @@ class AttributeExtractionValidator:
     
     def _print_summary(self):
         """Print validation summary"""
-        print("
-" + "="*60)
+        print("" + "="*60)
         print("VALIDATION SUMMARY")
         print("="*60)
         print(f"Total Tests: {self.success_count + self.failure_count}")
@@ -265,13 +263,11 @@ class AttributeExtractionValidator:
         print(f"Warnings: {self.warning_count}")
         
         if self.failure_count == 0:
-            print("
-🎉 ALL TESTS PASSED - Implementation ready for production\!")
+            print("🎉 ALL TESTS PASSED - Implementation ready for production!")
             return True
         else:
             success_rate = (self.success_count / (self.success_count + self.failure_count)) * 100
-            print(f"
-Success Rate: {success_rate:.1f}%")
+            print(f"Success Rate: {success_rate:.1f}%")
             if success_rate >= 90:
                 print("✅ SUCCESS RATE > 90% - Implementation meets criteria")
                 return True

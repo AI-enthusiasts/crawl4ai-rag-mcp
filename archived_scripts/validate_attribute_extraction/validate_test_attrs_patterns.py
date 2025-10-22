@@ -48,4 +48,3 @@ class RegularClassWithSlots:
         self.name = name
         self.value = 42
         self.items = []
-EOF < /dev/null
