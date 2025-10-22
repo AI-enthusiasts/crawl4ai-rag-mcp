@@ -11,6 +11,7 @@ from .url_helpers import (
     is_txt,
     normalize_url,
     parse_sitemap,
+    parse_sitemap_content,
 )
 from .validation import (
     validate_github_url,
