@@ -142,8 +142,13 @@ async def crawl_batch(
     )
     logger.debug(f"Final URLs for crawling: {validated_urls}")
 
-    # Initialize crawler configuration
-    crawl_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
+    # Initialize crawler configuration with timeout to prevent 504 errors
+    # Set page timeout to 45s to ensure pages don't hang indefinitely
+    crawl_config = CrawlerRunConfig(
+        cache_mode=CacheMode.BYPASS,
+        stream=False,
+        page_timeout=45000,  # 45 seconds in milliseconds
+    )
     dispatcher = MemoryAdaptiveDispatcher(
         memory_threshold_percent=70.0,
         check_interval=1.0,
