@@ -87,9 +87,13 @@ async def crawl4ai_lifespan(server: FastMCP) -> AsyncIterator[Crawl4AIContext]:
 
     # Initialize the crawler using explicit lifecycle management
     # Recommended for long-running applications per crawl4ai docs
+    logger.info("Initializing AsyncWebCrawler...")
     crawler = AsyncWebCrawler(config=browser_config)
     await crawler.start()  # Use public API instead of __aenter__()
-    logger.info("✓ AsyncWebCrawler initialized with explicit lifecycle management")
+    logger.info(
+        f"✓ AsyncWebCrawler initialized with explicit lifecycle management "
+        f"(headless={browser_config.headless}, browser_type={browser_config.browser_type})"
+    )
 
     # Initialize database client (Supabase or Qdrant based on config)
     database_client = await create_and_initialize_database()
@@ -176,18 +180,25 @@ async def crawl4ai_lifespan(server: FastMCP) -> AsyncIterator[Crawl4AIContext]:
         yield context
     finally:
         # Clean up all components using public APIs
-        await crawler.close()  # Use public API instead of __aexit__()
-        logger.info("✓ Crawler closed")
+        logger.info("Starting cleanup of all components...")
+        
+        try:
+            await crawler.close()  # Use public API instead of __aexit__()
+            logger.info("✓ Crawler closed successfully")
+        except Exception as e:
+            logger.error(f"Error closing crawler: {e}", exc_info=True)
 
         if knowledge_validator:
             try:
                 await knowledge_validator.close()
                 logger.info("✓ Knowledge graph validator closed")
             except Exception as e:
-                logger.error(f"Error closing knowledge validator: {e}")
+                logger.error(f"Error closing knowledge validator: {e}", exc_info=True)
         if repo_extractor:
             try:
                 await repo_extractor.close()
                 logger.info("✓ Repository extractor closed")
             except Exception as e:
-                logger.error(f"Error closing repository extractor: {e}")
+                logger.error(f"Error closing repository extractor: {e}", exc_info=True)
+        
+        logger.info("✓ All components cleanup completed")

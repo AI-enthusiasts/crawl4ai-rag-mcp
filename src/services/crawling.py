@@ -217,7 +217,11 @@ async def crawl_batch(
 
     try:
         async with track_memory(f"crawl_batch({len(validated_urls)} URLs)") as mem_ctx:
-            logger.debug("Starting crawler.arun_many...")
+            logger.info(
+                f"Starting arun_many for {len(validated_urls)} URLs "
+                f"(max_concurrent={max_concurrent}, page_timeout={crawl_config.page_timeout}ms)"
+            )
+            
             with SuppressStdout():
                 results = await crawler.arun_many(
                     urls=validated_urls,
@@ -227,6 +231,10 @@ async def crawl_batch(
 
             # Store results for memory tracking
             mem_ctx["results"] = results
+            
+            logger.info(
+                f"arun_many completed: {len(results)} results returned"
+            )
 
         # Log crawling results summary
         successful_results = [
@@ -238,7 +246,9 @@ async def crawl_batch(
         failed_results = [r for r in results if not r.success or not r.markdown]
 
         logger.info(
-            f"Crawling complete: {len(successful_results)} successful, {len(failed_results)} failed"
+            f"Crawling complete: {len(successful_results)} successful, "
+            f"{len(failed_results)} failed, "
+            f"total_processed={len(results)}"
         )
 
         if successful_results:
@@ -255,21 +265,27 @@ async def crawl_batch(
         return successful_results
 
     except Exception as e:
-        logger.error(f"Crawl4AI error with URLs {validated_urls}: {e}")
-        logger.error(f"Exception type: {type(e).__name__}")
-        logger.error(f"Exception details: {e!s}")
-
-        # Log additional context for debugging
         logger.error(
-            f"Crawler config: cache_mode={crawl_config.cache_mode}, stream={crawl_config.stream}",
+            f"Crawl4AI error during batch crawl: {type(e).__name__}: {e}",
+            exc_info=True
+        )
+        logger.error(
+            f"Failed URLs: {validated_urls}"
+        )
+        logger.error(
+            f"Crawler config: cache_mode={crawl_config.cache_mode}, "
+            f"stream={crawl_config.stream}, "
+            f"page_timeout={crawl_config.page_timeout}ms, "
+            f"session_id={crawl_config.session_id}"
         )
         logger.error(
             f"Dispatcher config: memory_threshold={dispatcher.memory_threshold_percent}%, "
-            f"max_sessions={dispatcher.max_session_permit}",
+            f"max_sessions={dispatcher.max_session_permit}, "
+            f"check_interval={dispatcher.check_interval}s"
         )
 
         # Re-raise with more context
-        msg = f"Crawling failed for URLs {validated_urls}: {e}"
+        msg = f"Crawling failed for {len(validated_urls)} URLs: {e}"
         raise ValueError(msg) from e
 
 
