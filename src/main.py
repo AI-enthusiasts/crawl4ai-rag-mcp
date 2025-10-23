@@ -12,13 +12,14 @@ import traceback
 from fastmcp import FastMCP
 
 from config import get_settings
-from core import crawl4ai_lifespan, logger
+from core import logger
+from core.context import initialize_global_context, cleanup_global_context
 from tools import register_tools
 
 # Get settings instance
 settings = get_settings()
 
-# Initialize FastMCP server with lifespan management
+# Initialize FastMCP server WITHOUT lifespan (we'll manage it manually)
 try:
     logger.info("Initializing FastMCP server...")
     # Get host and port from settings
@@ -29,7 +30,8 @@ try:
         port = "8051"
     logger.info(f"Host: {host}, Port: {port}")
 
-    mcp = FastMCP("Crawl4AI MCP Server", lifespan=crawl4ai_lifespan)
+    # Don't pass lifespan - FastMCP HTTP mode calls it per-request which causes leaks
+    mcp = FastMCP("Crawl4AI MCP Server")
     logger.info("FastMCP server initialized successfully")
 except Exception as e:
     logger.error(f"Failed to initialize FastMCP server: {e}")
@@ -54,6 +56,12 @@ async def main():
     """
     try:
         logger.info("Main function started")
+        
+        # Initialize global context ONCE at startup (not per-request)
+        logger.info("Initializing global application context...")
+        await initialize_global_context()
+        logger.info("✓ Global context initialized")
+        
         transport = settings.transport.lower()
         logger.info(f"Transport mode: {transport}")
 
@@ -63,9 +71,6 @@ async def main():
 
         # Run server with appropriate transport
         if transport == "http":
-            # Setup authentication
-            # Note: FastMCP automatically calls crawl4ai_lifespan via run_http_async()
-            # No manual lifespan management needed - this fixes browser process leak
             logger.info("Setting up HTTP server...")
             
             oauth2_server = None
@@ -89,7 +94,7 @@ async def main():
                 oauth2_server=oauth2_server
             )
             
-            # FastMCP automatically calls crawl4ai_lifespan ONCE via run_http_async()
+            # Run HTTP server - context is already initialized globally
             await mcp.run_http_async(
                 transport="http", host=host, port=int(port), middleware=middleware
             )
@@ -102,6 +107,10 @@ async def main():
         logger.error(f"Error in main function: {e}")
         logger.error(f"Traceback: {traceback.format_exc()}")
         raise
+    finally:
+        # Cleanup global context on shutdown
+        logger.info("Shutting down - cleaning up global context...")
+        await cleanup_global_context()
 
 
 if __name__ == "__main__":
