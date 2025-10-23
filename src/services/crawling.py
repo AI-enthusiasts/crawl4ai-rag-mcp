@@ -10,6 +10,7 @@ from crawl4ai import (
     CacheMode,
     CrawlerRunConfig,
     MemoryAdaptiveDispatcher,
+    RateLimiter,
 )
 from crawl4ai.utils import get_memory_stats
 from fastmcp import Context
@@ -209,10 +210,21 @@ async def crawl_batch(
         page_timeout=45000,  # 45 seconds in milliseconds
         # session_id=None - explicitly no session for automatic page cleanup
     )
+    
+    # Rate limiter to handle 429/503 errors and prevent overwhelming servers
+    rate_limiter = RateLimiter(
+        base_delay=(0.5, 1.5),      # Random delay 0.5-1.5s between requests
+        max_delay=30.0,             # Cap backoff at 30 seconds
+        max_retries=3,              # Retry up to 3 times on rate limit errors
+        rate_limit_codes=[429, 503] # HTTP codes triggering backoff
+    )
+    
+    # Memory-adaptive dispatcher with rate limiting
     dispatcher = MemoryAdaptiveDispatcher(
         memory_threshold_percent=70.0,
         check_interval=1.0,
         max_session_permit=max_concurrent,
+        rate_limiter=rate_limiter,
     )
 
     try:
