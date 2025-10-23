@@ -65,8 +65,12 @@ async def main():
 
         # Run server with appropriate transport
         if transport == "http":
-            # For HTTP transport, manually initialize the lifespan context
-            # because HTTP mode doesn't automatically call lifespan managers
+            # TODO CRITICAL: This manual lifespan call causes MULTIPLE crawler initializations!
+            # FastMCP's run_http_async() already calls _lifespan_manager() automatically.
+            # Each new MCP session triggers this block, creating new crawler instances.
+            # This is the root cause of browser process accumulation (300+ processes).
+            # SOLUTION: Remove this async with block and let FastMCP handle lifespan.
+            # See: https://gofastmcp.com/deployment/http
             logger.info("Initializing application context for HTTP transport...")
             async with crawl4ai_lifespan(mcp) as context:
                 logger.info("✓ Application context initialized successfully")
