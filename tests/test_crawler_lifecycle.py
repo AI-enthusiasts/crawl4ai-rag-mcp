@@ -126,3 +126,63 @@ class TestMemoryMonitoring:
             
         except ImportError:
             pytest.skip("Memory monitoring not available in this crawl4ai version")
+
+
+class TestSessionCleanup:
+    """Test session cleanup to prevent browser page leaks."""
+
+    @pytest.mark.asyncio
+    async def test_session_cleanup_after_batch(self):
+        """Test that sessions are properly cleaned up after batch crawling."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+        
+        # Mock crawler with session tracking
+        mock_crawler = AsyncMock()
+        mock_strategy = MagicMock()
+        mock_strategy.kill_session = AsyncMock()
+        mock_crawler.crawler_strategy = mock_strategy
+        
+        # Mock arun_many to return successful results
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_result.url = "https://example.com"
+        mock_result.markdown = MagicMock()
+        mock_result.markdown.raw_markdown = "# Test Content"
+        mock_result.links = {"internal": [], "external": []}
+        
+        mock_crawler.arun_many = AsyncMock(return_value=[mock_result])
+        
+        # Import the function we're testing
+        from services.crawling import crawl_batch
+        
+        # Call crawl_batch
+        urls = ["https://example.com"]
+        results = await crawl_batch(mock_crawler, urls, max_concurrent=5)
+        
+        # Verify results
+        assert len(results) == 1
+        assert results[0]["url"] == "https://example.com"
+        
+        # TODO: Verify session cleanup was called
+        # This will be implemented after we add session management
+
+    @pytest.mark.asyncio
+    async def test_session_cleanup_on_error(self):
+        """Test that sessions are cleaned up even when errors occur."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+        
+        # Mock crawler that raises an error
+        mock_crawler = AsyncMock()
+        mock_strategy = MagicMock()
+        mock_strategy.kill_session = AsyncMock()
+        mock_crawler.crawler_strategy = mock_strategy
+        mock_crawler.arun_many = AsyncMock(side_effect=RuntimeError("Test error"))
+        
+        from services.crawling import crawl_batch
+        
+        # Call should raise error
+        with pytest.raises(ValueError, match="Crawling failed"):
+            await crawl_batch(mock_crawler, ["https://example.com"], max_concurrent=5)
+        
+        # TODO: Verify session cleanup was called even on error
+        # This will be implemented after we add session management

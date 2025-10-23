@@ -200,10 +200,14 @@ async def crawl_batch(
 
     # Initialize crawler configuration with timeout to prevent 504 errors
     # Set page timeout to 45s to ensure pages don't hang indefinitely
+    # NOTE: We intentionally do NOT use session_id here
+    # Per crawl4ai docs: "When no session_id is provided, pages are automatically closed"
+    # This prevents browser page leaks in batch operations
     crawl_config = CrawlerRunConfig(
         cache_mode=CacheMode.BYPASS,
         stream=False,
         page_timeout=45000,  # 45 seconds in milliseconds
+        # session_id=None - explicitly no session for automatic page cleanup
     )
     dispatcher = MemoryAdaptiveDispatcher(
         memory_threshold_percent=70.0,
