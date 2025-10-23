@@ -1,15 +1,24 @@
 # Crawl4AI MCP Server Refactoring Guide
 
-## Overview
+## Status: Phases 1-7 Completed ✅
 
-This guide documents the refactoring of the monolithic `src/crawl4ai_mcp.py` file (2,998 lines) into a modular, maintainable structure following the Single Responsibility Principle and other best practices.
+This document tracks the completed refactoring of the monolithic `src/crawl4ai_mcp.py` file (2,998 lines) into a modular, maintainable structure.
 
-## Current Issues
+## Completed Phases
 
-1. **File Size**: At nearly 3,000 lines, the file violates the 300-400 line guideline
-2. **Mixed Responsibilities**: Combines utilities, services, tools, and configuration in one file
-3. **Poor Maintainability**: Difficult to navigate, test, and modify
-4. **Testing Challenges**: Large file makes unit testing more complex
+### Phase 1-6: Modular Structure ✅
+- Core infrastructure extracted
+- Utilities separated
+- Services modularized
+- Database operations organized
+- Configuration centralized
+- Tools registered via FastMCP
+
+### Phase 7: main.py Refactoring ✅
+- **Browser leak fixed**: Removed duplicate lifespan initialization
+- **OAuth2 extracted**: Moved to `auth/setup.py`
+- **Middleware extracted**: Moved to `middleware/setup.py`
+- **Result**: 419 lines → 113 lines (73% reduction)
 
 ## Refactored Structure
 
@@ -172,30 +181,69 @@ If issues arise during migration:
 2. Use feature flags to switch between old/new implementations
 3. Gradual migration allows partial rollback
 
-## Phase 7: main.py Refactoring (CRITICAL - IN PROGRESS)
+## Current State
 
-### Current Issues in main.py
+### Completed Refactoring Results
 
-**File**: `src/main.py` (419 lines)
+**main.py**: 419 lines → 113 lines (73% reduction) ✅
+- Browser leak fixed (single lifespan initialization)
+- OAuth2 setup extracted to `auth/setup.py`
+- Middleware setup extracted to `middleware/setup.py`
+- Nesting reduced from 10 levels to 3 levels
 
-**Critical Problems**:
-1. **Browser Process Leak**: Double lifespan initialization (lines 34 + 75)
-   - FastMCP calls lifespan automatically via `run_http_async()`
-   - Manual `async with crawl4ai_lifespan(mcp)` creates duplicate crawlers
-   - Result: 7 crawler instances in 38 minutes, 300+ browser processes, 99% memory
-   - See: `BROWSER_LEAK_ROOT_CAUSE.md`
+**Module Structure**: ✅
+```
+src/
+├── core/          - Infrastructure (7 files)
+├── utils/         - Utilities (9 files)
+├── services/      - Business logic (5 files)
+├── database/      - Data operations (8 files)
+├── knowledge_graph/ - Neo4j operations (18 files)
+├── auth/          - Authentication (4 files)
+├── middleware/    - Request middleware (2 files)
+├── config/        - Configuration (3 files)
+├── tools.py       - MCP tool definitions (1689 lines)
+└── main.py        - Entry point (113 lines)
+```
 
-2. **Architecture Violation**: 300 lines of OAuth2 setup inside `main()` function
-   - 6 OAuth2 routes defined as nested functions (lines 143-384)
-   - 10 levels of nesting (critical complexity)
-   - Duplicate code: `src/auth/routes.py` already has these functions but unused
-   - Middleware setup mixed with route definitions
+## Remaining Issues
 
-3. **Maintainability**: 366-line `main()` function (should be ~50 lines)
+### File Size Violations
 
-### Refactoring Plan
+**Critical** (>1000 lines):
+- `knowledge_graph/parse_repo_into_neo4j.py` - 2050 lines
+- `tools.py` - 1689 lines
+- `knowledge_graph/knowledge_graph_validator.py` - 1256 lines
+- `database/qdrant_adapter.py` - 1168 lines
+- `knowledge_graph/enhanced_validation.py` - 1020 lines
 
-#### Step 1: Extract OAuth2 Setup Module (2-3 hours)
+**Target**: All files <400 lines
+
+### Test Coverage Gaps
+
+**Overall**: 20% (Target: 80%)
+
+| Module | Coverage | Priority |
+|--------|----------|----------|
+| services/ | 5% | 🔥 Critical |
+| knowledge_graph/ | 5% | 🔥 Critical |
+| core/ | 15% | ❌ High |
+| utils/ | 20% | ❌ High |
+| database/ | 60% | ⚠️ Medium |
+
+### Code Quality Issues
+
+- **172** broad `except Exception` handlers (Target: <20)
+- **18** skipped tests (Target: 0)
+- **5** test files in project root (Target: 0)
+
+---
+
+## Next Steps
+
+See `docs/PROJECT_CLEANUP_PLAN.md` for detailed improvement plan.
+
+### Phase 1: File Size Refactoring (Week 1)
 
 **Create**: `src/auth/setup.py`
 
@@ -309,73 +357,49 @@ async def main():
         raise
 ```
 
-#### Step 5: Integration Testing (2 hours)
+Split large files into focused modules (<400 lines each)
 
-**Test scenarios**:
-1. HTTP mode with OAuth2 - verify single crawler initialization
-2. HTTP mode with API key only
-3. SSE mode
-4. STDIO mode
-5. Browser process monitoring (should stay at 8-10 processes)
-6. Memory usage (should stay ~600MB)
+### Phase 2: Test Coverage (Week 2)
+Write comprehensive tests for all modules (80%+ coverage)
 
-**Success criteria**:
-- ✅ Only 1 "Initializing AsyncWebCrawler" log entry
-- ✅ Browser processes stable at 8-10
-- ✅ Memory stable at ~600MB (not 4GB)
-- ✅ All OAuth2 flows working
-- ✅ Can run indefinitely without restart
+### Phase 3: Code Quality (Week 3)
+- Refine exception handling
+- Standardize logging
+- Fix skipped tests
+- Move root test files
 
-### Estimated Time
+### Phase 4: Documentation & CI (Week 4)
+- Update documentation
+- Add quality gates
+- Automate testing
 
-- Step 1 (OAuth2 setup): 2-3 hours
-- Step 2 (Middleware): 1 hour
-- Step 3 (Fix leak): 30 min
-- Step 4 (Simplify main): 30 min
-- Step 5 (Testing): 2 hours
-- **Total**: 6-7 hours
+---
 
-### Risk Assessment
+## Lessons Learned
 
-**Risk Level**: Medium
+### What Worked Well
+1. **Incremental approach**: Small, atomic commits
+2. **Module extraction**: Clear separation of concerns
+3. **FastMCP integration**: Proper lifespan management
+4. **Testing first**: Caught issues early
 
-**Risks**:
-- OAuth2 route registration might behave differently when extracted
-- Middleware order matters - must preserve exact sequence
-- FastMCP lifespan behavior needs verification
+### Challenges
+1. **Large files**: Still have 5 files >1000 lines
+2. **Test coverage**: Only 20% overall
+3. **Exception handling**: Too many broad handlers
+4. **Documentation**: Some outdated docs remain
 
-**Mitigation**:
-- Test each step independently
-- Keep git commits small and atomic
-- Monitor logs for crawler initialization count
-- Rollback plan: revert to current main.py if issues
+### Best Practices Established
+1. **File size limit**: 400 lines per file
+2. **Test coverage**: 80% minimum
+3. **Commit frequency**: After each logical change
+4. **No mocking**: Use real services in tests
+5. **Structured logging**: Include context in all logs
 
-### Files to Modify
+---
 
-- `src/main.py` - Remove 326 lines, simplify to ~90 lines
-- `src/auth/setup.py` - NEW (route registration)
-- `src/middleware/setup.py` - NEW (middleware configuration)
-- `src/auth/routes.py` - Already exists, no changes needed
-- `tests/test_main_refactoring.py` - NEW (integration tests)
+## References
 
-### Status
-
-- ⏳ **Phase 7 - Pending**: Awaiting approval to proceed
-- 📋 **Dependencies**: None (can start immediately)
-- 🎯 **Priority**: CRITICAL (fixes production memory leak)
-
-## Next Steps
-
-1. **IMMEDIATE**: Execute Phase 7 refactoring (fixes browser leak + architecture)
-2. Complete remaining service extractions
-3. Increase test coverage to 80%+
-4. Deploy and monitor performance
-5. Document lessons learned
-
-## Notes
-
-- The refactoring maintains all existing functionality
-- No breaking changes to the MCP protocol or tool interfaces
-- Performance should improve due to better code organization
-- Future features can be added more easily in the modular structure
-- **Phase 7 is critical**: Fixes production issue AND improves architecture
+- **Cleanup Plan**: `docs/PROJECT_CLEANUP_PLAN.md`
+- **Architecture**: `docs/ARCHITECTURE.md`
+- **Testing Guide**: `docs/QA/UNIT_TESTING_PLAN.md`

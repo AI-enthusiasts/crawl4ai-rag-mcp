@@ -96,35 +96,62 @@ RAG strategies are configured via environment variables:
 
 ## Testing Approach
 
-### Current Testing Status
+### Current Status
 
-Following the refactoring, there are significant testing gaps that need to be addressed:
+**Overall Coverage**: 20% (Target: 80%)
 
-**Coverage by Module** (as of refactoring completion):
-
-- **database/**: ~60% coverage with 15+ test files  
-- **config/**: ~30% basic coverage
-- **core/**, **utils/**: ~15-20% minimal coverage
-- **services/**, **knowledge_graph/**: ~5% critical gaps
-- **tools.py**: ~10% critical gap in MCP tool definitions
+| Module | Coverage | Test Files | Priority |
+|--------|----------|------------|----------|
+| database/ | 60% | 15+ | ⚠️ Medium |
+| config/ | 30% | 3 | ⚠️ Medium |
+| core/ | 15% | 2 | ❌ High |
+| utils/ | 20% | 2 | ❌ High |
+| services/ | 5% | 1 | 🔥 Critical |
+| knowledge_graph/ | 5% | 1 | 🔥 Critical |
+| tools.py | 10% | 5 | 🔥 Critical |
 
 ### Testing Guidelines
 
-When adding features:
+**Required for All New Code**:
+1. Write tests BEFORE implementation
+2. Use real services (Neo4j, Qdrant) - NO mocking
+3. Achieve 80%+ coverage per module
+4. Test in Docker environment
+5. Verify with actual MCP clients
 
-1. Test in Docker environment first
-2. Check logs: `make dev-logs`
-3. Verify database operations in Qdrant dashboard (<http://localhost:6333/dashboard>)
-4. Test with actual MCP clients (Claude Desktop, mcp-cli)
-5. Add unit tests for new modules following existing patterns
-6. Aim for 80%+ coverage for new code
+**Test Structure**:
+```python
+# tests/services/test_crawling.py
+class TestCrawlMarkdownFile:
+    """Test markdown file crawling with real AsyncWebCrawler."""
+    
+    @pytest.mark.asyncio
+    async def test_successful_crawl(self, real_crawler):
+        """Test with actual crawler instance."""
+        result = await crawl_markdown_file(real_crawler, "https://example.com/file.txt")
+        assert len(result) == 1
+        assert "markdown" in result[0]
+```
 
-### Test Organization
+**What NOT to Do**:
+- ❌ Mock database connections
+- ❌ Mock external services
+- ❌ Skip tests with `@pytest.mark.skip`
+- ❌ Use broad `except Exception` in tests
+- ❌ Write tests without assertions
 
-- Unit tests for each module should be in corresponding test files
-- Integration tests should cover module interactions
-- `knowledge_graphs/test_script.py` for GraphRAG testing
-- See `tests/plans/UNIT_TESTING_PLAN.md` for detailed testing roadmap
+**Test Organization**:
+```
+tests/
+├── services/        - Service layer tests
+├── database/        - Database operation tests
+├── knowledge_graph/ - Neo4j integration tests
+├── tools/           - MCP tool tests
+├── integration/     - End-to-end tests
+└── fixtures/        - Shared test fixtures
+```
+
+See `docs/PROJECT_CLEANUP_PLAN.md` for detailed testing roadmap.
 
 ## Common Development Tasks
 
