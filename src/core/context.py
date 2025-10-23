@@ -1,6 +1,5 @@
 """Application context and lifecycle management for the Crawl4AI MCP server."""
 
-import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -32,42 +31,6 @@ def set_app_context(context: "Crawl4AIContext") -> None:
 def get_app_context() -> Optional["Crawl4AIContext"]:
     """Get the stored application context."""
     return _app_context
-
-
-# These will be imported lazily to avoid circular imports
-KNOWLEDGE_GRAPH_AVAILABLE = False
-KnowledgeGraphValidator = None
-DirectNeo4jExtractor = None
-
-
-def _lazy_import_knowledge_graph():
-    """Lazily import knowledge graph modules to avoid circular imports."""
-    global KNOWLEDGE_GRAPH_AVAILABLE, KnowledgeGraphValidator, DirectNeo4jExtractor
-    
-    if KNOWLEDGE_GRAPH_AVAILABLE:
-        return True
-        
-    try:
-        # Import from src.knowledge_graph module with proper path resolution
-        import sys
-        import os
-        
-        # Add src directory to path if not already there
-        src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        if src_dir not in sys.path:
-            sys.path.insert(0, src_dir)
-        
-        from knowledge_graph.knowledge_graph_validator import KnowledgeGraphValidator as KGV
-        from knowledge_graph.parse_repo_into_neo4j import DirectNeo4jExtractor as DNE
-        
-        KnowledgeGraphValidator = KGV
-        DirectNeo4jExtractor = DNE
-        KNOWLEDGE_GRAPH_AVAILABLE = True
-        logger.info("Knowledge graph dependencies loaded successfully")
-        return True
-    except ImportError as e:
-        logger.warning(f"Knowledge graph dependencies not available: {e}")
-        return False
 
 
 @dataclass
@@ -108,12 +71,25 @@ async def crawl4ai_lifespan(server: FastMCP) -> AsyncIterator[Crawl4AIContext]:
     Yields:
         Crawl4AIContext: The context containing the Crawl4AI crawler and database client
     """
-    # Create browser configuration
-    browser_config = BrowserConfig(headless=True, verbose=False)
+    # Create browser configuration with resource optimization
+    browser_config = BrowserConfig(
+        headless=True,
+        verbose=False,
+        # Resource optimization flags to prevent memory leaks
+        extra_args=[
+            "--disable-extensions",
+            "--disable-sync",
+            "--disable-background-timer-throttling",
+            "--disable-backgrounding-occluded-windows",
+            "--disable-renderer-backgrounding",
+        ],
+    )
 
-    # Initialize the crawler
+    # Initialize the crawler using explicit lifecycle management
+    # Recommended for long-running applications per crawl4ai docs
     crawler = AsyncWebCrawler(config=browser_config)
-    await crawler.__aenter__()
+    await crawler.start()  # Use public API instead of __aenter__()
+    logger.info("✓ AsyncWebCrawler initialized with explicit lifecycle management")
 
     # Initialize database client (Supabase or Qdrant based on config)
     database_client = await create_and_initialize_database()
@@ -134,54 +110,55 @@ async def crawl4ai_lifespan(server: FastMCP) -> AsyncIterator[Crawl4AIContext]:
     # Check if knowledge graph functionality is enabled
     knowledge_graph_enabled = settings.use_knowledge_graph
 
-    # Try to import knowledge graph modules lazily
     if knowledge_graph_enabled:
-        _lazy_import_knowledge_graph()
-
-    if knowledge_graph_enabled and KNOWLEDGE_GRAPH_AVAILABLE:
-        neo4j_uri = settings.neo4j_uri
-        neo4j_user = settings.neo4j_username
-        neo4j_password = settings.neo4j_password
-
-        if neo4j_uri and neo4j_user and neo4j_password:
-            try:
-                logger.info("Initializing knowledge graph components...")
-
-                # Initialize knowledge graph validator
-                knowledge_validator = KnowledgeGraphValidator(
-                    neo4j_uri,
-                    neo4j_user,
-                    neo4j_password,
-                )
-                await knowledge_validator.initialize()
-                logger.info("✓ Knowledge graph validator initialized")
-
-                # Initialize repository extractor
-                repo_extractor = DirectNeo4jExtractor(
-                    neo4j_uri,
-                    neo4j_user,
-                    neo4j_password,
-                )
-                await repo_extractor.initialize()
-                logger.info("✓ Repository extractor initialized")
-
-            except Exception as e:
-                logger.error(
-                    f"Failed to initialize Neo4j components: {format_neo4j_error(e)}",
-                )
-                knowledge_validator = None
-                repo_extractor = None
-        else:
-            logger.warning(
-                "Neo4j credentials not configured - knowledge graph tools will be unavailable",
+        # Import at runtime to avoid circular imports
+        try:
+            from knowledge_graph.knowledge_graph_validator import (
+                KnowledgeGraphValidator,
             )
-    elif not knowledge_graph_enabled:
+            from knowledge_graph.parse_repo_into_neo4j import DirectNeo4jExtractor
+
+            neo4j_uri = settings.neo4j_uri
+            neo4j_user = settings.neo4j_username
+            neo4j_password = settings.neo4j_password
+
+            if neo4j_uri and neo4j_user and neo4j_password:
+                try:
+                    logger.info("Initializing knowledge graph components...")
+
+                    # Initialize knowledge graph validator
+                    knowledge_validator = KnowledgeGraphValidator(
+                        neo4j_uri,
+                        neo4j_user,
+                        neo4j_password,
+                    )
+                    await knowledge_validator.initialize()
+                    logger.info("✓ Knowledge graph validator initialized")
+
+                    # Initialize repository extractor
+                    repo_extractor = DirectNeo4jExtractor(
+                        neo4j_uri,
+                        neo4j_user,
+                        neo4j_password,
+                    )
+                    await repo_extractor.initialize()
+                    logger.info("✓ Repository extractor initialized")
+
+                except Exception as e:
+                    logger.error(
+                        f"Failed to initialize Neo4j components: {format_neo4j_error(e)}",
+                    )
+                    knowledge_validator = None
+                    repo_extractor = None
+            else:
+                logger.warning(
+                    "Neo4j credentials not configured - knowledge graph tools will be unavailable",
+                )
+        except ImportError as e:
+            logger.warning(f"Knowledge graph dependencies not available: {e}")
+    else:
         logger.info(
             "Knowledge graph functionality disabled - set USE_KNOWLEDGE_GRAPH=true to enable",
-        )
-    else:
-        logger.warning(
-            "Knowledge graph dependencies not available - install neo4j dependencies",
         )
 
     try:
@@ -198,8 +175,10 @@ async def crawl4ai_lifespan(server: FastMCP) -> AsyncIterator[Crawl4AIContext]:
 
         yield context
     finally:
-        # Clean up all components
-        await crawler.__aexit__(None, None, None)
+        # Clean up all components using public APIs
+        await crawler.close()  # Use public API instead of __aexit__()
+        logger.info("✓ Crawler closed")
+
         if knowledge_validator:
             try:
                 await knowledge_validator.close()
