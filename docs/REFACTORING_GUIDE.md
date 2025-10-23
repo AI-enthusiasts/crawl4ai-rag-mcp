@@ -172,13 +172,205 @@ If issues arise during migration:
 2. Use feature flags to switch between old/new implementations
 3. Gradual migration allows partial rollback
 
+## Phase 7: main.py Refactoring (CRITICAL - IN PROGRESS)
+
+### Current Issues in main.py
+
+**File**: `src/main.py` (419 lines)
+
+**Critical Problems**:
+1. **Browser Process Leak**: Double lifespan initialization (lines 34 + 75)
+   - FastMCP calls lifespan automatically via `run_http_async()`
+   - Manual `async with crawl4ai_lifespan(mcp)` creates duplicate crawlers
+   - Result: 7 crawler instances in 38 minutes, 300+ browser processes, 99% memory
+   - See: `BROWSER_LEAK_ROOT_CAUSE.md`
+
+2. **Architecture Violation**: 300 lines of OAuth2 setup inside `main()` function
+   - 6 OAuth2 routes defined as nested functions (lines 143-384)
+   - 10 levels of nesting (critical complexity)
+   - Duplicate code: `src/auth/routes.py` already has these functions but unused
+   - Middleware setup mixed with route definitions
+
+3. **Maintainability**: 366-line `main()` function (should be ~50 lines)
+
+### Refactoring Plan
+
+#### Step 1: Extract OAuth2 Setup Module (2-3 hours)
+
+**Create**: `src/auth/setup.py`
+
+```python
+def setup_oauth2_routes(mcp: FastMCP, oauth2_server: OAuth2Server, 
+                        host: str, port: str) -> None:
+    """Register OAuth2 routes with FastMCP server."""
+    from auth.routes import (
+        authorization_server_metadata,
+        protected_resource_metadata,
+        register_client,
+        authorize_get,
+        authorize_post,
+        token_endpoint
+    )
+    
+    resource_url = f"https://{host}:{port}" if host != "0.0.0.0" else settings.oauth2_issuer
+    
+    @mcp.custom_route("/.well-known/oauth-authorization-server", methods=["GET"])
+    async def _metadata(request):
+        return await authorization_server_metadata(request, oauth2_server)
+    
+    # ... register other routes
+```
+
+**Benefits**:
+- Reuses existing `src/auth/routes.py` functions
+- Removes 240 lines from `main()`
+- Single responsibility: OAuth2 route registration
+
+#### Step 2: Extract Middleware Setup (1 hour)
+
+**Create**: `src/middleware/setup.py`
+
+```python
+def setup_middleware(use_oauth2: bool, oauth2_server: OAuth2Server = None) -> List[Middleware]:
+    """Configure authentication middleware based on settings."""
+    middleware = []
+    
+    if use_oauth2:
+        from starlette.middleware.sessions import SessionMiddleware
+        from auth import DualAuthMiddleware
+        
+        middleware.append(Middleware(SessionMiddleware, secret_key=settings.oauth2_secret_key))
+        middleware.append(Middleware(DualAuthMiddleware, oauth2_server=oauth2_server))
+        logger.info("✓ OAuth2 + API Key dual authentication enabled")
+    elif settings.mcp_api_key:
+        middleware.append(Middleware(APIKeyMiddleware))
+        logger.info("✓ API Key authentication enabled")
+    
+    return middleware
+```
+
+**Benefits**:
+- Removes 60 lines from `main()`
+- Testable in isolation
+- Clear separation of concerns
+
+#### Step 3: Fix Browser Leak - Remove Manual Lifespan (30 min)
+
+**Before** (lines 67-401):
+```python
+if transport == "http":
+    async with crawl4ai_lifespan(mcp) as context:  # ❌ CAUSES LEAK
+        middleware = []
+        # ... 300 lines ...
+        await mcp.run_http_async(...)
+```
+
+**After**:
+```python
+if transport == "http":
+    middleware = setup_middleware(settings.use_oauth2, oauth2_server)
+    
+    if settings.use_oauth2:
+        setup_oauth2_routes(mcp, oauth2_server, host, port)
+    
+    await mcp.run_http_async(transport="http", host=host, port=int(port), middleware=middleware)
+    # FastMCP automatically calls crawl4ai_lifespan ONCE ✅
+```
+
+**Benefits**:
+- Fixes browser process leak (single crawler instance)
+- Removes 326 lines from `main()`
+- Reduces nesting from 10 to 3 levels
+
+#### Step 4: Simplify main() Function (30 min)
+
+**Target structure** (~50 lines):
+```python
+async def main():
+    try:
+        logger.info("Main function started")
+        transport = settings.transport.lower()
+        
+        sys.stdout.flush()
+        sys.stderr.flush()
+        
+        if transport == "http":
+            middleware = setup_middleware(settings.use_oauth2)
+            if settings.use_oauth2:
+                oauth2_server = OAuth2Server(settings.oauth2_issuer, settings.oauth2_secret_key)
+                setup_oauth2_routes(mcp, oauth2_server, host, port)
+            await mcp.run_http_async(transport="http", host=host, port=int(port), middleware=middleware)
+        elif transport == "sse":
+            await mcp.run_sse_async()
+        else:
+            await mcp.run_stdio_async()
+    except Exception as e:
+        logger.error(f"Error in main function: {e}")
+        raise
+```
+
+#### Step 5: Integration Testing (2 hours)
+
+**Test scenarios**:
+1. HTTP mode with OAuth2 - verify single crawler initialization
+2. HTTP mode with API key only
+3. SSE mode
+4. STDIO mode
+5. Browser process monitoring (should stay at 8-10 processes)
+6. Memory usage (should stay ~600MB)
+
+**Success criteria**:
+- ✅ Only 1 "Initializing AsyncWebCrawler" log entry
+- ✅ Browser processes stable at 8-10
+- ✅ Memory stable at ~600MB (not 4GB)
+- ✅ All OAuth2 flows working
+- ✅ Can run indefinitely without restart
+
+### Estimated Time
+
+- Step 1 (OAuth2 setup): 2-3 hours
+- Step 2 (Middleware): 1 hour
+- Step 3 (Fix leak): 30 min
+- Step 4 (Simplify main): 30 min
+- Step 5 (Testing): 2 hours
+- **Total**: 6-7 hours
+
+### Risk Assessment
+
+**Risk Level**: Medium
+
+**Risks**:
+- OAuth2 route registration might behave differently when extracted
+- Middleware order matters - must preserve exact sequence
+- FastMCP lifespan behavior needs verification
+
+**Mitigation**:
+- Test each step independently
+- Keep git commits small and atomic
+- Monitor logs for crawler initialization count
+- Rollback plan: revert to current main.py if issues
+
+### Files to Modify
+
+- `src/main.py` - Remove 326 lines, simplify to ~90 lines
+- `src/auth/setup.py` - NEW (route registration)
+- `src/middleware/setup.py` - NEW (middleware configuration)
+- `src/auth/routes.py` - Already exists, no changes needed
+- `tests/test_main_refactoring.py` - NEW (integration tests)
+
+### Status
+
+- ⏳ **Phase 7 - Pending**: Awaiting approval to proceed
+- 📋 **Dependencies**: None (can start immediately)
+- 🎯 **Priority**: CRITICAL (fixes production memory leak)
+
 ## Next Steps
 
-1. Complete extraction of remaining services
-2. Implement tool registration pattern
-3. Update all imports and tests
+1. **IMMEDIATE**: Execute Phase 7 refactoring (fixes browser leak + architecture)
+2. Complete remaining service extractions
+3. Increase test coverage to 80%+
 4. Deploy and monitor performance
-5. Remove old monolithic file after validation period
+5. Document lessons learned
 
 ## Notes
 
@@ -186,3 +378,4 @@ If issues arise during migration:
 - No breaking changes to the MCP protocol or tool interfaces
 - Performance should improve due to better code organization
 - Future features can be added more easily in the modular structure
+- **Phase 7 is critical**: Fixes production issue AND improves architecture
