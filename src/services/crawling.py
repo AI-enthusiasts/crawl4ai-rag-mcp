@@ -2,6 +2,7 @@
 
 import json
 import logging
+from contextlib import asynccontextmanager
 from typing import Any
 
 from crawl4ai import (
@@ -10,6 +11,7 @@ from crawl4ai import (
     CrawlerRunConfig,
     MemoryAdaptiveDispatcher,
 )
+from crawl4ai.utils import get_memory_stats
 from fastmcp import Context
 
 from core.logging import logger
@@ -19,6 +21,60 @@ from core.stdout_utils import SuppressStdout
 from utils import add_documents_to_database
 from utils.text_processing import smart_chunk_markdown
 from utils.url_helpers import extract_domain_from_url, normalize_url
+
+
+@asynccontextmanager
+async def track_memory(operation_name: str):
+    """
+    Context manager to track memory usage before and after an operation.
+
+    Args:
+        operation_name: Name of the operation being tracked
+
+    Yields:
+        dict: Dictionary to store results for memory analysis
+    """
+    start_memory_percent, start_available_gb, total_gb = get_memory_stats()
+    logger.info(
+        f"[{operation_name}] Memory before: {start_memory_percent:.1f}% used, "
+        f"{start_available_gb:.2f}/{total_gb:.2f} GB available"
+    )
+
+    # Yield a dict to collect results
+    context = {"results": None}
+
+    try:
+        yield context
+    finally:
+        end_memory_percent, end_available_gb, _ = get_memory_stats()
+        memory_delta = end_memory_percent - start_memory_percent
+
+        logger.info(
+            f"[{operation_name}] Memory after: {end_memory_percent:.1f}% used "
+            f"(Δ {memory_delta:+.1f}%), {end_available_gb:.2f} GB available"
+        )
+
+        # Log dispatch stats if results are available
+        if context["results"]:
+            dispatch_stats = []
+            for r in context["results"]:
+                if hasattr(r, "dispatch_result") and r.dispatch_result:
+                    dispatch_stats.append(
+                        {
+                            "memory_usage": r.dispatch_result.memory_usage,
+                            "peak_memory": r.dispatch_result.peak_memory,
+                        }
+                    )
+
+            if dispatch_stats:
+                avg_memory = sum(s["memory_usage"] for s in dispatch_stats) / len(
+                    dispatch_stats
+                )
+                peak_memory = max(s["peak_memory"] for s in dispatch_stats)
+                logger.info(
+                    f"[{operation_name}] Dispatch stats: "
+                    f"avg {avg_memory:.1f} MB, peak {peak_memory:.1f} MB"
+                )
 
 
 async def crawl_markdown_file(
@@ -156,13 +212,17 @@ async def crawl_batch(
     )
 
     try:
-        logger.debug("Starting crawler.arun_many...")
-        with SuppressStdout():
-            results = await crawler.arun_many(
-                urls=validated_urls,
-                config=crawl_config,
-                dispatcher=dispatcher,
-            )
+        async with track_memory(f"crawl_batch({len(validated_urls)} URLs)") as mem_ctx:
+            logger.debug("Starting crawler.arun_many...")
+            with SuppressStdout():
+                results = await crawler.arun_many(
+                    urls=validated_urls,
+                    config=crawl_config,
+                    dispatcher=dispatcher,
+                )
+
+            # Store results for memory tracking
+            mem_ctx["results"] = results
 
         # Log crawling results summary
         successful_results = [
@@ -174,7 +234,7 @@ async def crawl_batch(
         failed_results = [r for r in results if not r.success or not r.markdown]
 
         logger.info(
-            f"Crawling complete: {len(successful_results)} successful, {len(failed_results)} failed",
+            f"Crawling complete: {len(successful_results)} successful, {len(failed_results)} failed"
         )
 
         if successful_results:
@@ -238,7 +298,7 @@ async def crawl_recursive_internal_links(
     current_urls = {normalize_url(u) for u in start_urls}
     results_all = []
 
-    for _depth in range(max_depth):
+    for depth in range(max_depth):
         urls_to_crawl = [
             normalize_url(url)
             for url in current_urls
@@ -247,12 +307,17 @@ async def crawl_recursive_internal_links(
         if not urls_to_crawl:
             break
 
-        with SuppressStdout():
-            results = await crawler.arun_many(
-                urls=urls_to_crawl,
-                config=run_config,
-                dispatcher=dispatcher,
-            )
+        async with track_memory(
+            f"recursive_crawl(depth={depth}, urls={len(urls_to_crawl)})"
+        ) as mem_ctx:
+            with SuppressStdout():
+                results = await crawler.arun_many(
+                    urls=urls_to_crawl,
+                    config=run_config,
+                    dispatcher=dispatcher,
+                )
+            mem_ctx["results"] = results
+
         next_level_urls = set()
 
         for result in results:

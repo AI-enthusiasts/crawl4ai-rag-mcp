@@ -113,8 +113,6 @@ services:
       - OAUTH2_ISSUER=${OAUTH2_ISSUER:-https://localhost:8051}
       - OAUTH2_SECRET_KEY=${OAUTH2_SECRET_KEY:-$SERVICE_PASSWORD_64_OAUTH2}
     labels:
-      # Caddy timeout configuration to prevent 504 Gateway Timeout errors
-      # Set 5-minute timeouts for long-running crawl operations
       - "caddy.servers.timeouts.read_body=300s"
       - "caddy.servers.timeouts.read_header=300s"
       - "caddy.servers.timeouts.write=300s"
@@ -152,6 +150,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    shm_size: 2g
     deploy:
       resources:
         limits:
