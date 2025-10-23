@@ -2,6 +2,22 @@
 
 This document provides quick access to all QA and testing procedures. For detailed instructions, see the linked documentation.
 
+## 🚨 Critical Issues to Monitor
+
+### Browser Process Leak (FIXED in progress)
+- **Issue**: Multiple crawler initializations cause browser process accumulation
+- **Root Cause**: Manual lifespan call in main.py (see BROWSER_LEAK_ROOT_CAUSE.md)
+- **Status**: Documented, refactoring plan ready (see REFACTORING_PLAN.md)
+- **Monitor**: Browser processes should stay at 8-10, memory at ~600MB
+
+```bash
+# Check browser processes in container
+docker exec <container> ps aux | grep chrome | wc -l
+
+# Check memory usage
+docker stats <container> --no-stream
+```
+
 ## 🚀 Quick Start
 
 ```bash
