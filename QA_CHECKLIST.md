@@ -120,9 +120,7 @@ curl http://localhost:7474/       # Neo4j
 
 ## 📝 Test Results
 
-Test results should be saved to: `tests/results/`
-
-Format: `YYYYMMDD_HHMM-MCP_TOOLS_TESTING.md`
+Test results are saved to: `tests/results/` (optional, for manual test documentation)
 
 ## 🔍 Debugging
 
@@ -135,9 +133,8 @@ make python           # Open Python REPL in container
 ## 📚 Additional Documentation
 
 - [QA Process](docs/QA/QA_PROCESS.md)
-- [MCP Testing Guide](docs/QA/MCP_TESTING.md)
-- [Test Environment Setup](docs/QA/TEST_ENVIRONMENT_SETUP.md)
-- [Test and QA Plan](docs/QA/TEST_AND_QA_PLAN.md)
+- [MCP Tools Testing Plan](docs/QA/MCP_TOOLS_TESTING_PLAN.md)
+- [Unit Testing Plan](docs/QA/UNIT_TESTING_PLAN.md)
 
 ## ⚠️ Important Notes
 
