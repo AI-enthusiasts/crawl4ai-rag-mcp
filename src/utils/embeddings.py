@@ -334,7 +334,8 @@ async def add_documents_to_database(
 
             # Process results as they complete, with individual error handling
             contextual_contents = contents.copy()  # Start with original contents
-            embeddings: list[list[float]] = []  # Will be populated as results come in
+            # Pre-allocate embeddings list with correct size (Python docs: list assignment requires existing index)
+            embeddings: list[list[float] | None] = [None] * len(contents)
             embeddings_dict: dict[
                 int, list[float]
             ] = {}  # Temporary dict for out-of-order results
