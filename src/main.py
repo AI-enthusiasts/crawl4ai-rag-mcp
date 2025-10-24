@@ -10,7 +10,8 @@ import sys
 import traceback
 
 from fastmcp import FastMCP
-from fastmcp.server.auth import StaticTokenVerifier
+from fastmcp.server.auth import StaticTokenVerifier, OAuthProvider
+from mcp.server.auth.settings import ClientRegistrationOptions, RevocationOptions
 
 from config import get_settings
 from core import logger
@@ -20,7 +21,7 @@ from tools import register_tools
 # Get settings instance
 settings = get_settings()
 
-# Initialize FastMCP server with built-in authentication
+# Initialize FastMCP server with flexible authentication
 try:
     logger.info("Initializing FastMCP server...")
     # Get host and port from settings
@@ -31,8 +32,42 @@ try:
         port = "8051"
     logger.info(f"Host: {host}, Port: {port}")
 
-    # Use FastMCP's built-in StaticTokenVerifier for API key authentication
-    if settings.mcp_api_key:
+    # Determine authentication mode based on settings
+    auth = None
+    auth_mode = "none"
+    
+    if settings.use_oauth2:
+        # Mode 1: OAuth Provider with DCR (for Claude Web custom connectors)
+        logger.info("Configuring OAuth Provider with Dynamic Client Registration...")
+        
+        auth = OAuthProvider(
+            base_url=settings.oauth2_issuer,
+            issuer_url=settings.oauth2_issuer,
+            service_documentation_url=f"{settings.oauth2_issuer}/docs",
+            client_registration_options=ClientRegistrationOptions(
+                enabled=True,  # Enable DCR for Claude Web
+                valid_scopes=settings.oauth2_scopes,
+            ),
+            revocation_options=RevocationOptions(enabled=True),
+            required_scopes=settings.oauth2_required_scopes,
+        )
+        auth_mode = "oauth2"
+        logger.info("✓ OAuth Provider enabled")
+        logger.info(f"  - Issuer: {settings.oauth2_issuer}")
+        logger.info(f"  - Valid scopes: {', '.join(settings.oauth2_scopes)}")
+        logger.info(f"  - Required scopes: {', '.join(settings.oauth2_required_scopes)}")
+        logger.info("  - DCR enabled: Yes")
+        logger.info("  - Endpoints:")
+        logger.info(f"    - /.well-known/oauth-authorization-server")
+        logger.info(f"    - /register (DCR)")
+        logger.info(f"    - /authorize")
+        logger.info(f"    - /token")
+        logger.info(f"    - /revoke")
+        
+    elif settings.mcp_api_key:
+        # Mode 2: Static Token Verifier (simple API key)
+        logger.info("Configuring Static Token Verifier...")
+        
         auth = StaticTokenVerifier(
             tokens={
                 settings.mcp_api_key: {
@@ -42,13 +77,19 @@ try:
                 }
             }
         )
-        mcp = FastMCP("Crawl4AI MCP Server", auth=auth)
+        auth_mode = "api_key"
         logger.info("✓ StaticTokenVerifier enabled with API key")
+        
     else:
-        mcp = FastMCP("Crawl4AI MCP Server")
-        logger.info("⚠ No authentication configured")
+        # Mode 3: No authentication
+        logger.warning("⚠ No authentication configured - server is open to all!")
+        logger.warning("  Set USE_OAUTH2=true for OAuth or MCP_API_KEY for API key auth")
+        auth_mode = "none"
     
-    logger.info("FastMCP server initialized successfully")
+    # Create FastMCP server with appropriate auth
+    mcp = FastMCP("Crawl4AI MCP Server", auth=auth)
+    logger.info(f"FastMCP server initialized successfully (auth mode: {auth_mode})")
+    
 except Exception as e:
     logger.error(f"Failed to initialize FastMCP server: {e}")
     logger.error(f"Traceback: {traceback.format_exc()}")

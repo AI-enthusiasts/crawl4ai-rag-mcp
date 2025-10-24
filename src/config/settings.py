@@ -191,6 +191,18 @@ class Settings:
         """Get OAuth2 JWT secret key."""
         return os.getenv("OAUTH2_SECRET_KEY", "change-me-in-production")
 
+    @property
+    def oauth2_scopes(self) -> list[str]:
+        """Get OAuth2 valid scopes."""
+        scopes_str = os.getenv("OAUTH2_SCOPES", "read:data,write:data")
+        return [s.strip() for s in scopes_str.split(",") if s.strip()]
+
+    @property
+    def oauth2_required_scopes(self) -> list[str]:
+        """Get OAuth2 required scopes."""
+        scopes_str = os.getenv("OAUTH2_REQUIRED_SCOPES", "read:data")
+        return [s.strip() for s in scopes_str.split(",") if s.strip()]
+
     # Repository size limits
     @property
     def repo_max_size_mb(self) -> int:
