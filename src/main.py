@@ -10,6 +10,7 @@ import sys
 import traceback
 
 from fastmcp import FastMCP
+from fastmcp.server.auth import StaticTokenVerifier
 
 from config import get_settings
 from core import logger
@@ -19,7 +20,7 @@ from tools import register_tools
 # Get settings instance
 settings = get_settings()
 
-# Initialize FastMCP server WITHOUT lifespan (we'll manage it manually)
+# Initialize FastMCP server with built-in authentication
 try:
     logger.info("Initializing FastMCP server...")
     # Get host and port from settings
@@ -30,8 +31,23 @@ try:
         port = "8051"
     logger.info(f"Host: {host}, Port: {port}")
 
-    # Don't pass lifespan - FastMCP HTTP mode calls it per-request which causes leaks
-    mcp = FastMCP("Crawl4AI MCP Server")
+    # Use FastMCP's built-in StaticTokenVerifier for API key authentication
+    if settings.mcp_api_key:
+        auth = StaticTokenVerifier(
+            tokens={
+                settings.mcp_api_key: {
+                    "client_id": "mcp-client",
+                    "scopes": ["read", "write"],
+                    "expires_at": None  # No expiration
+                }
+            }
+        )
+        mcp = FastMCP("Crawl4AI MCP Server", auth=auth)
+        logger.info("✓ StaticTokenVerifier enabled with API key")
+    else:
+        mcp = FastMCP("Crawl4AI MCP Server")
+        logger.info("⚠ No authentication configured")
+    
     logger.info("FastMCP server initialized successfully")
 except Exception as e:
     logger.error(f"Failed to initialize FastMCP server: {e}")
@@ -73,30 +89,10 @@ async def main():
         if transport == "http":
             logger.info("Setting up HTTP server...")
             
-            oauth2_server = None
-            if settings.use_oauth2:
-                # OAuth2 + API Key dual authentication
-                from auth import OAuth2Server
-                from auth.setup import setup_oauth2_routes
-                
-                oauth2_server = OAuth2Server(
-                    issuer=settings.oauth2_issuer,
-                    secret_key=settings.oauth2_secret_key,
-                )
-                logger.info("✓ OAuth2 server initialized")
-                
-                setup_oauth2_routes(mcp, oauth2_server, host, port)
-                logger.info("✓ OAuth2 endpoints registered")
-            
-            from middleware.setup import setup_middleware
-            middleware = setup_middleware(
-                use_oauth2=settings.use_oauth2,
-                oauth2_server=oauth2_server
-            )
-            
-            # Run HTTP server - context is already initialized globally
+            # Run HTTP server - authentication is handled by FastMCP's built-in auth
+            # No need for custom middleware when using StaticTokenVerifier
             await mcp.run_http_async(
-                transport="http", host=host, port=int(port), middleware=middleware
+                transport="http", host=host, port=int(port)
             )
         elif transport == "sse":
             await mcp.run_sse_async()
