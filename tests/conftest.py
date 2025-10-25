@@ -657,3 +657,125 @@ async def clean_test_data():
     # This will be implemented when we have real adapters
     return
     # Cleanup after test
+
+
+# ============================================================================
+# Docker Logs Collection for Load Tests
+# ============================================================================
+
+import subprocess
+from datetime import datetime
+from pathlib import Path
+
+
+@pytest.fixture(scope="function", autouse=False)
+def docker_logs_collector(request):
+    """
+    Collect Docker logs for MCP container during test execution.
+    
+    Usage:
+        @pytest.mark.usefixtures("docker_logs_collector")
+        async def test_something():
+            ...
+    """
+    # Get container name
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "--filter", "name=mcp-crawl4ai", "--format", "{{.Names}}"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        container_name = result.stdout.strip()
+    except Exception:
+        container_name = None
+    
+    if not container_name:
+        print("⚠️  MCP container not found, skipping log collection")
+        yield
+        return
+    
+    # Record start time
+    start_time = datetime.now()
+    test_name = request.node.name
+    
+    print(f"\n📋 Collecting logs for: {test_name}")
+    print(f"🐳 Container: {container_name}")
+    print(f"⏰ Start time: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    # Run test
+    yield
+    
+    # Collect logs after test
+    end_time = datetime.now()
+    duration = (end_time - start_time).total_seconds()
+    
+    print(f"⏱️  Test duration: {duration:.2f}s")
+    print(f"📝 Collecting Docker logs...")
+    
+    try:
+        # Get logs since start time
+        since_param = start_time.strftime("%Y-%m-%dT%H:%M:%S")
+        
+        result = subprocess.run(
+            ["docker", "logs", "--since", since_param, "--timestamps", container_name],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        logs = result.stdout + result.stderr
+        
+        # Save logs to file
+        logs_dir = Path("tests/results/docker_logs")
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_file = logs_dir / f"{test_name}_{timestamp}.log"
+        
+        with open(log_file, "w") as f:
+            f.write(f"Test: {test_name}\n")
+            f.write(f"Container: {container_name}\n")
+            f.write(f"Start: {start_time}\n")
+            f.write(f"End: {end_time}\n")
+            f.write(f"Duration: {duration:.2f}s\n")
+            f.write("=" * 80 + "\n\n")
+            f.write(logs)
+        
+        print(f"✅ Logs saved to: {log_file}")
+        
+        # Analyze logs for errors
+        error_count = logs.count("ERROR")
+        warning_count = logs.count("WARNING")
+        timeout_count = logs.count("timeout") + logs.count("Timeout")
+        
+        if error_count > 0 or warning_count > 0 or timeout_count > 0:
+            print(f"⚠️  Log analysis:")
+            if error_count > 0:
+                print(f"   - Errors: {error_count}")
+            if warning_count > 0:
+                print(f"   - Warnings: {warning_count}")
+            if timeout_count > 0:
+                print(f"   - Timeouts: {timeout_count}")
+        else:
+            print(f"✅ No errors found in logs")
+            
+    except subprocess.TimeoutExpired:
+        print("❌ Timeout while collecting logs")
+    except Exception as e:
+        print(f"❌ Error collecting logs: {e}")
+
+
+@pytest.fixture(scope="session")
+def docker_container_name():
+    """Get MCP Docker container name."""
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "--filter", "name=mcp-crawl4ai", "--format", "{{.Names}}"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        return result.stdout.strip()
+    except Exception:
+        return None

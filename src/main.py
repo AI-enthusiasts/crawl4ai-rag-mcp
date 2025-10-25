@@ -128,12 +128,12 @@ async def main():
 
         # Run server with appropriate transport
         if transport == "http":
-            logger.info("Setting up HTTP server...")
+            logger.info("Setting up Streamable HTTP server...")
             
-            # Run HTTP server - authentication is handled by FastMCP's built-in auth
-            # No need for custom middleware when using StaticTokenVerifier
+            # Run Streamable HTTP server - authentication is handled by FastMCP's built-in auth
+            # Streamable HTTP is the recommended transport for production
             await mcp.run_http_async(
-                transport="http", host=host, port=int(port)
+                transport="streamable-http", host=host, port=int(port)
             )
         elif transport == "sse":
             await mcp.run_sse_async()
