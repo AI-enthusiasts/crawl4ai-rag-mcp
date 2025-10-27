@@ -252,39 +252,6 @@ async def crawl_batch(
             logger.info(
                 f"arun_many completed: {len(results)} results returned"
             )
-            
-            # Run crawling in a thread pool to avoid blocking the event loop
-            # This prevents FastMCP from timing out during long crawl operations
-            import asyncio
-            loop = asyncio.get_running_loop()
-            
-            def _crawl_sync():
-                """Synchronous wrapper for crawler.arun_many to run in executor"""
-                with SuppressStdout():
-                    # Create new event loop for this thread
-                    import asyncio
-                    new_loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(new_loop)
-                    try:
-                        return new_loop.run_until_complete(
-                            crawler.arun_many(
-                                urls=validated_urls,
-                                config=crawl_config,
-                                dispatcher=dispatcher,
-                            )
-                        )
-                    finally:
-                        new_loop.close()
-            
-            # Execute in thread pool executor to avoid blocking
-            results = await loop.run_in_executor(None, _crawl_sync)
-
-            # Store results for memory tracking
-            mem_ctx["results"] = results
-            
-            logger.info(
-                f"arun_many completed: {len(results)} results returned"
-            )
 
         # Log crawling results summary
         successful_results = [
