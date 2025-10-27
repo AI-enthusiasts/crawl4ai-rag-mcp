@@ -23,10 +23,10 @@ git add .
 git commit -m "fix: your message"
 
 # Push (auto-deploys to Coolify)
-git push origin main
+git push origin feat/deployment-improvements
 ```
 
-Coolify watches `main` branch and deploys automatically.
+Coolify watches `feat/deployment-improvements` branch and deploys automatically.
 
 ## Testing
 
