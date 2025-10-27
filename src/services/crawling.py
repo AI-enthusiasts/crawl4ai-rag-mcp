@@ -1,5 +1,6 @@
 """Crawling services for the Crawl4AI MCP server."""
 
+import asyncio
 import json
 import logging
 from contextlib import asynccontextmanager
@@ -20,6 +21,7 @@ from core.stdout_utils import SuppressStdout
 
 # Import add_documents_to_database from utils package
 from utils import add_documents_to_database
+from utils.async_helpers import run_async_in_executor
 from utils.text_processing import smart_chunk_markdown
 from utils.url_helpers import extract_domain_from_url, normalize_url
 
@@ -234,12 +236,48 @@ async def crawl_batch(
                 f"(max_concurrent={max_concurrent}, page_timeout={crawl_config.page_timeout}ms)"
             )
             
+            # Run crawler in executor to avoid blocking the main event loop
+            # This allows FastMCP to continue handling other requests during crawling
             with SuppressStdout():
-                results = await crawler.arun_many(
+                results = await run_async_in_executor(
+                    crawler.arun_many,
                     urls=validated_urls,
                     config=crawl_config,
                     dispatcher=dispatcher,
                 )
+
+            # Store results for memory tracking
+            mem_ctx["results"] = results
+            
+            logger.info(
+                f"arun_many completed: {len(results)} results returned"
+            )
+            
+            # Run crawling in a thread pool to avoid blocking the event loop
+            # This prevents FastMCP from timing out during long crawl operations
+            import asyncio
+            loop = asyncio.get_running_loop()
+            
+            def _crawl_sync():
+                """Synchronous wrapper for crawler.arun_many to run in executor"""
+                with SuppressStdout():
+                    # Create new event loop for this thread
+                    import asyncio
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    try:
+                        return new_loop.run_until_complete(
+                            crawler.arun_many(
+                                urls=validated_urls,
+                                config=crawl_config,
+                                dispatcher=dispatcher,
+                            )
+                        )
+                    finally:
+                        new_loop.close()
+            
+            # Execute in thread pool executor to avoid blocking
+            results = await loop.run_in_executor(None, _crawl_sync)
 
             # Store results for memory tracking
             mem_ctx["results"] = results
@@ -342,8 +380,10 @@ async def crawl_recursive_internal_links(
         async with track_memory(
             f"recursive_crawl(depth={depth}, urls={len(urls_to_crawl)})"
         ) as mem_ctx:
+            # Run in executor to avoid blocking event loop
             with SuppressStdout():
-                results = await crawler.arun_many(
+                results = await run_async_in_executor(
+                    crawler.arun_many,
                     urls=urls_to_crawl,
                     config=run_config,
                     dispatcher=dispatcher,
