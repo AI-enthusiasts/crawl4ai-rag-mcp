@@ -6,8 +6,10 @@ to keep FastMCP server responsive during long-running operations like web crawli
 """
 
 import asyncio
+import logging
 from typing import Any, Callable, TypeVar
 
+logger = logging.getLogger(__name__)
 T = TypeVar('T')
 
 
@@ -48,16 +50,25 @@ async def run_async_in_executor(async_func: Callable[..., Any], *args, **kwargs)
         This pattern is similar to how QdrantClient (synchronous) is wrapped
         with run_in_executor in qdrant_adapter.py
     """
+    func_name = getattr(async_func, '__name__', str(async_func))
+    logger.info(f"[run_async_in_executor] Starting {func_name} in thread pool")
+    
     loop = asyncio.get_event_loop()
     
     def _run_in_thread() -> Any:
         """Execute async function in a new event loop within a thread"""
+        logger.debug(f"[run_async_in_executor] Thread started for {func_name}")
         # Create new event loop for this thread
         thread_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(thread_loop)
         try:
             # Run the async function in the thread's event loop
-            return thread_loop.run_until_complete(async_func(*args, **kwargs))
+            result = thread_loop.run_until_complete(async_func(*args, **kwargs))
+            logger.info(f"[run_async_in_executor] Completed {func_name}")
+            return result
+        except Exception as e:
+            logger.error(f"[run_async_in_executor] Error in {func_name}: {e}")
+            raise
         finally:
             # Always clean up the event loop
             thread_loop.close()
