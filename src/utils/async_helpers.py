@@ -32,12 +32,13 @@ async def run_async_in_executor(async_func: Callable[..., Any], *args, **kwargs)
     Returns:
         The result of the async function
         
+    Usage:
+        All crawler operations (crawler.arun, crawler.arun_many) must be wrapped
+        with this function to prevent blocking the FastMCP event loop.
+        
     Example:
         ```python
-        # Blocking - blocks event loop
-        results = await crawler.arun_many(urls=urls, config=config)
-        
-        # Non-blocking - runs in separate thread
+        # Batch crawling
         results = await run_async_in_executor(
             crawler.arun_many,
             urls=urls,
@@ -45,13 +46,13 @@ async def run_async_in_executor(async_func: Callable[..., Any], *args, **kwargs)
             dispatcher=dispatcher
         )
         
-        # Also works for single URL crawls
-        result = await run_async_in_executor(crawler.arun, url=url, config=config)
+        # Single URL crawling
+        result = await run_async_in_executor(
+            crawler.arun,
+            url=url,
+            config=config
+        )
         ```
-    
-    Note:
-        This pattern is similar to how QdrantClient (synchronous) is wrapped
-        with run_in_executor in qdrant_adapter.py
     """
     func_name = getattr(async_func, '__name__', str(async_func))
     logger.info(f"[run_async_in_executor] Starting {func_name} in thread pool")
