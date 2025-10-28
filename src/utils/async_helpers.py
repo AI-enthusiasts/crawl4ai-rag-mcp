@@ -34,10 +34,10 @@ async def run_async_in_executor(async_func: Callable[..., Any], *args, **kwargs)
         
     Example:
         ```python
-        # ❌ Blocking - blocks event loop
+        # Blocking - blocks event loop
         results = await crawler.arun_many(urls=urls, config=config)
         
-        # ✅ Non-blocking - runs in separate thread
+        # Non-blocking - runs in separate thread
         results = await run_async_in_executor(
             crawler.arun_many,
             urls=urls,
