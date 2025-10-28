@@ -34,7 +34,7 @@ class QdrantAdapter:
         """Initialize Qdrant adapter with connection parameters"""
         self.url = url or os.getenv("QDRANT_URL", "http://localhost:6333")
         self.api_key = api_key or os.getenv("QDRANT_API_KEY")
-        self.client: AsyncQdrantClient | None = None
+        self.client: AsyncQdrantClient = AsyncQdrantClient(url=self.url, api_key=self.api_key)
         self.batch_size = 100  # Qdrant can handle larger batches
 
         # Collection names
