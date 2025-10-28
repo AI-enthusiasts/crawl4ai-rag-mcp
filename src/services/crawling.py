@@ -96,8 +96,13 @@ async def crawl_markdown_file(
     """
     crawl_config = CrawlerRunConfig()
 
+    # Run in executor to avoid blocking event loop
     with SuppressStdout():
-        result = await crawler.arun(url=url, config=crawl_config)
+        result = await run_async_in_executor(
+            crawler.arun,
+            url=url,
+            config=crawl_config,
+        )
     if result.success and result.markdown:
         return [{"url": url, "markdown": result.markdown}]
     logger.error(f"Failed to crawl {url}: {result.error_message}")

@@ -26,7 +26,7 @@ import psutil
 import pytest
 from dotenv import load_dotenv
 from fastmcp import Client
-from fastmcp.client.auth import BearerAuth
+from fastmcp.client.transports import StreamableHttpTransport
 
 # Load environment variables
 load_dotenv()
@@ -180,14 +180,18 @@ class MCPLoadTester:
 
     async def __aenter__(self):
         """Async context manager entry."""
-        # Create FastMCP Client with HTTP transport, authentication, and timeouts
-        # Client automatically infers HTTP transport from URL
-        self.client = Client(
-            self.mcp_url,
-            auth=BearerAuth(self.mcp_api_key) if self.mcp_api_key else None,
-            timeout=self.timeout,
-            init_timeout=self.init_timeout  # 5s for connection
+        # Create StreamableHttpTransport explicitly for streamable-http server
+        headers = {}
+        if self.mcp_api_key:
+            headers["Authorization"] = f"Bearer {self.mcp_api_key}"
+        
+        transport = StreamableHttpTransport(
+            url=self.mcp_url,
+            headers=headers
         )
+        
+        # Create FastMCP Client with explicit transport
+        self.client = Client(transport)
         
         # Enter client context
         await self.client.__aenter__()

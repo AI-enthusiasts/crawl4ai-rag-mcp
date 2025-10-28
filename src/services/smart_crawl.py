@@ -213,18 +213,104 @@ async def _crawl_text_file(
 ) -> str:
     """Crawl a text file directly."""
     try:
-        result = await crawl_markdown_file(
-            ctx=ctx,
+        # Get the app context to access the crawler
+        from core.context import get_app_context
+
+        app_ctx = get_app_context()
+
+        if not app_ctx or not hasattr(app_ctx, "crawler"):
+            return json.dumps(
+                {
+                    "success": False,
+                    "type": "text_file",
+                    "error": "Crawler not available in application context",
+                    "url": url,
+                }
+            )
+
+        # Call low-level crawl_markdown_file with correct parameters
+        crawl_results = await crawl_markdown_file(
+            crawler=app_ctx.crawler,
             url=url,
-            chunk_size=chunk_size,
-            return_raw_markdown=return_raw_markdown,
         )
 
-        # Parse and add metadata
-        data = json.loads(result)
-        data["type"] = "text_file"
+        if not crawl_results:
+            return json.dumps(
+                {
+                    "success": False,
+                    "type": "text_file",
+                    "error": "Failed to crawl file",
+                    "url": url,
+                }
+            )
 
-        return json.dumps(data)
+        if return_raw_markdown:
+            # Return raw markdown content directly
+            return json.dumps(
+                {
+                    "success": True,
+                    "type": "text_file",
+                    "url": url,
+                    "markdown": crawl_results[0]["markdown"],
+                }
+            )
+
+        # Store in database
+        if not app_ctx.database_client:
+            return json.dumps(
+                {
+                    "success": False,
+                    "type": "text_file",
+                    "error": "Database client not available",
+                    "url": url,
+                }
+            )
+
+        from utils import add_documents_to_database
+        from utils.text_processing import smart_chunk_markdown
+        from utils.url_helpers import extract_domain_from_url
+
+        result = crawl_results[0]
+        chunks = smart_chunk_markdown(result["markdown"], chunk_size=chunk_size)
+
+        if not chunks:
+            return json.dumps(
+                {
+                    "success": False,
+                    "type": "text_file",
+                    "error": "No content to store after chunking",
+                    "url": url,
+                }
+            )
+
+        source_id = extract_domain_from_url(result["url"])
+        urls = [result["url"]] * len(chunks)
+        chunk_numbers = list(range(len(chunks)))
+        contents = chunks
+        metadatas = [{"url": result["url"], "chunk": i} for i in range(len(chunks))]
+        url_to_full_document = {result["url"]: result["markdown"]}
+        source_ids = [source_id] * len(chunks) if source_id else None
+
+        await add_documents_to_database(
+            database=app_ctx.database_client,
+            urls=urls,
+            chunk_numbers=chunk_numbers,
+            contents=contents,
+            metadatas=metadatas,
+            url_to_full_document=url_to_full_document,
+            batch_size=20,
+            source_ids=source_ids,
+        )
+
+        return json.dumps(
+            {
+                "success": True,
+                "type": "text_file",
+                "url": url,
+                "chunks_stored": len(chunks),
+                "source_id": source_id,
+            }
+        )
 
     except Exception as e:
         logger.exception(f"Text file crawl error: {e}")
