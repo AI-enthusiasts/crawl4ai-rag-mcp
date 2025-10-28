@@ -21,7 +21,6 @@ from core.stdout_utils import SuppressStdout
 
 # Import add_documents_to_database from utils package
 from utils import add_documents_to_database
-from utils.async_helpers import run_async_in_executor
 from utils.text_processing import smart_chunk_markdown
 from utils.url_helpers import extract_domain_from_url, normalize_url
 
@@ -98,11 +97,7 @@ async def crawl_markdown_file(
 
     # Run in executor to avoid blocking event loop
     with SuppressStdout():
-        result = await run_async_in_executor(
-            crawler.arun,
-            url=url,
-            config=crawl_config,
-        )
+        result = await crawler.arun(url=url, config=crawl_config)
     if result.success and result.markdown:
         return [{"url": url, "markdown": result.markdown}]
     logger.error(f"Failed to crawl {url}: {result.error_message}")
@@ -244,8 +239,7 @@ async def crawl_batch(
             # Run crawler in executor to avoid blocking the main event loop
             # This allows FastMCP to continue handling other requests during crawling
             with SuppressStdout():
-                results = await run_async_in_executor(
-                    crawler.arun_many,
+                results = await crawler.arun_many(
                     urls=validated_urls,
                     config=crawl_config,
                     dispatcher=dispatcher,
@@ -354,8 +348,7 @@ async def crawl_recursive_internal_links(
         ) as mem_ctx:
             # Run in executor to avoid blocking event loop
             with SuppressStdout():
-                results = await run_async_in_executor(
-                    crawler.arun_many,
+                results = await crawler.arun_many(
                     urls=urls_to_crawl,
                     config=run_config,
                     dispatcher=dispatcher,

@@ -1,6 +1,5 @@
 """Utility functions for the Crawl4AI MCP server."""
 
-from .async_helpers import run_async_in_executor
 from .reranking import rerank_results
 from .text_processing import (
     extract_section_info,
@@ -44,8 +43,6 @@ from .summarization import extract_source_summary
 
 
 __all__ = [
-    # Async helpers
-    "run_async_in_executor",
     # Database and embedding functions
     "add_documents_to_database",
     "add_code_examples_to_database",
