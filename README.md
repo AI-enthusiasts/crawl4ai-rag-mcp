@@ -486,6 +486,12 @@ See the [Language Analyzer Development Guide](docs/QA/LANGUAGE_ANALYZER_DEVELOPM
 
 ### Testing
 
+**Prerequisites:** Start Qdrant for integration tests
+```bash
+docker run -d --name qdrant-test -p 6333:6333 qdrant/qdrant
+```
+
+**Run tests:**
 ```bash
 # Run unit tests
 make test
@@ -493,8 +499,11 @@ make test
 # Run specific language analyzer tests  
 make test-analyzers
 
-# Run integration tests
+# Run integration tests (requires Qdrant running)
 make test-integration
+
+# Or run with uv directly
+uv run pytest tests/ --cov=src --cov-report=term-missing
 ```
 
 ## License

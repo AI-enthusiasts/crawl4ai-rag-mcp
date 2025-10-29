@@ -39,6 +39,17 @@ This directory contains comprehensive tests for the Crawl4AI MCP server with dat
 
 ## Running Tests
 
+### Prerequisites
+
+**Start Qdrant for testing:**
+```bash
+# Start Qdrant in Docker (required for integration tests)
+docker run -d --name qdrant-test -p 6333:6333 qdrant/qdrant
+
+# Verify Qdrant is running
+curl http://localhost:6333/healthz
+```
+
 ### Quick Start
 
 ```bash
@@ -51,7 +62,7 @@ uv run pytest tests/ -v --cov=src --cov-report=term-missing --cov-report=html
 # Run specific test file
 uv run pytest tests/test_utils.py -v
 
-# Run only Qdrant tests
+# Run only Qdrant tests (requires Qdrant running)
 uv run pytest tests/test_qdrant_adapter.py tests/test_database_interface.py -v
 ```
 
