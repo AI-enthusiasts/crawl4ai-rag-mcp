@@ -11,6 +11,13 @@ import pytest
 
 from database.factory import create_database_client
 from database.qdrant_adapter import QdrantAdapter
+from .qdrant_test_helpers import (
+    store_crawled_page,
+    search_crawled_pages,
+    store_code_example,
+    create_embedding,
+    search_code_examples,
+)
 
 
 class TestQdrantIntegration:
