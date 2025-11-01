@@ -64,7 +64,7 @@ class TestQdrantIntegration:
         assert client.collection_name == "crawled_pages"
 
     @pytest.mark.asyncio
-    async def test_complete_crawl_workflow(self):
+    async def test_complete_crawl_workflow(self, mock_openai_embeddings):
         """Test end-to-end crawl -> store -> search workflow"""
         client = create_database_client()
 

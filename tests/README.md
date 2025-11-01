@@ -53,7 +53,7 @@ curl http://localhost:6333/healthz
 ### Quick Start
 
 ```bash
-# Run all unit tests (excluding integration)
+# Run all unit tests (excluding integration) - OpenAI is mocked by default
 uv run pytest tests/ -v -m "not integration"
 
 # Run with coverage
@@ -65,6 +65,24 @@ uv run pytest tests/test_utils.py -v
 # Run only Qdrant tests (requires Qdrant running)
 uv run pytest tests/test_qdrant_adapter.py tests/test_database_interface.py -v
 ```
+
+### Running Tests with Real OpenAI API
+
+By default, all OpenAI API calls are **mocked** to prevent accidental costs.
+
+To run tests with real OpenAI (embeddings cost ~$0.0001 per test):
+```bash
+# Enable real OpenAI embeddings (cheap: ~$0.02 per 1M tokens)
+ALLOW_OPENAI_TESTS=true uv run pytest tests/test_qdrant_integration.py -v
+
+# Enable expensive LLM inference tests ($$$ - use with caution!)
+ALLOW_EXPENSIVE_TESTS=true uv run pytest tests/ -v -m expensive
+```
+
+**Cost estimates:**
+- Embeddings (`text-embedding-3-small`): ~$0.0001 per test
+- Full test suite with real embeddings: < $0.001 (less than a penny)
+- Expensive LLM tests (GPT-4): $0.01-$0.10 per test
 
 ### Using Test Scripts
 

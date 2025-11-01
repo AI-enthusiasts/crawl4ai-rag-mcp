@@ -566,7 +566,7 @@ requires-dist = [
     { name = "pytest-xdist", specifier = ">=3.5.0" },
     { name = "python-jose", extras = ["cryptography"], specifier = ">=3.3.0" },
     { name = "python-multipart", specifier = ">=0.0.6" },
-    { name = "qdrant-client", specifier = ">=1.7.0" },
+    { name = "qdrant-client", specifier = ">=1.15.1" },
     { name = "requests", specifier = ">=2.25.0" },
     { name = "ruff", specifier = ">=0.8.0" },
     { name = "sentence-transformers", specifier = ">=4.1.0" },
