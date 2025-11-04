@@ -164,6 +164,12 @@ class Settings:
         """Check if agentic RAG is enabled."""
         return os.getenv("USE_AGENTIC_RAG", "false").lower() == "true"
 
+    # Crawler settings
+    @property
+    def max_concurrent_sessions(self) -> int:
+        """Get maximum concurrent browser sessions (global limit)."""
+        return int(os.getenv("MAX_CONCURRENT_SESSIONS", "50"))
+
     # Transport settings
     @property
     def transport(self) -> str:

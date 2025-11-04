@@ -158,10 +158,10 @@ async def initialize_global_context() -> "Crawl4AIContext":
         dispatcher = MemoryAdaptiveDispatcher(
             memory_threshold_percent=70.0,
             check_interval=1.0,
-            max_session_permit=10,  # Global limit: max 10 concurrent browser contexts
+            max_session_permit=settings.max_concurrent_sessions,
             rate_limiter=rate_limiter,
         )
-        logger.info("✓ Shared dispatcher initialized (max_session_permit=10)")
+        logger.info(f"✓ Shared dispatcher initialized (max_session_permit={settings.max_concurrent_sessions})")
 
         context = Crawl4AIContext(
             crawler=crawler,

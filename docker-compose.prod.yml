@@ -45,6 +45,7 @@ services:
       - TRANSPORT=${TRANSPORT:-http}
       - HOST=0.0.0.0
       - PORT=${PORT:-8051}
+      - MAX_CONCURRENT_SESSIONS=${MAX_CONCURRENT_SESSIONS:-50}
       
       # Internal Service URLs
       - SEARXNG_URL=http://searxng:8080
