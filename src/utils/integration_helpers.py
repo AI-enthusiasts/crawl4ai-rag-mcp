@@ -13,7 +13,10 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Any
 
+from config import get_settings
+
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 
 class PerformanceCache:
@@ -118,7 +121,7 @@ class PerformanceCache:
 class BatchProcessor:
     """
     Utility for batching and parallelizing validation operations.
-    Uses global dispatcher limit instead of per-instance limit.
+    Uses global MAX_CONCURRENT_SESSIONS limit.
     """
 
     def __init__(self, batch_size: int = 20):
@@ -129,6 +132,7 @@ class BatchProcessor:
             batch_size: Size of each processing batch
         """
         self.batch_size = batch_size
+        self._semaphore = asyncio.Semaphore(settings.max_concurrent_sessions)
 
     async def process_batch(
         self,
@@ -138,7 +142,7 @@ class BatchProcessor:
         **kwargs,
     ) -> list[Any]:
         """
-        Process items in batches.
+        Process items in batches with concurrency control.
 
         Args:
             items: List of items to process
@@ -156,7 +160,7 @@ class BatchProcessor:
 
             # Create tasks for this batch
             tasks = [
-                processor_func(item, *args, **kwargs)
+                self._process_with_semaphore(processor_func, item, *args, **kwargs)
                 for item in batch
             ]
 
@@ -165,6 +169,17 @@ class BatchProcessor:
             results.extend(batch_results)
 
         return results
+
+    async def _process_with_semaphore(
+        self, processor_func: Callable, item: Any, *args, **kwargs,
+    ):
+        """Process an item with semaphore control."""
+        async with self._semaphore:
+            try:
+                return await processor_func(item, *args, **kwargs)
+            except Exception as e:
+                logger.warning(f"Error processing item: {e}")
+                return e
 
 
 class CircuitBreaker:
