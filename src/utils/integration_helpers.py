@@ -118,19 +118,17 @@ class PerformanceCache:
 class BatchProcessor:
     """
     Utility for batching and parallelizing validation operations.
+    Uses global dispatcher limit instead of per-instance limit.
     """
 
-    def __init__(self, max_concurrent: int = 10, batch_size: int = 20):
+    def __init__(self, batch_size: int = 20):
         """
         Initialize the batch processor.
 
         Args:
-            max_concurrent: Maximum number of concurrent operations
             batch_size: Size of each processing batch
         """
-        self.max_concurrent = max_concurrent
         self.batch_size = batch_size
-        self._semaphore = asyncio.Semaphore(max_concurrent)
 
     async def process_batch(
         self,
@@ -140,7 +138,7 @@ class BatchProcessor:
         **kwargs,
     ) -> list[Any]:
         """
-        Process items in batches with concurrency control.
+        Process items in batches.
 
         Args:
             items: List of items to process
@@ -158,7 +156,7 @@ class BatchProcessor:
 
             # Create tasks for this batch
             tasks = [
-                self._process_with_semaphore(processor_func, item, *args, **kwargs)
+                processor_func(item, *args, **kwargs)
                 for item in batch
             ]
 
@@ -167,17 +165,6 @@ class BatchProcessor:
             results.extend(batch_results)
 
         return results
-
-    async def _process_with_semaphore(
-        self, processor_func: Callable, item: Any, *args, **kwargs,
-    ):
-        """Process an item with semaphore control."""
-        async with self._semaphore:
-            try:
-                return await processor_func(item, *args, **kwargs)
-            except Exception as e:
-                logger.warning(f"Error processing item: {e}")
-                return e
 
 
 class CircuitBreaker:
@@ -496,7 +483,6 @@ class PerformanceOptimizer:
             "cache_stats": self.cache.get_stats(),
             "circuit_breaker_state": self.circuit_breaker.get_state(),
             "batch_processor": {
-                "max_concurrent": self.batch_processor.max_concurrent,
                 "batch_size": self.batch_processor.batch_size,
             },
         }
