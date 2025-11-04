@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from crawl4ai import AsyncWebCrawler, BrowserConfig
+from crawl4ai import AsyncWebCrawler, BrowserConfig, MemoryAdaptiveDispatcher
 from fastmcp import FastMCP
 from sentence_transformers import CrossEncoder
 
@@ -144,9 +144,29 @@ async def initialize_global_context() -> "Crawl4AIContext":
                 "Knowledge graph functionality disabled - set USE_KNOWLEDGE_GRAPH=true to enable",
             )
 
+        # Initialize shared dispatcher for global concurrency control
+        # This ensures max_session_permit applies across ALL tool calls, not per-call
+        from crawl4ai import RateLimiter
+        
+        rate_limiter = RateLimiter(
+            base_delay=(0.5, 1.5),
+            max_delay=30.0,
+            max_retries=3,
+            rate_limit_codes=[429, 503]
+        )
+        
+        dispatcher = MemoryAdaptiveDispatcher(
+            memory_threshold_percent=70.0,
+            check_interval=1.0,
+            max_session_permit=10,  # Global limit: max 10 concurrent browser contexts
+            rate_limiter=rate_limiter,
+        )
+        logger.info("✓ Shared dispatcher initialized (max_session_permit=10)")
+
         context = Crawl4AIContext(
             crawler=crawler,
             database_client=database_client,
+            dispatcher=dispatcher,
             reranking_model=reranking_model,
             knowledge_validator=knowledge_validator,
             repo_extractor=repo_extractor,
@@ -200,6 +220,7 @@ class Crawl4AIContext:
 
     crawler: AsyncWebCrawler
     database_client: VectorDatabase
+    dispatcher: MemoryAdaptiveDispatcher  # Shared dispatcher for global concurrency control
     reranking_model: CrossEncoder | None = None
     knowledge_validator: Any | None = None  # KnowledgeGraphValidator when available
     repo_extractor: Any | None = None  # DirectNeo4jExtractor when available

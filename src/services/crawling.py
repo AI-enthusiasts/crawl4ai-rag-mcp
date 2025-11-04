@@ -107,6 +107,7 @@ async def crawl_markdown_file(
 async def crawl_batch(
     crawler: AsyncWebCrawler,
     urls: list[str],
+    dispatcher: MemoryAdaptiveDispatcher,
     max_concurrent: int = 10,
 ) -> list[dict[str, Any]]:
     """
@@ -115,7 +116,8 @@ async def crawl_batch(
     Args:
         crawler: AsyncWebCrawler instance
         urls: List of URLs to crawl
-        max_concurrent: Maximum number of concurrent browser sessions
+        dispatcher: Shared MemoryAdaptiveDispatcher for global concurrency control
+        max_concurrent: Maximum number of concurrent browser sessions (deprecated, use dispatcher)
 
     Returns:
         List of dictionaries with URL and markdown content
@@ -213,21 +215,8 @@ async def crawl_batch(
         # session_id=None - explicitly no session for automatic page cleanup
     )
     
-    # Rate limiter to handle 429/503 errors and prevent overwhelming servers
-    rate_limiter = RateLimiter(
-        base_delay=(0.5, 1.5),      # Random delay 0.5-1.5s between requests
-        max_delay=30.0,             # Cap backoff at 30 seconds
-        max_retries=3,              # Retry up to 3 times on rate limit errors
-        rate_limit_codes=[429, 503] # HTTP codes triggering backoff
-    )
-    
-    # Memory-adaptive dispatcher with rate limiting
-    dispatcher = MemoryAdaptiveDispatcher(
-        memory_threshold_percent=70.0,
-        check_interval=1.0,
-        max_session_permit=max_concurrent,
-        rate_limiter=rate_limiter,
-    )
+    # Use shared dispatcher from context for global concurrency control
+    # This ensures max_session_permit applies across ALL tool calls, not per-call
 
     try:
         async with track_memory(f"crawl_batch({len(validated_urls)} URLs)") as mem_ctx:
@@ -308,6 +297,7 @@ async def crawl_batch(
 async def crawl_recursive_internal_links(
     crawler: AsyncWebCrawler,
     start_urls: list[str],
+    dispatcher: MemoryAdaptiveDispatcher,
     max_depth: int = 3,
     max_concurrent: int = 10,
 ) -> list[dict[str, Any]]:
@@ -317,18 +307,15 @@ async def crawl_recursive_internal_links(
     Args:
         crawler: AsyncWebCrawler instance
         start_urls: List of starting URLs
+        dispatcher: Shared MemoryAdaptiveDispatcher for global concurrency control
         max_depth: Maximum recursion depth
-        max_concurrent: Maximum number of concurrent browser sessions
+        max_concurrent: Maximum number of concurrent browser sessions (deprecated, use dispatcher)
 
     Returns:
         List of dictionaries with URL and markdown content
     """
     run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
-    dispatcher = MemoryAdaptiveDispatcher(
-        memory_threshold_percent=70.0,
-        check_interval=1.0,
-        max_session_permit=max_concurrent,
-    )
+    # Use shared dispatcher from context for global concurrency control
 
     visited = set()
     current_urls = {normalize_url(u) for u in start_urls}
@@ -441,6 +428,7 @@ async def process_urls_for_mcp(
         crawl_results = await crawl_batch(
             crawler=crawl4ai_ctx.crawler,
             urls=urls,
+            dispatcher=crawl4ai_ctx.dispatcher,
             max_concurrent=max_concurrent,
         )
 
