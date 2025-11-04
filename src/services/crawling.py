@@ -408,19 +408,20 @@ async def process_urls_for_mcp(
         if not (
             hasattr(crawl4ai_ctx, "crawler")
             and hasattr(crawl4ai_ctx, "database_client")
+            and hasattr(crawl4ai_ctx, "dispatcher")
         ):
             return json.dumps(
                 {
                     "success": False,
-                    "error": "Invalid Crawl4AI context: missing required attributes (crawler, database_client)",
+                    "error": "Invalid Crawl4AI context: missing required attributes (crawler, database_client, dispatcher)",
                 },
             )
 
-        if not crawl4ai_ctx.crawler or not crawl4ai_ctx.database_client:
+        if not crawl4ai_ctx.crawler or not crawl4ai_ctx.database_client or not crawl4ai_ctx.dispatcher:
             return json.dumps(
                 {
                     "success": False,
-                    "error": "Invalid Crawl4AI context: crawler or database_client is None",
+                    "error": "Invalid Crawl4AI context: crawler, database_client, or dispatcher is None",
                 },
             )
 
