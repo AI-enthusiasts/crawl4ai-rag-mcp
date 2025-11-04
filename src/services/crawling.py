@@ -197,7 +197,7 @@ async def crawl_batch(
         logger.debug("No URL transformations were needed during validation")
 
     logger.info(
-        f"Starting crawl of {len(validated_urls)} validated URLs with max_concurrent={max_concurrent}",
+        f"{req_prefix}Starting crawl of {len(validated_urls)} validated URLs with max_concurrent={max_concurrent}",
     )
     logger.debug(f"Final URLs for crawling: {validated_urls}")
 

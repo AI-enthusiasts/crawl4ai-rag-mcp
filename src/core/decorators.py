@@ -7,7 +7,7 @@ from datetime import datetime
 
 from fastmcp import Context
 
-from .logging import logger
+from .logging import logger, request_id_ctx
 
 
 def track_request(tool_name: str):
@@ -18,22 +18,28 @@ def track_request(tool_name: str):
         async def wrapper(ctx: Context, *args, **kwargs):
             request_id = str(uuid.uuid4())[:8]
             start_time = datetime.now().timestamp()
+            
+            # Store request_id in ContextVar for automatic logging
+            request_id_ctx.set(request_id)
 
-            logger.info(f"[{request_id}] Starting {tool_name} request")
-            logger.debug(f"[{request_id}] Arguments: {kwargs}")
+            logger.info(f"Starting {tool_name} request")
+            logger.debug(f"Arguments: {kwargs}")
 
             try:
                 result = await func(ctx, *args, **kwargs)
                 duration = datetime.now().timestamp() - start_time
-                logger.info(f"[{request_id}] Completed {tool_name} in {duration:.2f}s")
+                logger.info(f"Completed {tool_name} in {duration:.2f}s")
                 return result
             except Exception as e:
                 duration = datetime.now().timestamp() - start_time
                 logger.error(
-                    f"[{request_id}] Failed {tool_name} after {duration:.2f}s: {e!s}",
+                    f"Failed {tool_name} after {duration:.2f}s: {e!s}",
                 )
-                logger.debug(f"[{request_id}] Traceback: {traceback.format_exc()}")
+                logger.debug(f"Traceback: {traceback.format_exc()}")
                 raise
+            finally:
+                # Clean up context variable
+                request_id_ctx.set(None)
 
         return wrapper
 
