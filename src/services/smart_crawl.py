@@ -348,6 +348,7 @@ async def _crawl_recursive(
         crawl_results = await crawl_recursive_internal_links(
             crawler=app_ctx.crawler,
             start_urls=[url],  # Note: expects a list
+            dispatcher=app_ctx.dispatcher,
             max_depth=max_depth,
             max_concurrent=max_concurrent,
         )
