@@ -62,7 +62,6 @@ async def smart_crawl_url(
     ctx: Context,
     url: str,
     max_depth: int = 3,
-    max_concurrent: int = 10,
     chunk_size: int = 5000,
     return_raw_markdown: bool = False,
     query: list[str] | None = None,
@@ -79,7 +78,6 @@ async def smart_crawl_url(
         ctx: FastMCP context
         url: URL to crawl
         max_depth: Max recursion depth for regular URLs
-        max_concurrent: Max concurrent operations
         chunk_size: Chunk size for content
         return_raw_markdown: Return raw markdown
         query: Optional RAG queries to run
@@ -96,7 +94,6 @@ async def smart_crawl_url(
             return await _crawl_sitemap(
                 ctx,
                 normalized_url,
-                max_concurrent,
                 chunk_size,
                 return_raw_markdown,
                 query,
@@ -114,7 +111,6 @@ async def smart_crawl_url(
             ctx,
             normalized_url,
             max_depth,
-            max_concurrent,
             chunk_size,
             return_raw_markdown,
             query,
@@ -129,7 +125,6 @@ async def smart_crawl_url(
 async def _crawl_sitemap(
     ctx: Context,
     url: str,
-    max_concurrent: int,
     chunk_size: int,
     return_raw_markdown: bool,
     query: list[str] | None,
@@ -164,7 +159,6 @@ async def _crawl_sitemap(
         result = await process_urls_for_mcp(
             ctx=ctx,
             urls=urls,
-            max_concurrent=max_concurrent,
             batch_size=20,
             return_raw_markdown=return_raw_markdown,
         )
@@ -328,7 +322,6 @@ async def _crawl_recursive(
     ctx: Context,
     url: str,
     max_depth: int,
-    max_concurrent: int,
     chunk_size: int,
     return_raw_markdown: bool,
     query: list[str] | None,
@@ -350,7 +343,6 @@ async def _crawl_recursive(
             start_urls=[url],  # Note: expects a list
             dispatcher=app_ctx.dispatcher,
             max_depth=max_depth,
-            max_concurrent=max_concurrent,
         )
 
         # Process results - it returns a list of dicts
