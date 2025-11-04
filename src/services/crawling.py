@@ -108,7 +108,6 @@ async def crawl_batch(
     crawler: AsyncWebCrawler,
     urls: list[str],
     dispatcher: MemoryAdaptiveDispatcher,
-    max_concurrent: int = 10,
 ) -> list[dict[str, Any]]:
     """
     Batch crawl multiple URLs in parallel.
@@ -117,7 +116,6 @@ async def crawl_batch(
         crawler: AsyncWebCrawler instance
         urls: List of URLs to crawl
         dispatcher: Shared MemoryAdaptiveDispatcher for global concurrency control
-        max_concurrent: Maximum number of concurrent browser sessions (deprecated, use dispatcher)
 
     Returns:
         List of dictionaries with URL and markdown content
@@ -199,7 +197,7 @@ async def crawl_batch(
         logger.debug("No URL transformations were needed during validation")
 
     logger.info(
-        f"{req_prefix}Starting crawl of {len(validated_urls)} validated URLs with max_concurrent={max_concurrent}",
+        f"{req_prefix}Starting crawl of {len(validated_urls)} validated URLs",
     )
     logger.debug(f"Final URLs for crawling: {validated_urls}")
 
@@ -222,7 +220,7 @@ async def crawl_batch(
         async with track_memory(f"crawl_batch({len(validated_urls)} URLs)") as mem_ctx:
             logger.info(
                 f"Starting arun_many for {len(validated_urls)} URLs "
-                f"(max_concurrent={max_concurrent}, page_timeout={crawl_config.page_timeout}ms)"
+                f"(page_timeout={crawl_config.page_timeout}ms)"
             )
             
             # Run crawler in executor to avoid blocking the main event loop
@@ -299,7 +297,6 @@ async def crawl_recursive_internal_links(
     start_urls: list[str],
     dispatcher: MemoryAdaptiveDispatcher,
     max_depth: int = 3,
-    max_concurrent: int = 10,
 ) -> list[dict[str, Any]]:
     """
     Recursively crawl internal links from start URLs up to a maximum depth.
@@ -309,7 +306,6 @@ async def crawl_recursive_internal_links(
         start_urls: List of starting URLs
         dispatcher: Shared MemoryAdaptiveDispatcher for global concurrency control
         max_depth: Maximum recursion depth
-        max_concurrent: Maximum number of concurrent browser sessions (deprecated, use dispatcher)
 
     Returns:
         List of dictionaries with URL and markdown content
@@ -363,7 +359,6 @@ async def crawl_recursive_internal_links(
 async def process_urls_for_mcp(
     ctx: Context,
     urls: list[str],
-    max_concurrent: int = 10,
     batch_size: int = 20,
     return_raw_markdown: bool = False,
 ) -> str:
@@ -379,7 +374,6 @@ async def process_urls_for_mcp(
     Args:
         ctx: FastMCP context containing Crawl4AIContext
         urls: List of URLs to crawl
-        max_concurrent: Maximum number of concurrent browser sessions
         batch_size: Batch size for database operations
         return_raw_markdown: If True, return raw markdown instead of storing
 
@@ -430,7 +424,6 @@ async def process_urls_for_mcp(
             crawler=crawl4ai_ctx.crawler,
             urls=urls,
             dispatcher=crawl4ai_ctx.dispatcher,
-            max_concurrent=max_concurrent,
         )
 
         if return_raw_markdown:
