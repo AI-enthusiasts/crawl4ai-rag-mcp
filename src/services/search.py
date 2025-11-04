@@ -22,7 +22,6 @@ async def search_and_process(
     return_raw_markdown: bool = False,
     num_results: int = 6,
     batch_size: int = 20,
-    max_concurrent: int = 10,
 ) -> str:
     """
     Perform search using SearXNG and process results.
@@ -33,7 +32,6 @@ async def search_and_process(
         return_raw_markdown: Return raw markdown instead of storing
         num_results: Number of results to return
         batch_size: Batch size for processing
-        max_concurrent: Max concurrent operations
 
     Returns:
         JSON string with results
@@ -64,7 +62,6 @@ async def search_and_process(
         crawl_result = await process_urls_for_mcp(
             ctx=ctx,
             urls=urls,
-            max_concurrent=max_concurrent,
             batch_size=batch_size,
             return_raw_markdown=return_raw_markdown,
         )

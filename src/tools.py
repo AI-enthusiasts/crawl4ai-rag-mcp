@@ -188,7 +188,6 @@ def register_tools(mcp):
         return_raw_markdown: bool = False,
         num_results: int = 6,
         batch_size: int = 20,
-        max_concurrent: int = 10,
     ) -> str:
         """
         Comprehensive search tool that integrates SearXNG search with scraping and RAG functionality.
@@ -205,7 +204,6 @@ def register_tools(mcp):
             return_raw_markdown: If True, skip embedding/RAG and return raw markdown content (default: False)
             num_results: Number of search results to return from SearXNG (default: 6)
             batch_size: Batch size for database operations (default: 20)
-            max_concurrent: Maximum concurrent browser sessions for scraping (default: 10)
 
         Returns:
             JSON string with search results, or raw markdown of each URL if `return_raw_markdown=true`
@@ -217,7 +215,6 @@ def register_tools(mcp):
                 return_raw_markdown=return_raw_markdown,
                 num_results=num_results,
                 batch_size=batch_size,
-                max_concurrent=max_concurrent,
             )
         except Exception as e:
             logger.exception(f"Error in search tool: {e}")
@@ -229,7 +226,6 @@ def register_tools(mcp):
     async def scrape_urls(
         ctx: Context,
         url: str | list[str],
-        max_concurrent: int = 10,
         batch_size: int = 20,
         return_raw_markdown: bool = False,
     ) -> str:
@@ -242,7 +238,6 @@ def register_tools(mcp):
 
         Args:
             url: URL to scrape, or list of URLs for batch processing
-            max_concurrent: Maximum number of concurrent browser sessions for multi-URL mode (default: 10)
             batch_size: Size of batches for database operations (default: 20)
             return_raw_markdown: If True, skip database storage and return raw markdown content (default: False)
 
@@ -366,7 +361,6 @@ def register_tools(mcp):
             return await process_urls_for_mcp(
                 ctx=ctx,
                 urls=cleaned_urls,
-                max_concurrent=max_concurrent,
                 batch_size=batch_size,
                 return_raw_markdown=return_raw_markdown,
             )
@@ -381,7 +375,6 @@ def register_tools(mcp):
         ctx: Context,
         url: str,
         max_depth: int = 3,
-        max_concurrent: int = 10,
         chunk_size: int = 5000,
         return_raw_markdown: bool = False,
         query: list[str] | None = None,
@@ -400,7 +393,6 @@ def register_tools(mcp):
         Args:
             url: URL to crawl (can be a regular webpage, sitemap.xml, or .txt file)
             max_depth: Maximum recursion depth for regular URLs (default: 3)
-            max_concurrent: Maximum number of concurrent browser sessions (default: 10)
             chunk_size: Maximum size of each content chunk in characters (default: 5000)
             return_raw_markdown: If True, return raw markdown content instead of just storing (default: False)
             query: List of queries to perform RAG search on crawled content (default: None)
@@ -436,7 +428,6 @@ def register_tools(mcp):
                 ctx=ctx,
                 url=url,
                 max_depth=max_depth,
-                max_concurrent=max_concurrent,
                 chunk_size=chunk_size,
                 return_raw_markdown=return_raw_markdown,
                 query=parsed_query,
