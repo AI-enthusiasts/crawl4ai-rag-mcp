@@ -1,0 +1,2 @@
+CONTAINER ID   NAME                                                 CPU %     MEM USAGE / LIMIT   MEM %     NET I/O          BLOCK I/O       PIDS
+45bd5c82e4cd   mcp-crawl4ai-ns4gso0k8co8kc40c0k4s8ok-203350306078   317.68%   1.581GiB / 4GiB     39.52%    225MB / 1.97GB   49GB / 13.1GB   395
