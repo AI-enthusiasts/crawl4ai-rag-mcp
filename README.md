@@ -36,6 +36,24 @@ Unlike traditional scraping (such as [Firecrawl](https://github.com/mendableai/f
 - **⚡ Production Ready**: HTTPS, security, and monitoring included
 - **🎯 AI-Optimized**: RAG strategies built for coding assistants
 
+## 🗺️ Project Roadmap
+
+**📍 Current Focus: Agentic Search (Highest Priority)**
+
+We are implementing an intelligent, iterative search system that combines local knowledge, web search, and LLM-driven decision making to provide comprehensive answers while minimizing costs.
+
+**Why this matters:**
+- 🚀 Unique value proposition - no other MCP server offers this
+- 💰 50-70% cost reduction through selective crawling
+- 🎯 High-quality, complete answers without manual iteration
+- 🏆 Positions this as the most advanced RAG-MCP solution
+
+**📖 Full Roadmap**: See [docs/PROJECT_ROADMAP.md](docs/PROJECT_ROADMAP.md) - **the single source of truth for all development priorities**.
+
+**📐 Architecture**: See [docs/AGENTIC_SEARCH_ARCHITECTURE.md](docs/AGENTIC_SEARCH_ARCHITECTURE.md) for technical details.
+
+---
+
 ## Overview
 
 This Docker-based MCP server provides a complete web intelligence stack that enables AI agents to:

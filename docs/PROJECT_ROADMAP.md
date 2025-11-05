@@ -1,12 +1,70 @@
-# Project Cleanup & Quality Improvement Plan
+# 🗺️ Project Roadmap
 
-**Status**: Active  
-**Priority**: High  
-**Target**: Production-ready codebase with 80%+ test coverage
+**Status**: 🎯 Active - Primary Development Plan  
+**Last Updated**: 2025-11-05  
+**Purpose**: Single source of truth for project development priorities
+
+> **This is the ONLY official roadmap for the project.**  
+> All development work should follow the priorities outlined here.
 
 ---
 
-## Current State Assessment
+## 🎯 Development Priorities
+
+### Priority 1: 🔥 Agentic Search (HIGHEST PRIORITY)
+
+**Status**: Not Started  
+**Timeline**: 3 weeks  
+**Effort**: High  
+**Impact**: 🚀 Revolutionary
+
+**Why This is #1:**
+- **Unique Value Proposition**: No other MCP server offers intelligent, iterative search
+- **Cost Efficiency**: 50-70% reduction in crawling costs through selective crawling
+- **Quality**: LLM-driven decisions ensure high-quality, complete answers
+- **Market Position**: Establishes project as the most advanced RAG-MCP solution
+- **User Experience**: Comprehensive answers without manual iteration
+
+**What It Does:**
+Intelligent search system that:
+1. Checks local knowledge (Qdrant) first
+2. Searches web (SearXNG) only if needed
+3. Uses LLM to rank URLs by relevance
+4. Crawls only promising URLs (selective crawling)
+5. Iteratively refines queries to fill knowledge gaps
+6. Returns comprehensive, high-quality answers
+
+**Documentation**: [AGENTIC_SEARCH_ARCHITECTURE.md](AGENTIC_SEARCH_ARCHITECTURE.md)
+
+**Implementation Plan**:
+- **Week 1**: Core pipeline (4 stages: local check, web search, selective crawl, refinement)
+- **Week 2**: Metadata enhancement (research Crawl4AI capabilities for smart queries)
+- **Week 3**: Optimization, monitoring, and production readiness
+
+**Success Metrics**:
+- ✅ 80%+ answer completeness in 90% of queries
+- ✅ <30% of search results crawled (vs 100% baseline)
+- ✅ 50-70% cost reduction vs exhaustive crawling
+- ✅ <60 seconds per iteration (average)
+
+**Dependencies**: None - uses existing infrastructure
+
+**Blockers**: None
+
+---
+
+### Priority 2: Code Quality & Refactoring
+
+**Status**: Planned (after Agentic Search)  
+**Timeline**: 4-6 weeks  
+**Effort**: High  
+**Impact**: Maintainability, testability
+
+**Note**: This work is postponed until Agentic Search is complete.
+
+---
+
+## 📊 Current State Assessment
 
 ### Code Quality Metrics
 
