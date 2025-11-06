@@ -70,13 +70,8 @@ async def initialize_global_context() -> "Crawl4AIContext":
                 "--disable-renderer-backgrounding",
             ],
         )
-
-        # Initialize the crawler using explicit lifecycle management
-        logger.info("Initializing AsyncWebCrawler...")
-        crawler = AsyncWebCrawler(config=browser_config)
-        await crawler.start()
         logger.info(
-            f"✓ AsyncWebCrawler initialized with explicit lifecycle management "
+            f"✓ BrowserConfig created for per-request crawler instances "
             f"(headless={browser_config.headless}, browser_type={browser_config.browser_type})"
         )
 
@@ -164,7 +159,7 @@ async def initialize_global_context() -> "Crawl4AIContext":
         logger.info(f"✓ Shared dispatcher initialized (max_session_permit={settings.max_concurrent_sessions})")
 
         context = Crawl4AIContext(
-            crawler=crawler,
+            browser_config=browser_config,
             database_client=database_client,
             dispatcher=dispatcher,
             reranking_model=reranking_model,
@@ -190,12 +185,8 @@ async def cleanup_global_context() -> None:
     
     logger.info("Starting cleanup of global application context...")
     
-    try:
-        await _app_context.crawler.close()
-        logger.info("✓ Crawler closed successfully")
-    except Exception as e:
-        logger.error(f"Error closing crawler: {e}", exc_info=True)
-
+    # No crawler to close - crawlers are created per-request with context managers
+    
     if _app_context.knowledge_validator:
         try:
             await _app_context.knowledge_validator.close()
@@ -218,7 +209,7 @@ async def cleanup_global_context() -> None:
 class Crawl4AIContext:
     """Context for the Crawl4AI MCP server."""
 
-    crawler: AsyncWebCrawler
+    browser_config: BrowserConfig  # Shared config for creating crawlers per-request
     database_client: VectorDatabase
     dispatcher: MemoryAdaptiveDispatcher  # Shared dispatcher for global concurrency control
     reranking_model: CrossEncoder | None = None

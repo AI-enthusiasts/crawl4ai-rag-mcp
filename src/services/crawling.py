@@ -8,10 +8,10 @@ from typing import Any
 
 from crawl4ai import (
     AsyncWebCrawler,
+    BrowserConfig,
     CacheMode,
     CrawlerRunConfig,
     MemoryAdaptiveDispatcher,
-    RateLimiter,
 )
 from crawl4ai.utils import get_memory_stats
 from fastmcp import Context
@@ -80,14 +80,14 @@ async def track_memory(operation_name: str):
 
 
 async def crawl_markdown_file(
-    crawler: AsyncWebCrawler,
+    browser_config: BrowserConfig,
     url: str,
 ) -> list[dict[str, Any]]:
     """
     Crawl a .txt or markdown file.
 
     Args:
-        crawler: AsyncWebCrawler instance
+        browser_config: BrowserConfig for creating crawler instance
         url: URL of the file
 
     Returns:
@@ -95,17 +95,19 @@ async def crawl_markdown_file(
     """
     crawl_config = CrawlerRunConfig()
 
-    # Run in executor to avoid blocking event loop
-    with SuppressStdout():
-        result = await crawler.arun(url=url, config=crawl_config)
-    if result.success and result.markdown:
-        return [{"url": url, "markdown": result.markdown}]
-    logger.error(f"Failed to crawl {url}: {result.error_message}")
-    return []
+    # Create crawler with context manager for automatic cleanup
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+        # Run in executor to avoid blocking event loop
+        with SuppressStdout():
+            result = await crawler.arun(url=url, config=crawl_config)
+        if result.success and result.markdown:
+            return [{"url": url, "markdown": result.markdown}]
+        logger.error(f"Failed to crawl {url}: {result.error_message}")
+        return []
 
 
 async def crawl_batch(
-    crawler: AsyncWebCrawler,
+    browser_config: BrowserConfig,
     urls: list[str],
     dispatcher: MemoryAdaptiveDispatcher,
 ) -> list[dict[str, Any]]:
@@ -217,27 +219,30 @@ async def crawl_batch(
     # This ensures max_session_permit applies across ALL tool calls, not per-call
 
     try:
-        async with track_memory(f"crawl_batch({len(validated_urls)} URLs)") as mem_ctx:
-            logger.info(
-                f"Starting arun_many for {len(validated_urls)} URLs "
-                f"(page_timeout={crawl_config.page_timeout}ms)"
-            )
-            
-            # Run crawler in executor to avoid blocking the main event loop
-            # This allows FastMCP to continue handling other requests during crawling
-            with SuppressStdout():
-                results = await crawler.arun_many(
-                    urls=validated_urls,
-                    config=crawl_config,
-                    dispatcher=dispatcher,
+        # Create crawler with context manager for automatic cleanup
+        # This ensures browser pages are properly closed after crawling
+        async with AsyncWebCrawler(config=browser_config) as crawler:
+            async with track_memory(f"crawl_batch({len(validated_urls)} URLs)") as mem_ctx:
+                logger.info(
+                    f"Starting arun_many for {len(validated_urls)} URLs "
+                    f"(page_timeout={crawl_config.page_timeout}ms)"
                 )
+                
+                # Crawler will automatically close all pages when exiting context manager
+                with SuppressStdout():
+                    results = await crawler.arun_many(
+                        urls=validated_urls,
+                        config=crawl_config,
+                        dispatcher=dispatcher,
+                    )
 
-            # Store results for memory tracking
-            mem_ctx["results"] = results
-            
-            logger.info(
-                f"arun_many completed: {len(results)} results returned"
-            )
+                # Store results for memory tracking
+                mem_ctx["results"] = results
+                
+                logger.info(
+                    f"arun_many completed: {len(results)} results returned"
+                )
+            # Crawler automatically closed here - all pages cleaned up
 
         # Log crawling results summary
         successful_results = [
@@ -293,7 +298,7 @@ async def crawl_batch(
 
 
 async def crawl_recursive_internal_links(
-    crawler: AsyncWebCrawler,
+    browser_config: BrowserConfig,
     start_urls: list[str],
     dispatcher: MemoryAdaptiveDispatcher,
     max_depth: int = 3,
@@ -302,7 +307,7 @@ async def crawl_recursive_internal_links(
     Recursively crawl internal links from start URLs up to a maximum depth.
 
     Args:
-        crawler: AsyncWebCrawler instance
+        browser_config: BrowserConfig for creating crawler instance
         start_urls: List of starting URLs
         dispatcher: Shared MemoryAdaptiveDispatcher for global concurrency control
         max_depth: Maximum recursion depth
@@ -317,41 +322,43 @@ async def crawl_recursive_internal_links(
     current_urls = {normalize_url(u) for u in start_urls}
     results_all = []
 
-    for depth in range(max_depth):
-        urls_to_crawl = [
-            normalize_url(url)
-            for url in current_urls
-            if normalize_url(url) not in visited
-        ]
-        if not urls_to_crawl:
-            break
+    # Create crawler with context manager for automatic cleanup
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+        for depth in range(max_depth):
+            urls_to_crawl = [
+                normalize_url(url)
+                for url in current_urls
+                if normalize_url(url) not in visited
+            ]
+            if not urls_to_crawl:
+                break
 
-        async with track_memory(
-            f"recursive_crawl(depth={depth}, urls={len(urls_to_crawl)})"
-        ) as mem_ctx:
-            # Run in executor to avoid blocking event loop
-            with SuppressStdout():
-                results = await crawler.arun_many(
-                    urls=urls_to_crawl,
-                    config=run_config,
-                    dispatcher=dispatcher,
-                )
-            mem_ctx["results"] = results
+            async with track_memory(
+                f"recursive_crawl(depth={depth}, urls={len(urls_to_crawl)})"
+            ) as mem_ctx:
+                # Run in executor to avoid blocking event loop
+                with SuppressStdout():
+                    results = await crawler.arun_many(
+                        urls=urls_to_crawl,
+                        config=run_config,
+                        dispatcher=dispatcher,
+                    )
+                mem_ctx["results"] = results
 
-        next_level_urls = set()
+            next_level_urls = set()
 
-        for result in results:
-            norm_url = normalize_url(result.url)
-            visited.add(norm_url)
+            for result in results:
+                norm_url = normalize_url(result.url)
+                visited.add(norm_url)
 
-            if result.success and result.markdown:
-                results_all.append({"url": result.url, "markdown": result.markdown})
-                for link in result.links.get("internal", []):
-                    next_url = normalize_url(link["href"])
-                    if next_url not in visited:
-                        next_level_urls.add(next_url)
+                if result.success and result.markdown:
+                    results_all.append({"url": result.url, "markdown": result.markdown})
+                    for link in result.links.get("internal", []):
+                        next_url = normalize_url(link["href"])
+                        if next_url not in visited:
+                            next_level_urls.add(next_url)
 
-        current_urls = next_level_urls
+            current_urls = next_level_urls
 
     return results_all
 
@@ -400,28 +407,28 @@ async def process_urls_for_mcp(
 
         # Validate that context has required attributes instead of strict type checking
         if not (
-            hasattr(crawl4ai_ctx, "crawler")
+            hasattr(crawl4ai_ctx, "browser_config")
             and hasattr(crawl4ai_ctx, "database_client")
             and hasattr(crawl4ai_ctx, "dispatcher")
         ):
             return json.dumps(
                 {
                     "success": False,
-                    "error": "Invalid Crawl4AI context: missing required attributes (crawler, database_client, dispatcher)",
+                    "error": "Invalid Crawl4AI context: missing required attributes (browser_config, database_client, dispatcher)",
                 },
             )
 
-        if not crawl4ai_ctx.crawler or not crawl4ai_ctx.database_client or not crawl4ai_ctx.dispatcher:
+        if not crawl4ai_ctx.browser_config or not crawl4ai_ctx.database_client or not crawl4ai_ctx.dispatcher:
             return json.dumps(
                 {
                     "success": False,
-                    "error": "Invalid Crawl4AI context: crawler, database_client, or dispatcher is None",
+                    "error": "Invalid Crawl4AI context: browser_config, database_client, or dispatcher is None",
                 },
             )
 
         # Call the low-level crawl_batch function
         crawl_results = await crawl_batch(
-            crawler=crawl4ai_ctx.crawler,
+            browser_config=crawl4ai_ctx.browser_config,
             urls=urls,
             dispatcher=crawl4ai_ctx.dispatcher,
         )

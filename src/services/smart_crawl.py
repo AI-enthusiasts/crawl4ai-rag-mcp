@@ -207,24 +207,24 @@ async def _crawl_text_file(
 ) -> str:
     """Crawl a text file directly."""
     try:
-        # Get the app context to access the crawler
+        # Get the app context to access the browser config
         from core.context import get_app_context
 
         app_ctx = get_app_context()
 
-        if not app_ctx or not hasattr(app_ctx, "crawler"):
+        if not app_ctx or not hasattr(app_ctx, "browser_config"):
             return json.dumps(
                 {
                     "success": False,
                     "type": "text_file",
-                    "error": "Crawler not available in application context",
+                    "error": "Browser config not available in application context",
                     "url": url,
                 }
             )
 
         # Call low-level crawl_markdown_file with correct parameters
         crawl_results = await crawl_markdown_file(
-            crawler=app_ctx.crawler,
+            browser_config=app_ctx.browser_config,
             url=url,
         )
 
@@ -328,18 +328,18 @@ async def _crawl_recursive(
 ) -> str:
     """Crawl a regular URL recursively."""
     try:
-        # Get the app context to access the crawler
+        # Get the app context to access the browser config
         from core.context import get_app_context
 
         app_ctx = get_app_context()
 
-        if not app_ctx or not hasattr(app_ctx, "crawler"):
-            msg = "Crawler not available in application context"
+        if not app_ctx or not hasattr(app_ctx, "browser_config"):
+            msg = "Browser config not available in application context"
             raise MCPToolError(msg)
 
         # Call crawl_recursive_internal_links with correct parameters
         crawl_results = await crawl_recursive_internal_links(
-            crawler=app_ctx.crawler,
+            browser_config=app_ctx.browser_config,
             start_urls=[url],  # Note: expects a list
             dispatcher=app_ctx.dispatcher,
             max_depth=max_depth,
