@@ -100,14 +100,14 @@ except Exception as e:
 register_tools(mcp)
 
 
-def create_mcp_server():
+def create_mcp_server() -> FastMCP:
     """
     Create and return an MCP server instance for testing purposes.
     """
     return FastMCP("Crawl4AI MCP Server Test")
 
 
-async def main():
+async def main() -> None:
     """
     Main async function to run the MCP server.
     """

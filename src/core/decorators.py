@@ -3,19 +3,23 @@
 import functools
 import traceback
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import datetime
+from typing import Any, TypeVar
 
 from fastmcp import Context
 
 from .logging import logger, request_id_ctx
 
+F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
 
-def track_request(tool_name: str):
+
+def track_request(tool_name: str) -> Callable[[F], F]:
     """Decorator to track MCP tool requests with timing and error handling."""
 
-    def decorator(func):
+    def decorator(func: F) -> F:
         @functools.wraps(func)
-        async def wrapper(ctx: Context, *args, **kwargs):
+        async def wrapper(ctx: Context, *args: Any, **kwargs: Any) -> Any:
             request_id = str(uuid.uuid4())[:8]
             start_time = datetime.now().timestamp()
             
@@ -41,6 +45,6 @@ def track_request(tool_name: str):
                 # Clean up context variable
                 request_id_ctx.set(None)
 
-        return wrapper
+        return wrapper  # type: ignore[return-value]
 
     return decorator

@@ -17,7 +17,7 @@ class SupabaseAdapter:
     Uses PostgreSQL with pgvector extension for vector similarity search.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize Supabase adapter with environment configuration"""
         self.client: Client | None = None
         self.batch_size = 20  # Default batch size for operations
@@ -52,9 +52,9 @@ class SupabaseAdapter:
             msg = "Database not initialized. Call initialize() first."
             raise RuntimeError(msg)
 
-        # Handle None source_ids
+        # Handle None source_ids - create empty strings as placeholders
         if source_ids is None:
-            source_ids = [None] * len(urls)
+            source_ids = [""] * len(urls)
 
         # Get unique URLs to delete existing records
         unique_urls = list(set(urls))
@@ -117,7 +117,7 @@ class SupabaseAdapter:
             # Execute search using Supabase RPC function
             result = self.client.rpc("match_crawled_pages", params).execute()
 
-            return result.data
+            return result.data  # type: ignore[no-any-return]
         except Exception as e:
             print(f"Error searching documents: {e}")
             return []
@@ -207,7 +207,7 @@ class SupabaseAdapter:
             # Execute search using Supabase RPC function
             result = self.client.rpc("match_code_examples", params).execute()
 
-            return result.data
+            return result.data  # type: ignore[no-any-return]
         except Exception as e:
             print(f"Error searching code examples: {e}")
             return []
@@ -276,7 +276,7 @@ class SupabaseAdapter:
             result = (
                 self.client.table("crawled_pages").select("*").eq("url", url).execute()
             )
-            return result.data
+            return result.data  # type: ignore[no-any-return]
         except Exception as e:
             print(f"Error getting documents by URL: {e}")
             return []
@@ -303,7 +303,7 @@ class SupabaseAdapter:
                 query = query.eq("source_id", source_filter)
 
             result = query.limit(match_count).execute()
-            return result.data
+            return result.data  # type: ignore[no-any-return]
         except Exception as e:
             print(f"Error searching documents by keyword: {e}")
             return []
@@ -330,7 +330,7 @@ class SupabaseAdapter:
                 query = query.eq("source_id", source_filter)
 
             result = query.limit(match_count).execute()
-            return result.data
+            return result.data  # type: ignore[no-any-return]
         except Exception as e:
             print(f"Error searching code examples by keyword: {e}")
             return []
@@ -345,7 +345,7 @@ class SupabaseAdapter:
             result = (
                 self.client.table("sources").select("*").order("source_id").execute()
             )
-            return result.data
+            return result.data  # type: ignore[no-any-return]
         except Exception as e:
             print(f"Error getting sources: {e}")
             return []
@@ -354,6 +354,10 @@ class SupabaseAdapter:
 
     async def _delete_documents_batch(self, urls: list[str]) -> None:
         """Delete documents in batch with fallback to individual deletion"""
+        if not self.client:
+            msg = "Database not initialized. Call initialize() first."
+            raise RuntimeError(msg)
+
         try:
             if urls:
                 # Try batch deletion
@@ -373,6 +377,10 @@ class SupabaseAdapter:
         batch_data: list[dict[str, Any]],
     ) -> None:
         """Insert data with retry logic"""
+        if not self.client:
+            msg = "Database not initialized. Call initialize() first."
+            raise RuntimeError(msg)
+
         retry_delay = self.retry_delay
 
         for retry in range(self.max_retries):

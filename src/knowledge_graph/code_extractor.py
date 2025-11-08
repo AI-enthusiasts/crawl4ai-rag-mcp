@@ -32,7 +32,7 @@ class CodeExample:
 
     def to_metadata(self) -> dict[str, Any]:
         """Convert to metadata dictionary for Qdrant storage."""
-        metadata = {
+        metadata: dict[str, Any] = {
             "repository_name": self.repository_name,
             "file_path": self.file_path,
             "module_name": self.module_name,

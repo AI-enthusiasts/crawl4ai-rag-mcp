@@ -24,14 +24,14 @@ logger = logging.getLogger(__name__)
 class EnhancedScriptAnalyzer:
     """Analyzes Python scripts to extract structural information for validation."""
 
-    def __init__(self):
-        self.imports = []
-        self.classes = []
-        self.methods = []
-        self.functions = []
-        self.variables = []
-        self.method_calls = []
-        self.attribute_accesses = []
+    def __init__(self) -> None:
+        self.imports: list[dict[str, Any]] = []
+        self.classes: list[dict[str, Any]] = []
+        self.methods: list[dict[str, Any]] = []
+        self.functions: list[dict[str, Any]] = []
+        self.variables: list[dict[str, Any]] = []
+        self.method_calls: list[dict[str, Any]] = []
+        self.attribute_accesses: list[dict[str, Any]] = []
 
     def analyze_script(self, script_content: str, script_path: str) -> dict[str, Any]:
         """
@@ -95,7 +95,7 @@ class EnhancedScriptAnalyzer:
                 "attribute_accesses": [],
             }
 
-    def _reset_analysis(self):
+    def _reset_analysis(self) -> None:
         """Reset analysis state for a new script."""
         self.imports = []
         self.classes = []
@@ -105,7 +105,7 @@ class EnhancedScriptAnalyzer:
         self.method_calls = []
         self.attribute_accesses = []
 
-    def _analyze_node(self, node: ast.AST):
+    def _analyze_node(self, node: ast.AST) -> None:
         """Analyze a single AST node."""
         if isinstance(node, ast.Import):
             for alias in node.names:
@@ -521,8 +521,8 @@ class EnhancedHallucinationDetector:
     def _create_search_query(self, element: dict[str, Any]) -> str:
         """Create a search query for a code element."""
         element_type = element.get("type", "")
-        name = element.get("name", "")
-        context = element.get("context", "")
+        name = str(element.get("name", ""))
+        context = str(element.get("context", ""))
 
         # Create a descriptive query based on element type
         if element_type == "class_definition":
@@ -536,7 +536,7 @@ class EnhancedHallucinationDetector:
         return context or name
 
     async def _validate_imports(
-        self, session, imports: list[dict],
+        self, session: Any, imports: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """Validate imports against Neo4j knowledge graph."""
         validations = []
@@ -582,7 +582,7 @@ class EnhancedHallucinationDetector:
         return validations
 
     async def _validate_classes(
-        self, session, classes: list[dict],
+        self, session: Any, classes: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """Validate class definitions against Neo4j knowledge graph."""
         validations = []
@@ -622,7 +622,7 @@ class EnhancedHallucinationDetector:
         return validations
 
     async def _validate_method_calls(
-        self, session, method_calls: list[dict],
+        self, session: Any, method_calls: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """Validate method calls against Neo4j knowledge graph."""
         validations = []
@@ -665,7 +665,7 @@ class EnhancedHallucinationDetector:
         return validations
 
     async def _validate_function_calls(
-        self, session, functions: list[dict],
+        self, session: Any, functions: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """Validate function calls against Neo4j knowledge graph."""
         validations = []
@@ -756,7 +756,7 @@ class EnhancedHallucinationDetector:
         if not all_validations:
             return 0.5
 
-        total_confidence = sum(v.get("confidence", 0.0) for v in all_validations)
+        total_confidence = sum(float(v.get("confidence", 0.0)) for v in all_validations)
         return total_confidence / len(all_validations)
 
     def _calculate_qdrant_confidence(self, qdrant_validation: dict[str, Any]) -> float:
