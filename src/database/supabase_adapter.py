@@ -117,7 +117,7 @@ class SupabaseAdapter:
             # Execute search using Supabase RPC function
             result = self.client.rpc("match_crawled_pages", params).execute()
 
-            return result.data  # type: ignore[no-any-return]
+            return result.data or []
         except Exception as e:
             print(f"Error searching documents: {e}")
             return []
@@ -207,7 +207,7 @@ class SupabaseAdapter:
             # Execute search using Supabase RPC function
             result = self.client.rpc("match_code_examples", params).execute()
 
-            return result.data  # type: ignore[no-any-return]
+            return result.data or []
         except Exception as e:
             print(f"Error searching code examples: {e}")
             return []
@@ -276,7 +276,8 @@ class SupabaseAdapter:
             result = (
                 self.client.table("crawled_pages").select("*").eq("url", url).execute()
             )
-            return result.data  # type: ignore[no-any-return]
+            # Supabase may return None if no results
+            return result.data or []
         except Exception as e:
             print(f"Error getting documents by URL: {e}")
             return []
@@ -303,7 +304,7 @@ class SupabaseAdapter:
                 query = query.eq("source_id", source_filter)
 
             result = query.limit(match_count).execute()
-            return result.data  # type: ignore[no-any-return]
+            return result.data or []
         except Exception as e:
             print(f"Error searching documents by keyword: {e}")
             return []
@@ -330,7 +331,7 @@ class SupabaseAdapter:
                 query = query.eq("source_id", source_filter)
 
             result = query.limit(match_count).execute()
-            return result.data  # type: ignore[no-any-return]
+            return result.data or []
         except Exception as e:
             print(f"Error searching code examples by keyword: {e}")
             return []
@@ -345,7 +346,8 @@ class SupabaseAdapter:
             result = (
                 self.client.table("sources").select("*").order("source_id").execute()
             )
-            return result.data  # type: ignore[no-any-return]
+            # Supabase may return None if no results
+            return result.data or []
         except Exception as e:
             print(f"Error getting sources: {e}")
             return []

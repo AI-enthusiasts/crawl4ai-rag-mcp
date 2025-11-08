@@ -226,3 +226,24 @@ class VectorDatabase(Protocol):
             - updated_at: Update timestamp
         """
         ...
+
+    async def delete_repository_code_examples(self, repository_name: str) -> None:
+        """
+        Delete all code examples for a specific repository.
+
+        This is used when removing a repository from the knowledge graph
+        to clean up associated code examples from the vector database.
+
+        Args:
+            repository_name: Name of the repository to delete code examples for
+        """
+        ...
+
+    async def get_all_sources(self) -> list[str]:
+        """
+        Get a list of all available source identifiers.
+
+        Returns:
+            List of source identifiers (domain names)
+        """
+        ...

@@ -10,6 +10,7 @@ from fastmcp import Context
 
 from config import get_settings
 from core import MCPToolError
+from utils.type_guards import is_valid_url
 
 from .crawling import process_urls_for_mcp
 
@@ -116,9 +117,12 @@ async def _search_searxng(query: str, num_results: int) -> list[dict[str, Any]]:
     Returns:
         List of search results
     """
-    if settings.searxng_url is None:
-        logger.error("SearXNG URL is not configured")
+    # Use type guard for better type narrowing
+    if not is_valid_url(settings.searxng_url):
+        logger.error("SearXNG URL is not configured or invalid")
         return []
+
+    # mypy now knows searxng_url is str
     searxng_url = settings.searxng_url.rstrip("/")
     search_url = f"{searxng_url}/search"
 

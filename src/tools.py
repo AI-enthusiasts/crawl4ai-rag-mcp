@@ -906,7 +906,8 @@ def register_tools(mcp: "FastMCP") -> None:
                 f"Cleaning up existing code examples for repository: {repo_name}",
             )
             try:
-                await app_ctx.database_client.delete_repository_code_examples(repo_name)  # type: ignore[attr-defined]
+                # Method exists in QdrantAdapter, added to Protocol
+                await app_ctx.database_client.delete_repository_code_examples(repo_name)
             except Exception as cleanup_error:
                 logger.warning(f"Error during cleanup: {cleanup_error}")
 

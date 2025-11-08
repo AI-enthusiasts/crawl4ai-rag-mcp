@@ -133,7 +133,7 @@ Based on the code example and its surrounding context, provide a concise summary
             max_tokens=100,
         )
 
-        return response.choices[0].message.content.strip()  # type: ignore[no-any-return]
+        return response.choices[0].message.content.strip()
 
     except Exception as e:
         print(f"Error generating code example summary: {e}", file=sys.stderr)
