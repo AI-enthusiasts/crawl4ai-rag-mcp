@@ -2,6 +2,7 @@
 
 import json
 import logging
+from typing import Any
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -104,7 +105,7 @@ async def search_and_process(
         raise MCPToolError(msg)
 
 
-async def _search_searxng(query: str, num_results: int) -> list[dict]:
+async def _search_searxng(query: str, num_results: int) -> list[dict[str, Any]]:
     """
     Search using SearXNG instance.
 
@@ -115,6 +116,9 @@ async def _search_searxng(query: str, num_results: int) -> list[dict]:
     Returns:
         List of search results
     """
+    if settings.searxng_url is None:
+        logger.error("SearXNG URL is not configured")
+        return []
     searxng_url = settings.searxng_url.rstrip("/")
     search_url = f"{searxng_url}/search"
 

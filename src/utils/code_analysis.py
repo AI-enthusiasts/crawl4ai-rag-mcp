@@ -133,14 +133,14 @@ Based on the code example and its surrounding context, provide a concise summary
             max_tokens=100,
         )
 
-        return response.choices[0].message.content.strip()
+        return response.choices[0].message.content.strip()  # type: ignore[no-any-return]
 
     except Exception as e:
         print(f"Error generating code example summary: {e}", file=sys.stderr)
         return "Code example for demonstration purposes."
 
 
-def process_code_example(args):
+def process_code_example(args: tuple[str, str, str]) -> str:
     """
     Process a single code example to generate its summary.
     This function is designed to be used with concurrent.futures.

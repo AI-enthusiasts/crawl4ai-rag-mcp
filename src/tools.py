@@ -10,8 +10,12 @@ The tools are implemented here and registered in main.py.
 
 import json
 import logging
+from typing import TYPE_CHECKING
 
 from fastmcp import Context
+
+if TYPE_CHECKING:
+    from fastmcp import FastMCP
 
 from core import MCPToolError, track_request
 from database import (
@@ -172,7 +176,7 @@ async def query_knowledge_graph_wrapper(ctx: Context, command: str) -> str:
     return await query_knowledge_graph(command)
 
 
-def register_tools(mcp):
+def register_tools(mcp: "FastMCP") -> None:
     """
     Register all MCP tools with the FastMCP instance.
 
@@ -308,8 +312,8 @@ def register_tools(mcp):
                 urls = url  # Assume it's already a list
                 logger.debug(f"List parameter received with {len(urls)} URLs")
             else:
-                # Handle other types by converting to string
-                logger.warning(
+                # Handle other types by converting to string (defensive programming)
+                logger.warning(  # type: ignore[unreachable]
                     f"Unexpected URL parameter type {type(url)}, converting to string",
                 )
                 urls = [str(url)]
@@ -377,7 +381,7 @@ def register_tools(mcp):
         max_depth: int = 3,
         chunk_size: int = 5000,
         return_raw_markdown: bool = False,
-        query: list[str] | None = None,
+        query: list[str] | str | None = None,
     ) -> str:
         """
         Intelligently crawl a URL based on its type and store content in Supabase.
@@ -902,7 +906,7 @@ def register_tools(mcp):
                 f"Cleaning up existing code examples for repository: {repo_name}",
             )
             try:
-                await app_ctx.database_client.delete_repository_code_examples(repo_name)
+                await app_ctx.database_client.delete_repository_code_examples(repo_name)  # type: ignore[attr-defined]
             except Exception as cleanup_error:
                 logger.warning(f"Error during cleanup: {cleanup_error}")
 
@@ -1264,13 +1268,16 @@ def register_tools(mcp):
         }
 
         # Check which directories actually exist
-        for key, path in info["accessible_paths"].items():
+        from typing import cast
+
+        accessible_paths = cast(dict[str, str], info["accessible_paths"])
+        for key, path in accessible_paths.items():
             if "(" not in path:  # Skip paths with descriptions
                 container_path = f"/app/analysis_scripts/{key.replace('_', '_')}/"
                 if os.path.exists(container_path):
-                    info["accessible_paths"][key] += " ✓ (exists)"
+                    accessible_paths[key] += " ✓ (exists)"
                 else:
-                    info["accessible_paths"][key] += " ✗ (not found)"
+                    accessible_paths[key] += " ✗ (not found)"
 
         return json.dumps(info, indent=2)
 

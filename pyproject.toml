@@ -31,6 +31,10 @@ dependencies = [
     "authlib>=1.3.0",
     "jinja2>=3.1.0",
     "itsdangerous>=2.1.0",
+    "mypy>=1.0.0",
+    "types-requests>=2.31.0",
+    "types-psutil>=5.9.0",
+    "types-docker>=6.0.0",
 ]
 
 [project.scripts]
@@ -247,7 +251,8 @@ directory = "htmlcov"
 # MYPY CONFIGURATION
 # ========================================
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.11"
+mypy_path = "$MYPY_CONFIG_FILE_DIR/stubs"
 
 # Warning flags
 warn_return_any = true

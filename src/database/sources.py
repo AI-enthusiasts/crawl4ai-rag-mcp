@@ -59,7 +59,7 @@ async def get_source_statistics(
         sources = await database_client.get_sources()
         for source in sources:
             if source.get("source_id") == source_id:
-                return source
+                return source  # type: ignore[no-any-return]
         return None
     except Exception as e:
         logger.exception(f"Error getting source statistics for {source_id}: {e}")
