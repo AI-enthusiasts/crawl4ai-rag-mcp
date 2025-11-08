@@ -65,7 +65,7 @@ The above content is from the documentation for '{source_id}'. Please provide a 
         if len(summary) > max_length:
             summary = summary[:max_length] + "..."
 
-        return summary  # type: ignore[no-any-return]
+        return summary
 
     except Exception as e:
         print(
