@@ -35,3 +35,9 @@ analysis_scripts/validation_results/*
 .idea/*.iml
 .idea/inspectionProfiles
 .idea/shelf.mypy_cache/
+
+# Logs and debug artifacts
+*.log
+build.log
+problem/
+tests/results/
