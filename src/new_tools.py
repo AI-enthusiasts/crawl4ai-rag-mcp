@@ -379,7 +379,7 @@ async def analyze_code_cross_language(
             {
                 "success": False,
                 "query": query,
-                "error": f"Cross-language analysis failed: {e\!s}",
+                "error": f"Cross-language analysis failed: {e!s}",
             },
             indent=2,
         )

@@ -89,13 +89,13 @@ class QdrantAdapter:
     ) -> None:
         """Add documents to Qdrant"""
         if source_ids is None:
-            source_ids = [None] * len(urls)
+            source_ids = [""] * len(urls)
 
         # First, delete any existing documents with the same URLs
         unique_urls = list(set(urls))
         for url in unique_urls:
             try:
-                await self.delete_documents_by_url(url)
+                await self.delete_documents_by_url([url])
             except Exception as e:
                 print(f"Error deleting documents from Qdrant: {e}")
 
@@ -439,7 +439,7 @@ class QdrantAdapter:
     ) -> None:
         """Add code examples to Qdrant"""
         if source_ids is None:
-            source_ids = [None] * len(urls)
+            source_ids = [""] * len(urls)
 
         # Process in batches
         for i in range(0, len(urls), self.batch_size):
@@ -1013,7 +1013,7 @@ class QdrantAdapter:
 
             # OpenAI embeddings are 1536 dimensions, but SHA256 only gives us 32 values
             # We repeat the pattern to fill all 1536 dimensions deterministically
-            embedding = []
+            embedding: list[float] = []
             while len(embedding) < 1536:
                 embedding.extend(base_embedding)
 
