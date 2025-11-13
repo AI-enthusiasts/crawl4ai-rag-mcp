@@ -21,12 +21,17 @@ from typing import Any
 from fastmcp import Context
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
-from pydantic_ai.exceptions import ModelRetry, UnexpectedModelBehavior
+from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.settings import ModelSettings
 
 from config import get_settings
 from core import MCPToolError
+from core.constants import (
+    LLM_API_TIMEOUT_DEFAULT,
+    MAX_RETRIES_DEFAULT,
+    SCORE_IMPROVEMENT_THRESHOLD,
+)
 from core.context import get_app_context
 from database import perform_rag_query
 from services.crawling import crawl_urls_for_agentic_search
@@ -58,11 +63,6 @@ class AgenticSearchService:
     def __init__(self) -> None:
         """Initialize the agentic search service with Pydantic AI agents."""
         # Per Pydantic AI docs: Use ModelSettings for timeout and temperature
-        from core.constants import (
-            LLM_API_TIMEOUT_DEFAULT,
-            MAX_RETRIES_DEFAULT,
-        )
-
         # Create OpenAI model instance with API key
         # Per Pydantic AI docs: OpenAIModel wraps the OpenAI client
         model = OpenAIModel(
@@ -260,8 +260,6 @@ class AgenticSearchService:
 
                 # OPTIMIZATION 2: Skip refinement if score improved significantly
                 # Saves 1 LLM call when making good progress
-                from core.constants import SCORE_IMPROVEMENT_THRESHOLD
-
                 score_improvement = final_completeness - previous_score
                 if iteration < max_iter:
                     if score_improvement >= SCORE_IMPROVEMENT_THRESHOLD:
@@ -415,20 +413,13 @@ Provide:
             result = await self.completeness_agent.run(prompt)
             return result.output
 
-        except UnexpectedModelBehavior as e:
+        except UnexpectedModelBehavior:
             # Per Pydantic AI docs: Raised when retries exhausted
-            logger.error(
-                "Completeness evaluation failed after retries: %s",
-                e,
-            )
+            logger.exception("Completeness evaluation failed after retries")
             raise  # Re-raise to propagate error
 
-        except Exception as e:
-            logger.error(
-                "Unexpected error in completeness evaluation: %s (type: %s)",
-                e,
-                type(e).__name__,
-            )
+        except Exception:
+            logger.exception("Unexpected error in completeness evaluation")
             raise  # Re-raise instead of returning default
 
     async def _stage2_web_search(
@@ -558,20 +549,13 @@ Return a list of rankings with url, title, snippet, score, and reasoning for eac
             rankings.sort(key=lambda r: r.score, reverse=True)
             return rankings
 
-        except UnexpectedModelBehavior as e:
+        except UnexpectedModelBehavior:
             # Per Pydantic AI docs: Raised when retries exhausted
-            logger.error(
-                "URL ranking failed after retries: %s",
-                e,
-            )
+            logger.exception("URL ranking failed after retries")
             raise  # Re-raise to propagate error
 
-        except Exception as e:
-            logger.error(
-                "Unexpected error in URL ranking: %s (type: %s)",
-                e,
-                type(e).__name__,
-            )
+        except Exception:
+            logger.exception("Unexpected error in URL ranking")
             raise  # Re-raise instead of returning defaults
 
     async def _stage3_selective_crawl(
@@ -659,8 +643,8 @@ Return a list of rankings with url, title, snippet, score, and reasoning for eac
             ),
         )
 
-        # TODO: Implement search hints generation if use_hints=True
-        # This requires investigating Crawl4AI's metadata capabilities
+        # Note: Search hints feature requires Crawl4AI metadata capabilities
+        # Currently not implemented - would generate optimized Qdrant queries from metadata
         if use_hints:
             logger.info("Search hints requested but not yet implemented")
 
@@ -716,8 +700,6 @@ Provide:
 
             # Create temporary agent with inline response model
             # Per Pydantic AI docs: Create Agent instance with specific output_type
-            from core.constants import MAX_RETRIES_DEFAULT
-
             refinement_agent = Agent(
                 model=self.openai_model,
                 output_type=QueryRefinementResponse,
@@ -736,20 +718,13 @@ Provide:
                 reasoning=parsed.reasoning,
             )
 
-        except UnexpectedModelBehavior as e:
+        except UnexpectedModelBehavior:
             # Per Pydantic AI docs: Raised when retries exhausted
-            logger.error(
-                "Query refinement failed after retries: %s",
-                e,
-            )
+            logger.exception("Query refinement failed after retries")
             raise  # Re-raise to propagate error
 
-        except Exception as e:
-            logger.error(
-                "Unexpected error in query refinement: %s (type: %s)",
-                e,
-                type(e).__name__,
-            )
+        except Exception:
+            logger.exception("Unexpected error in query refinement")
             raise  # Re-raise instead of returning fallback
 
 
@@ -821,6 +796,6 @@ async def agentic_search_impl(
         return result.model_dump_json()
 
     except Exception as e:
-        logger.exception(f"Agentic search implementation failed: {e}")
+        logger.exception("Agentic search implementation failed")
         msg = f"Agentic search failed: {e!s}"
-        raise MCPToolError(msg)
+        raise MCPToolError(msg) from e
