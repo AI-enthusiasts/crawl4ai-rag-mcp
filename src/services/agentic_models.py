@@ -4,6 +4,7 @@ This module contains all type-safe data structures used throughout
 the agentic search workflow with strict validation.
 """
 
+import math
 from enum import Enum
 from typing import Any
 
@@ -48,6 +49,22 @@ class CompletenessEvaluation(BaseModel):
         description="List of missing information or knowledge gaps",
     )
 
+    @field_validator("score")  # type: ignore[misc]
+    @classmethod
+    def validate_score(cls, v: float) -> float:
+        """Validate score is finite (not NaN or infinity).
+
+        Per Pydantic best practices: Field constraints (ge/le) don't catch NaN/infinity.
+        Must explicitly validate with math.isnan() and math.isinf().
+        """
+        if math.isnan(v):
+            msg = "Score cannot be NaN (Not a Number)"
+            raise ValueError(msg)
+        if math.isinf(v):
+            msg = "Score cannot be infinity"
+            raise ValueError(msg)
+        return v
+
     @field_validator("gaps")  # type: ignore[misc]
     @classmethod
     def validate_gaps(cls, v: list[str]) -> list[str]:
@@ -82,6 +99,22 @@ class URLRanking(BaseModel):
         min_length=1,
         description="LLM's explanation of the relevance score",
     )
+
+    @field_validator("score")  # type: ignore[misc]
+    @classmethod
+    def validate_score(cls, v: float) -> float:
+        """Validate score is finite (not NaN or infinity).
+
+        Per Pydantic best practices: Field constraints (ge/le) don't catch NaN/infinity.
+        Must explicitly validate with math.isnan() and math.isinf().
+        """
+        if math.isnan(v):
+            msg = "Score cannot be NaN (Not a Number)"
+            raise ValueError(msg)
+        if math.isinf(v):
+            msg = "Score cannot be infinity"
+            raise ValueError(msg)
+        return v
 
     @field_validator("url")  # type: ignore[misc]
     @classmethod
@@ -163,6 +196,20 @@ class SearchIteration(BaseModel):
         description="Total chunks stored in vector database",
     )
 
+    @field_validator("completeness")  # type: ignore[misc]
+    @classmethod
+    def validate_completeness(cls, v: float | None) -> float | None:
+        """Validate completeness is finite (not NaN or infinity)."""
+        if v is None:
+            return v
+        if math.isnan(v):
+            msg = "Completeness cannot be NaN (Not a Number)"
+            raise ValueError(msg)
+        if math.isinf(v):
+            msg = "Completeness cannot be infinity"
+            raise ValueError(msg)
+        return v
+
     @field_validator("gaps")  # type: ignore[misc]
     @classmethod
     def validate_gaps(cls, v: list[str]) -> list[str]:
@@ -199,6 +246,18 @@ class RAGResult(BaseModel):
         ge=0,
         description="Index of the chunk within its source document",
     )
+
+    @field_validator("similarity_score")  # type: ignore[misc]
+    @classmethod
+    def validate_similarity_score(cls, v: float) -> float:
+        """Validate similarity score is finite (not NaN or infinity)."""
+        if math.isnan(v):
+            msg = "Similarity score cannot be NaN (Not a Number)"
+            raise ValueError(msg)
+        if math.isinf(v):
+            msg = "Similarity score cannot be infinity"
+            raise ValueError(msg)
+        return v
 
 
 class AgenticSearchResult(BaseModel):
@@ -239,6 +298,18 @@ class AgenticSearchResult(BaseModel):
         default=None,
         description="Error message if search failed",
     )
+
+    @field_validator("completeness")  # type: ignore[misc]
+    @classmethod
+    def validate_completeness(cls, v: float) -> float:
+        """Validate completeness is finite (not NaN or infinity)."""
+        if math.isnan(v):
+            msg = "Completeness cannot be NaN (Not a Number)"
+            raise ValueError(msg)
+        if math.isinf(v):
+            msg = "Completeness cannot be infinity"
+            raise ValueError(msg)
+        return v
 
     def model_dump_json(self, **kwargs: Any) -> str:
         """Override to provide consistent JSON serialization."""
