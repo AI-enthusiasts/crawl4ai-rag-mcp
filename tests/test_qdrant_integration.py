@@ -36,7 +36,7 @@ class TestQdrantIntegration:
         cls.qdrant_running = cls._check_qdrant_health()
         if not cls.qdrant_running:
             pytest.skip(
-                "Qdrant not running. Start with: docker run -p 6333:6333 qdrant/qdrant",
+                "Qdrant not running. Start with: docker run qdrant/qdrant (no port mapping)",
             )
 
     @classmethod

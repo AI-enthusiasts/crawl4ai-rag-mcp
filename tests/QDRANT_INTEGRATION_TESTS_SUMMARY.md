@@ -343,8 +343,8 @@ openai>=1.0.0
 # Check if Qdrant is running
 curl http://localhost:6333/healthz
 
-# Start Qdrant with Docker
-docker run -p 6333:6333 qdrant/qdrant
+# Start Qdrant with Docker (no port mapping for security)
+docker run qdrant/qdrant
 ```
 
 **Tests Skipped**

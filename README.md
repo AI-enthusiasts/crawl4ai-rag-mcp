@@ -506,7 +506,8 @@ See the [Language Analyzer Development Guide](docs/QA/LANGUAGE_ANALYZER_DEVELOPM
 
 **Prerequisites:** Start Qdrant for integration tests
 ```bash
-docker run -d --name qdrant-test -p 6333:6333 qdrant/qdrant
+# Note: No port mapping - only accessible from Docker network for security
+docker run -d --name qdrant-test qdrant/qdrant
 ```
 
 **Run tests:**

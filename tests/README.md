@@ -44,10 +44,11 @@ This directory contains comprehensive tests for the Crawl4AI MCP server with dat
 **Start Qdrant for testing:**
 ```bash
 # Start Qdrant in Docker (required for integration tests)
-docker run -d --name qdrant-test -p 6333:6333 qdrant/qdrant
+# Note: No port mapping - only accessible from other Docker containers
+docker run -d --name qdrant-test qdrant/qdrant
 
-# Verify Qdrant is running
-curl http://localhost:6333/healthz
+# Verify Qdrant is running (from inside Docker network)
+docker exec qdrant-test curl http://localhost:6333/healthz
 ```
 
 ### Quick Start

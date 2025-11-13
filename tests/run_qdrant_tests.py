@@ -71,7 +71,7 @@ def setup_qdrant_docker():
     # Try to start Qdrant container
     print("Starting Qdrant container...")
 
-    cmd = "docker run -d --name qdrant-test -p 6333:6333 qdrant/qdrant"
+    cmd = "docker run -d --name qdrant-test qdrant/qdrant"
     returncode, stdout, stderr = run_command(cmd)
 
     if returncode != 0:

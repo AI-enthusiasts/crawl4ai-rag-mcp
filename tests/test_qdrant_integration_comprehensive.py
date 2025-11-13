@@ -53,7 +53,7 @@ class TestQdrantIntegrationComprehensive:
         cls.qdrant_healthy = cls._check_qdrant_health()
         if not cls.qdrant_healthy:
             pytest.skip(
-                f"Qdrant not available at {cls.qdrant_url}. Start with: docker run -p 6333:6333 qdrant/qdrant",
+                f"Qdrant not available at {cls.qdrant_url}. Start with: docker run qdrant/qdrant (no port mapping)",
             )
 
     @classmethod

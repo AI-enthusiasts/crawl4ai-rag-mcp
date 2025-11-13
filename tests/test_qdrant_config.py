@@ -112,7 +112,7 @@ class QdrantTestConfig:
                 )
             return (
                 f"Qdrant not available at {self.qdrant_url}. "
-                f"Start with: docker run -p 6333:6333 qdrant/qdrant"
+                f"Start with: docker run qdrant/qdrant (no port mapping)"
             )
         return ""
 

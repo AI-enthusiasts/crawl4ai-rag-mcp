@@ -168,7 +168,7 @@ if curl -s http://localhost:6333/health > /dev/null 2>&1; then
     log_message "${GREEN}✅ Qdrant is running${NC}"
 else
     log_message "${YELLOW}⚠️  Qdrant is not running. Starting it now...${NC}"
-    docker run -d --name qdrant-qa -p 6333:6333 qdrant/qdrant:latest 2>&1 | tee -a "$DETAILED_LOG" || {
+    docker run -d --name qdrant-qa qdrant/qdrant:latest 2>&1 | tee -a "$DETAILED_LOG" || {
         log_message "${RED}❌ Failed to start Qdrant. Please ensure Docker is running.${NC}"
         exit 1
     }
