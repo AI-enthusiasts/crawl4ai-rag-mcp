@@ -1,5 +1,6 @@
 """Crawling services for the Crawl4AI MCP server."""
 
+import asyncio
 import json
 import logging
 from contextlib import asynccontextmanager
@@ -15,6 +16,7 @@ from crawl4ai import (
 from crawl4ai.utils import get_memory_stats
 from fastmcp import Context
 
+from core.constants import MAX_VISITED_URLS_LIMIT
 from core.logging import logger
 from core.stdout_utils import SuppressStdout
 
@@ -67,7 +69,8 @@ async def track_memory(operation_name: str):
                         },
                     )
 
-            if dispatch_stats:
+            # Explicit length check to prevent division by zero (defensive programming)
+            if dispatch_stats and len(dispatch_stats) > 0:
                 avg_memory = sum(s["memory_usage"] for s in dispatch_stats) / len(
                     dispatch_stats,
                 )
@@ -625,6 +628,8 @@ async def crawl_urls_for_agentic_search(
 
         # Track visited URLs globally (across all starting URLs)
         visited = set()
+        # Protect visited set from race conditions (per asyncio.Lock docs)
+        visited_lock = asyncio.Lock()
         urls_filtered = 0
         pages_crawled = 0
         total_urls_stored = 0
@@ -644,10 +649,11 @@ async def crawl_urls_for_agentic_search(
             depth = 0
             while current_urls and pages_crawled < max_pages:
                 depth += 1
-                # Filter out already visited URLs
-                urls_to_crawl = [
-                    url for url in current_urls if normalize_url(url) not in visited
-                ]
+                # Filter out already visited URLs (protected by lock per asyncio docs)
+                async with visited_lock:
+                    urls_to_crawl = [
+                        url for url in current_urls if normalize_url(url) not in visited
+                    ]
 
                 if not urls_to_crawl:
                     logger.info(f"No more URLs to crawl at depth {depth}")
@@ -679,7 +685,26 @@ async def crawl_urls_for_agentic_search(
                 # Process results
                 for result in results:
                     norm_url = normalize_url(result.url)
-                    visited.add(norm_url)
+
+                    # Memory protection: Check visited set size limit (atomic with lock)
+                    async with visited_lock:
+                        if len(visited) >= MAX_VISITED_URLS_LIMIT:
+                            logger.warning(
+                                f"Visited URLs limit reached ({MAX_VISITED_URLS_LIMIT}), "
+                                f"stopping recursive crawl to prevent memory exhaustion",
+                            )
+                            # Return early with current results
+                            return {
+                                "success": True,
+                                "urls_crawled": pages_crawled,
+                                "urls_stored": total_urls_stored,
+                                "chunks_stored": total_chunks_stored,
+                                "urls_filtered": urls_filtered,
+                                "warning": f"Stopped early: visited URL limit ({MAX_VISITED_URLS_LIMIT}) reached",
+                            }
+
+                        visited.add(norm_url)
+
                     pages_crawled += 1
 
                     if result.success and result.markdown:
@@ -720,7 +745,11 @@ async def crawl_urls_for_agentic_search(
                         if pages_crawled < max_pages:  # Only if budget remains
                             for link in result.links.get("internal", []):
                                 next_url = normalize_url(link["href"])
-                                if next_url not in visited:
+                                # Check visited set with lock protection
+                                async with visited_lock:
+                                    is_visited = next_url in visited
+
+                                if not is_visited:
                                     # Apply smart filtering
                                     if should_filter_url(next_url, enable_url_filtering):
                                         urls_filtered += 1

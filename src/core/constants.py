@@ -37,6 +37,9 @@ MAX_CRAWL_DEPTH_DEFAULT = 3  # Default depth for recursive crawling
 MAX_CRAWL_DEPTH_SHALLOW = 1  # Single level (no recursion)
 MAX_CRAWL_DEPTH_DEEP = 5  # Deep crawling for comprehensive coverage
 
+# Memory protection limits
+MAX_VISITED_URLS_LIMIT = 10000  # Maximum visited URLs to track (prevents memory exhaustion)
+
 # LLM parameters
 LLM_TEMPERATURE_DETERMINISTIC = 0.3  # Deterministic for completeness/ranking
 LLM_TEMPERATURE_BALANCED = 0.5  # Balanced for query refinement
@@ -115,6 +118,9 @@ SEARXNG_TIMEOUT_DEFAULT = 30
 NEO4J_BATCH_TIMEOUT_DEFAULT = 120
 HTTP_REQUEST_TIMEOUT_DEFAULT = 30
 CRAWL_TIMEOUT_DEFAULT = 60
+LLM_API_TIMEOUT_DEFAULT = 60  # OpenAI API timeout (default is 10 minutes - too long)
+LLM_API_CONNECT_TIMEOUT = 5  # Connection timeout for LLM API
+LLM_API_READ_TIMEOUT = 60  # Read timeout for LLM responses
 
 # Retry limits
 MAX_RETRIES_DEFAULT = 3
