@@ -48,9 +48,7 @@ from core.context import get_app_context
 
 
 async def parse_github_repository_wrapper(ctx: Context, repo_url: str) -> str:
-    """
-    Wrapper function to properly extract repo_extractor from context and call the implementation.
-    """
+    """Wrapper function to properly extract repo_extractor from context and call the implementation."""
     import json
 
     # Get the app context that was stored during lifespan
@@ -70,7 +68,7 @@ async def parse_github_repository_wrapper(ctx: Context, repo_url: str) -> str:
             indent=2,
         )
 
-    return await parse_github_repository_impl(app_ctx.repo_extractor, repo_url)
+    return await parse_github_repository_impl(app_ctx.repo_extractor, repo_url)  # type: ignore[no-any-return]
 
 
 async def get_available_sources_wrapper(ctx: Context) -> str:
@@ -95,7 +93,7 @@ async def get_available_sources_wrapper(ctx: Context) -> str:
             indent=2,
         )
 
-    return await get_available_sources(app_ctx.database_client)
+    return await get_available_sources(app_ctx.database_client)  # type: ignore[no-any-return]
 
 
 async def perform_rag_query_wrapper(
@@ -125,7 +123,7 @@ async def perform_rag_query_wrapper(
             indent=2,
         )
 
-    return await perform_rag_query(
+    return await perform_rag_query(  # type: ignore[no-any-return]
         app_ctx.database_client,
         query=query,
         source=source,
@@ -160,7 +158,7 @@ async def search_code_examples_wrapper(
             indent=2,
         )
 
-    return await search_code_examples_db(
+    return await search_code_examples_db(  # type: ignore[no-any-return]
         app_ctx.database_client,
         query=query,
         source_id=source_id,
@@ -169,12 +167,10 @@ async def search_code_examples_wrapper(
 
 
 async def query_knowledge_graph_wrapper(ctx: Context, command: str) -> str:
-    """
-    Wrapper function to call the knowledge graph query implementation.
-    """
+    """Wrapper function to call the knowledge graph query implementation."""
     # The query_knowledge_graph function doesn't need a context parameter
     # It creates its own Neo4j connection from environment variables
-    return await query_knowledge_graph(command)
+    return await query_knowledge_graph(command)  # type: ignore[no-any-return]
 
 
 def register_tools(mcp: "FastMCP") -> None:
@@ -185,7 +181,7 @@ def register_tools(mcp: "FastMCP") -> None:
         mcp: FastMCP instance to register tools with
     """
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("search")
     async def search(
         ctx: Context,
@@ -226,7 +222,7 @@ def register_tools(mcp: "FastMCP") -> None:
             msg = f"Search failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("scrape_urls")
     async def scrape_urls(
         ctx: Context,
@@ -374,7 +370,7 @@ def register_tools(mcp: "FastMCP") -> None:
             msg = f"Scraping failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("smart_crawl_url")
     async def smart_crawl_url(
         ctx: Context,
@@ -442,7 +438,7 @@ def register_tools(mcp: "FastMCP") -> None:
             msg = f"Smart crawl failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("get_available_sources")
     async def get_available_sources(ctx: Context) -> str:
         """
@@ -468,7 +464,7 @@ def register_tools(mcp: "FastMCP") -> None:
             msg = f"Failed to get sources: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("perform_rag_query")
     async def perform_rag_query(
         ctx: Context,
@@ -503,7 +499,7 @@ def register_tools(mcp: "FastMCP") -> None:
             msg = f"RAG query failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("search_code_examples")
     async def search_code_examples(
         ctx: Context,
@@ -540,7 +536,7 @@ def register_tools(mcp: "FastMCP") -> None:
             msg = f"Code example search failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("check_ai_script_hallucinations")
     async def check_ai_script_hallucinations(
         ctx: Context,
@@ -620,7 +616,7 @@ def register_tools(mcp: "FastMCP") -> None:
             msg = f"Hallucination check failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("query_knowledge_graph")
     async def query_knowledge_graph(
         ctx: Context,
@@ -696,7 +692,7 @@ def register_tools(mcp: "FastMCP") -> None:
             msg = f"Knowledge graph query failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("parse_github_repository")
     async def parse_github_repository(
         ctx: Context,
@@ -733,7 +729,7 @@ def register_tools(mcp: "FastMCP") -> None:
             msg = f"Repository parsing failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("parse_repository_branch")
     async def parse_repository_branch(
         ctx: Context,
@@ -775,7 +771,7 @@ def register_tools(mcp: "FastMCP") -> None:
             msg = f"Repository branch parsing failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("get_repository_info")
     async def get_repository_info(
         ctx: Context,
@@ -808,7 +804,7 @@ def register_tools(mcp: "FastMCP") -> None:
             msg = f"Failed to get repository info: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("update_parsed_repository")
     async def update_parsed_repository(
         ctx: Context,
@@ -845,7 +841,7 @@ def register_tools(mcp: "FastMCP") -> None:
             msg = f"Repository update failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("extract_and_index_repository_code")
     async def extract_and_index_repository_code(
         ctx: Context,
@@ -1028,7 +1024,7 @@ def register_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("smart_code_search")
     async def smart_code_search(
         ctx: Context,
@@ -1126,7 +1122,7 @@ def register_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("check_ai_script_hallucinations_enhanced")
     async def check_ai_script_hallucinations_enhanced(
         ctx: Context,
@@ -1213,7 +1209,7 @@ def register_tools(mcp: "FastMCP") -> None:
             msg = f"Enhanced hallucination check failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("get_script_analysis_info")
     async def get_script_analysis_info(ctx: Context) -> str:
         """
@@ -1283,7 +1279,7 @@ def register_tools(mcp: "FastMCP") -> None:
 
         return json.dumps(info, indent=2)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("parse_local_repository")
     async def parse_local_repository(
         ctx: Context,
@@ -1452,7 +1448,7 @@ def register_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("analyze_code_cross_language")
     async def analyze_code_cross_language(
         ctx: Context,
@@ -1688,7 +1684,7 @@ def register_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("agentic_search")
     async def agentic_search(
         ctx: Context,

@@ -7,9 +7,11 @@ from .constants import (
     MAX_INPUT_SIZE,
     MAX_ITERATIONS_DEFAULT,
     MAX_QDRANT_RESULTS_DEFAULT,
+    MAX_RETRIES_DEFAULT,
     MAX_URLS_PER_ITERATION_DEFAULT,
     OPENAI_EMBEDDING_DIMENSION,
     QDRANT_BATCH_SIZE,
+    TEST_MODEL_CHEAP,
     URL_SCORE_THRESHOLD_DEFAULT,
 )
 from .context import (
@@ -24,7 +26,7 @@ from .logging import configure_logging, logger
 from .stdout_utils import SuppressStdout
 
 __all__ = [
-    # Context
+    # Core
     "Crawl4AIContext",
     "MCPToolError",
     "SuppressStdout",
@@ -34,15 +36,17 @@ __all__ = [
     "initialize_global_context",
     "logger",
     "track_request",
-    # Constants
+    # Constants - most commonly used
     "COMPLETENESS_THRESHOLD_DEFAULT",
     "HTTP_OK",
     "LLM_TEMPERATURE_DETERMINISTIC",
     "MAX_INPUT_SIZE",
     "MAX_ITERATIONS_DEFAULT",
     "MAX_QDRANT_RESULTS_DEFAULT",
+    "MAX_RETRIES_DEFAULT",
     "MAX_URLS_PER_ITERATION_DEFAULT",
     "OPENAI_EMBEDDING_DIMENSION",
     "QDRANT_BATCH_SIZE",
+    "TEST_MODEL_CHEAP",
     "URL_SCORE_THRESHOLD_DEFAULT",
 ]
