@@ -29,8 +29,8 @@ async def parse_local_repository(
     Returns:
         JSON string with parsing results, statistics, and repository information
     """
-    import os
     import json
+    import os
 
     try:
         # Get the app context
@@ -343,7 +343,7 @@ async def analyze_code_cross_language(
             results_by_language[language] = sorted(
                 results_by_language[language],
                 key=lambda x: x.get("similarity_score", 0),
-                reverse=True
+                reverse=True,
             )[:match_count]
 
         # Calculate summary statistics
@@ -363,7 +363,7 @@ async def analyze_code_cross_language(
                     "coverage": f"{len(languages_found)} languages analyzed",
                     "avg_similarity_per_language": {
                         lang: round(
-                            sum(r.get("similarity_score", 0) for r in results) / len(results), 3
+                            sum(r.get("similarity_score", 0) for r in results) / len(results), 3,
                         ) if results else 0
                         for lang, results in results_by_language.items()
                     },

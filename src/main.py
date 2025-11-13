@@ -10,12 +10,12 @@ import sys
 import traceback
 
 from fastmcp import FastMCP
-from fastmcp.server.auth import StaticTokenVerifier, OAuthProvider
+from fastmcp.server.auth import OAuthProvider, StaticTokenVerifier
 from mcp.server.auth.settings import ClientRegistrationOptions, RevocationOptions
 
 from config import get_settings
 from core import logger
-from core.context import initialize_global_context, cleanup_global_context
+from core.context import cleanup_global_context, initialize_global_context
 from tools import register_tools
 
 # Get settings instance
@@ -35,11 +35,11 @@ try:
     # Determine authentication mode based on settings
     auth = None
     auth_mode = "none"
-    
+
     if settings.use_oauth2:
         # Mode 1: OAuth Provider with DCR (for Claude Web custom connectors)
         logger.info("Configuring OAuth Provider with Dynamic Client Registration...")
-        
+
         auth = OAuthProvider(
             base_url=settings.oauth2_issuer,
             issuer_url=settings.oauth2_issuer,
@@ -58,38 +58,38 @@ try:
         logger.info(f"  - Required scopes: {', '.join(settings.oauth2_required_scopes)}")
         logger.info("  - DCR enabled: Yes")
         logger.info("  - Endpoints:")
-        logger.info(f"    - /.well-known/oauth-authorization-server")
-        logger.info(f"    - /register (DCR)")
-        logger.info(f"    - /authorize")
-        logger.info(f"    - /token")
-        logger.info(f"    - /revoke")
-        
+        logger.info("    - /.well-known/oauth-authorization-server")
+        logger.info("    - /register (DCR)")
+        logger.info("    - /authorize")
+        logger.info("    - /token")
+        logger.info("    - /revoke")
+
     elif settings.mcp_api_key:
         # Mode 2: Static Token Verifier (simple API key)
         logger.info("Configuring Static Token Verifier...")
-        
+
         auth = StaticTokenVerifier(
             tokens={
                 settings.mcp_api_key: {
                     "client_id": "mcp-client",
                     "scopes": ["read", "write"],
-                    "expires_at": None  # No expiration
-                }
-            }
+                    "expires_at": None,  # No expiration
+                },
+            },
         )
         auth_mode = "api_key"
         logger.info("✓ StaticTokenVerifier enabled with API key")
-        
+
     else:
         # Mode 3: No authentication
         logger.warning("⚠ No authentication configured - server is open to all!")
         logger.warning("  Set USE_OAUTH2=true for OAuth or MCP_API_KEY for API key auth")
         auth_mode = "none"
-    
+
     # Create FastMCP server with appropriate auth
     mcp = FastMCP("Crawl4AI MCP Server", auth=auth)
     logger.info(f"FastMCP server initialized successfully (auth mode: {auth_mode})")
-    
+
 except Exception as e:
     logger.error(f"Failed to initialize FastMCP server: {e}")
     logger.error(f"Traceback: {traceback.format_exc()}")
@@ -113,12 +113,12 @@ async def main() -> None:
     """
     try:
         logger.info("Main function started")
-        
+
         # Initialize global context ONCE at startup (not per-request)
         logger.info("Initializing global application context...")
         await initialize_global_context()
         logger.info("✓ Global context initialized")
-        
+
         transport = settings.transport.lower()
         logger.info(f"Transport mode: {transport}")
 
@@ -129,11 +129,11 @@ async def main() -> None:
         # Run server with appropriate transport
         if transport == "http":
             logger.info("Setting up Streamable HTTP server...")
-            
+
             # Run Streamable HTTP server - authentication is handled by FastMCP's built-in auth
             # Streamable HTTP is the recommended transport for production
             await mcp.run_http_async(
-                transport="streamable-http", host=host, port=int(port)
+                transport="streamable-http", host=host, port=int(port),
             )
         elif transport == "sse":
             await mcp.run_sse_async()

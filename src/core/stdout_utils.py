@@ -2,7 +2,7 @@
 
 import sys
 from types import TracebackType
-from typing import Any, Literal, Self
+from typing import Literal, Self
 
 
 class SuppressStdout:

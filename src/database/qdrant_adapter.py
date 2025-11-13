@@ -137,7 +137,7 @@ class QdrantAdapter:
                     parsed_url = urlparse(url)
                     source_id = parsed_url.netloc or parsed_url.path
                     # Remove 'www.' prefix if present for consistency
-                    if source_id and source_id.startswith('www.'):
+                    if source_id and source_id.startswith("www."):
                         source_id = source_id[4:]
 
                 # Prepare payload - always include source_id
@@ -409,8 +409,8 @@ class QdrantAdapter:
                     FieldCondition(
                         key="url",
                         match=MatchValue(value=url),
-                    )
-                ]
+                    ),
+                ],
             )
 
             points, _ = await self.client.scroll(
@@ -572,7 +572,7 @@ class QdrantAdapter:
         for url in urls:
             # First, find all points with this URL
             filter_condition = Filter(
-                must=[FieldCondition(key="url", match=MatchValue(value=url))]
+                must=[FieldCondition(key="url", match=MatchValue(value=url))],
             )
 
             points, _ = await self.client.scroll(

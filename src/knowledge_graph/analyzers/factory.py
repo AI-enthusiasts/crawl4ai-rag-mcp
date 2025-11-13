@@ -6,11 +6,10 @@ Provides a factory for creating language-specific code analyzers.
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 from .base import CodeAnalyzer
-from .javascript import JavaScriptAnalyzer
 from .go import GoAnalyzer
+from .javascript import JavaScriptAnalyzer
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +38,7 @@ class AnalyzerFactory:
             ".go": "go",
         }
 
-    def get_analyzer(self, file_path: str) -> Optional[CodeAnalyzer]:
+    def get_analyzer(self, file_path: str) -> CodeAnalyzer | None:
         """
         Get the appropriate analyzer for a file.
 
@@ -58,7 +57,7 @@ class AnalyzerFactory:
             analyzer = self.analyzers.get(analyzer_type)
             if analyzer:
                 return analyzer
-            elif analyzer_type == "python":
+            if analyzer_type == "python":
                 # Return None for Python - will use existing analyzer
                 return None
 

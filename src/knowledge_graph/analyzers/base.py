@@ -7,7 +7,7 @@ Provides abstract base class for language-specific code analyzers.
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -18,15 +18,15 @@ class CodeAnalyzer(ABC):
     def __init__(self) -> None:
         """Initialize the code analyzer."""
         self.logger = logger
-        self.supported_extensions: List[str] = []
+        self.supported_extensions: list[str] = []
 
     @abstractmethod
     async def analyze_file(
         self,
         file_path: str,
         repo_path: str,
-        content: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        content: str | None = None,
+    ) -> dict[str, Any]:
         """
         Analyze a code file and extract structural information.
 
@@ -48,7 +48,6 @@ class CodeAnalyzer(ABC):
                 "dependencies": List[str],
             }
         """
-        pass
 
     @abstractmethod
     def can_analyze(self, file_path: str) -> bool:
@@ -61,7 +60,6 @@ class CodeAnalyzer(ABC):
         Returns:
             True if the analyzer can handle this file type
         """
-        pass
 
     def get_module_name(self, file_path: str, repo_path: str) -> str:
         """
@@ -96,7 +94,7 @@ class CodeAnalyzer(ABC):
             # Fallback to filename without extension
             return Path(file_path).stem
 
-    async def read_file_content(self, file_path: str) -> Optional[str]:
+    async def read_file_content(self, file_path: str) -> str | None:
         """
         Read file content with proper encoding handling.
 
@@ -108,12 +106,12 @@ class CodeAnalyzer(ABC):
         """
         try:
             # Try UTF-8 first
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 return f.read()
         except UnicodeDecodeError:
             try:
                 # Fallback to Latin-1
-                with open(file_path, "r", encoding="latin-1") as f:
+                with open(file_path, encoding="latin-1") as f:
                     return f.read()
             except Exception as e:
                 self.logger.warning(f"Failed to read file {file_path}: {e}")
@@ -122,7 +120,7 @@ class CodeAnalyzer(ABC):
             self.logger.warning(f"Failed to read file {file_path}: {e}")
             return None
 
-    def extract_docstring(self, lines: List[str], start_line: int) -> Optional[str]:
+    def extract_docstring(self, lines: list[str], start_line: int) -> str | None:
         """
         Extract docstring from code lines.
 
@@ -139,28 +137,27 @@ class CodeAnalyzer(ABC):
         line = lines[start_line].strip()
 
         # Check for various docstring formats
-        if line.startswith('"""') or line.startswith("'''"):
+        if line.startswith(('"""', "'''")):
             quote = line[:3]
             if line.endswith(quote) and len(line) > 6:
                 # Single-line docstring
                 return line[3:-3].strip()
-            else:
-                # Multi-line docstring
-                docstring_lines = [line[3:]] if len(line) > 3 else []
-                for i in range(start_line + 1, len(lines)):
-                    if quote in lines[i]:
-                        docstring_lines.append(lines[i].split(quote)[0])
-                        break
-                    docstring_lines.append(lines[i])
-                return "\n".join(docstring_lines).strip()
+            # Multi-line docstring
+            docstring_lines = [line[3:]] if len(line) > 3 else []
+            for i in range(start_line + 1, len(lines)):
+                if quote in lines[i]:
+                    docstring_lines.append(lines[i].split(quote)[0])
+                    break
+                docstring_lines.append(lines[i])
+            return "\n".join(docstring_lines).strip()
 
         return None
 
     def extract_line_range(
         self,
-        lines: List[str],
+        lines: list[str],
         start_line: int,
-        end_markers: Optional[List[str]] = None,
+        end_markers: list[str] | None = None,
     ) -> tuple[int, int]:
         """
         Extract the line range for a code block.
@@ -196,7 +193,7 @@ class CodeAnalyzer(ABC):
 
         return start_line, end_line
 
-    def sanitize_string(self, s: Optional[str]) -> str:
+    def sanitize_string(self, s: str | None) -> str:
         """
         Sanitize string for storage.
 

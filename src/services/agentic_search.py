@@ -7,7 +7,7 @@ This module implements the complete agentic search pipeline:
 4. Query Refinement (LLM-based iteration)
 
 The implementation is production-ready with:
-- Full type safety using Pydantic models
+- Full type safety using Pydantic models and OpenAI structured outputs
 - Comprehensive error handling
 - Detailed logging
 - Configurable thresholds and limits
@@ -17,9 +17,9 @@ import json
 import logging
 from typing import Any
 
-import openai
 from fastmcp import Context
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, OpenAIError
+from pydantic import BaseModel, Field
 
 from config import get_settings
 from core import MCPToolError
@@ -34,11 +34,10 @@ from .agentic_models import (
     CompletenessEvaluation,
     QueryRefinement,
     RAGResult,
-    SearchHints,
     SearchIteration,
-    SearchMetadata,
     SearchStatus,
     URLRanking,
+    URLRankingList,
 )
 
 logger = logging.getLogger(__name__)
@@ -108,7 +107,7 @@ class AgenticSearchService:
             logger.info(f"Starting agentic search for query: {query}")
             logger.info(
                 f"Parameters: threshold={threshold}, max_iter={max_iter}, "
-                f"max_urls={max_urls}, url_threshold={url_threshold}"
+                f"max_urls={max_urls}, url_threshold={url_threshold}",
             )
 
             while iteration < max_iter:
@@ -117,7 +116,7 @@ class AgenticSearchService:
 
                 # STAGE 1: Local Knowledge Check
                 evaluation, rag_results = await self._stage1_local_check(
-                    ctx, current_query, iteration, search_history
+                    ctx, current_query, iteration, search_history,
                 )
 
                 final_completeness = evaluation.score
@@ -126,7 +125,7 @@ class AgenticSearchService:
                 # Check if we have sufficient answer
                 if evaluation.score >= threshold:
                     logger.info(
-                        f"Completeness threshold met: {evaluation.score:.2f} >= {threshold:.2f}"
+                        f"Completeness threshold met: {evaluation.score:.2f} >= {threshold:.2f}",
                     )
                     return AgenticSearchResult(
                         success=True,
@@ -139,7 +138,7 @@ class AgenticSearchService:
                     )
 
                 logger.info(
-                    f"Completeness insufficient: {evaluation.score:.2f} < {threshold:.2f}"
+                    f"Completeness insufficient: {evaluation.score:.2f} < {threshold:.2f}",
                 )
                 logger.info(f"Knowledge gaps: {evaluation.gaps}")
 
@@ -158,14 +157,13 @@ class AgenticSearchService:
                     # STAGE 4: Query Refinement (when no good URLs)
                     if iteration < max_iter:
                         refined = await self._stage4_query_refinement(
-                            query, current_query, evaluation.gaps
+                            query, current_query, evaluation.gaps,
                         )
                         current_query = refined.refined_queries[0]
                         logger.info(f"Refined query: {current_query}")
                         continue
-                    else:
-                        logger.info("Max iterations reached with no promising URLs")
-                        break
+                    logger.info("Max iterations reached with no promising URLs")
+                    break
 
                 # STAGE 3: Selective Crawling & Indexing
                 await self._stage3_selective_crawl(
@@ -179,7 +177,7 @@ class AgenticSearchService:
 
                 # Re-evaluate after crawling
                 evaluation, rag_results = await self._stage1_local_check(
-                    ctx, current_query, iteration, search_history, is_recheck=True
+                    ctx, current_query, iteration, search_history, is_recheck=True,
                 )
 
                 final_completeness = evaluation.score
@@ -187,7 +185,7 @@ class AgenticSearchService:
 
                 if evaluation.score >= threshold:
                     logger.info(
-                        f"Completeness threshold met after crawling: {evaluation.score:.2f}"
+                        f"Completeness threshold met after crawling: {evaluation.score:.2f}",
                     )
                     return AgenticSearchResult(
                         success=True,
@@ -202,7 +200,7 @@ class AgenticSearchService:
                 # Still incomplete, try refining query for next iteration
                 if iteration < max_iter:
                     refined = await self._stage4_query_refinement(
-                        query, current_query, evaluation.gaps
+                        query, current_query, evaluation.gaps,
                     )
                     current_query = refined.refined_queries[0]
 
@@ -256,7 +254,8 @@ class AgenticSearchService:
         # Get app context for database client
         app_ctx = get_app_context()
         if not app_ctx or not app_ctx.database_client:
-            raise MCPToolError("Database client not available")
+            msg = "Database client not available"
+            raise MCPToolError(msg)
 
         # Query Qdrant with all RAG enhancements
         rag_response = await perform_rag_query(
@@ -278,7 +277,7 @@ class AgenticSearchService:
                         url=result.get("url", ""),
                         similarity_score=result.get("similarity_score", 0.0),
                         chunk_index=result.get("chunk_index", 0),
-                    )
+                    ),
                 )
 
         # LLM evaluation of completeness
@@ -293,15 +292,15 @@ class AgenticSearchService:
                     action=ActionType.LOCAL_CHECK,
                     completeness=evaluation.score,
                     gaps=evaluation.gaps,
-                )
+                ),
             )
 
         return evaluation, rag_results
 
     async def _evaluate_completeness(
-        self, query: str, results: list[RAGResult]
+        self, query: str, results: list[RAGResult],
     ) -> CompletenessEvaluation:
-        """Evaluate answer completeness using LLM.
+        """Evaluate answer completeness using LLM with Pydantic structured output.
 
         Args:
             query: User's query
@@ -312,7 +311,10 @@ class AgenticSearchService:
         """
         # Format results for LLM
         results_text = "\n\n".join(
-            [f"[Result {i+1}]\n{r.content[:500]}..." for i, r in enumerate(results[:5])]
+            [
+                f"[Result {i+1}]\n{r.content[:500]}..."
+                for i, r in enumerate(results[:5])
+            ],
         )
 
         prompt = f"""You are evaluating whether the provided information is sufficient to answer a user's query.
@@ -328,36 +330,40 @@ Evaluate the completeness of the available information on a scale of 0.0 to 1.0:
 - 0.8: Most information present, minor gaps
 - 1.0: Complete and comprehensive answer possible
 
-Respond with a JSON object:
-{{
-  "score": 0.0-1.0,
-  "reasoning": "Brief explanation of the score",
-  "gaps": ["missing topic 1", "unclear aspect 2", ...]
-}}
+Be strict in your evaluation. Score should be 0.95 or higher only if the information is truly comprehensive.
 
-Be strict in your evaluation. Score should be 0.95 or higher only if the information is truly comprehensive."""
+Provide:
+- score: float between 0.0 and 1.0
+- reasoning: Brief explanation of the score
+- gaps: List of missing information or knowledge gaps (empty list if complete)"""
 
         try:
-            response = await self.client.chat.completions.create(
+            response = await self.client.beta.chat.completions.parse(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=self.temperature,
-                response_format={"type": "json_object"},
+                response_format=CompletenessEvaluation,
             )
 
-            content = response.choices[0].message.content
-            if not content:
-                raise ValueError("Empty response from LLM")
+            if not response.choices[0].message.parsed:
+                msg = "LLM returned empty parsed response"
+                raise ValueError(msg)
 
-            data = json.loads(content)
-            return CompletenessEvaluation(**data)
+            return response.choices[0].message.parsed
 
-        except (openai.OpenAIError, json.JSONDecodeError, ValueError) as e:
-            logger.error(f"Completeness evaluation failed: {e}")
+        except OpenAIError as e:
+            logger.exception("Completeness evaluation failed: %s", e)
             # Return safe default
             return CompletenessEvaluation(
                 score=0.0,
                 reasoning=f"Evaluation failed: {e}",
+                gaps=["Unable to evaluate completeness"],
+            )
+        except Exception as e:
+            logger.exception("Unexpected error in completeness evaluation: %s", e)
+            return CompletenessEvaluation(
+                score=0.0,
+                reasoning=f"Unexpected error: {e}",
                 gaps=["Unable to evaluate completeness"],
             )
 
@@ -398,7 +404,7 @@ Be strict in your evaluation. Score should be 0.95 or higher only if the informa
                     urls_found=0,
                     urls_ranked=0,
                     promising_urls=0,
-                )
+                ),
             )
             return []
 
@@ -412,7 +418,7 @@ Be strict in your evaluation. Score should be 0.95 or higher only if the informa
         promising = promising[:max_urls]  # Limit to max URLs
 
         logger.info(
-            f"Ranked {len(rankings)} URLs, {len(promising)} above threshold {url_threshold}"
+            f"Ranked {len(rankings)} URLs, {len(promising)} above threshold {url_threshold}",
         )
 
         search_history.append(
@@ -423,15 +429,15 @@ Be strict in your evaluation. Score should be 0.95 or higher only if the informa
                 urls_found=len(search_results),
                 urls_ranked=len(rankings),
                 promising_urls=len(promising),
-            )
+            ),
         )
 
         return [r.url for r in promising]
 
     async def _rank_urls(
-        self, query: str, gaps: list[str], search_results: list[dict[str, Any]]
+        self, query: str, gaps: list[str], search_results: list[dict[str, Any]],
     ) -> list[URLRanking]:
-        """Rank URLs by relevance using LLM.
+        """Rank URLs by relevance using LLM with Pydantic structured output.
 
         Args:
             query: User's query
@@ -439,14 +445,14 @@ Be strict in your evaluation. Score should be 0.95 or higher only if the informa
             search_results: Search results from SearXNG
 
         Returns:
-            List of ranked URLs
+            List of ranked URLs sorted by score descending
         """
         # Format search results for LLM
         results_text = "\n".join(
             [
                 f"{i+1}. {r['title']}\n   URL: {r['url']}\n   Snippet: {r.get('snippet', '')[:200]}"
                 for i, r in enumerate(search_results)
-            ]
+            ],
         )
 
         gaps_text = "\n".join([f"- {gap}" for gap in gaps])
@@ -467,50 +473,30 @@ For each URL, provide a relevance score (0.0-1.0) indicating how likely it is to
 - 0.7-0.8: Likely relevant
 - 0.9-1.0: Highly relevant
 
-Respond with a JSON array:
-[
-  {{
-    "url": "...",
-    "title": "...",
-    "snippet": "...",
-    "score": 0.0-1.0,
-    "reasoning": "Brief explanation"
-  }},
-  ...
-]
+Be selective - most URLs should score below 0.7.
 
-Be selective - most URLs should score below 0.7."""
+Return a list of rankings with url, title, snippet, score, and reasoning for each."""
 
         try:
-            response = await self.client.chat.completions.create(
+            response = await self.client.beta.chat.completions.parse(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=self.temperature,
-                response_format={"type": "json_object"},
+                response_format=URLRankingList,
             )
 
-            content = response.choices[0].message.content
-            if not content:
-                raise ValueError("Empty response from LLM")
+            if not response.choices[0].message.parsed:
+                msg = "LLM returned empty parsed response"
+                raise ValueError(msg)
 
-            # Handle both array and object with "rankings" key
-            data = json.loads(content)
-            rankings_data = data if isinstance(data, list) else data.get("rankings", [])
-
-            rankings = []
-            for item in rankings_data:
-                try:
-                    rankings.append(URLRanking(**item))
-                except Exception as e:
-                    logger.warning(f"Failed to parse ranking: {e}")
-                    continue
+            rankings = response.choices[0].message.parsed.rankings
 
             # Sort by score descending
             rankings.sort(key=lambda r: r.score, reverse=True)
             return rankings
 
-        except (openai.OpenAIError, json.JSONDecodeError, ValueError) as e:
-            logger.error(f"URL ranking failed: {e}")
+        except OpenAIError as e:
+            logger.exception("URL ranking failed: %s", e)
             # Return all URLs with neutral score
             return [
                 URLRanking(
@@ -519,6 +505,19 @@ Be selective - most URLs should score below 0.7."""
                     snippet=r.get("snippet", ""),
                     score=0.5,
                     reasoning="Ranking failed, using neutral score",
+                )
+                for r in search_results
+            ]
+        except Exception as e:
+            logger.exception("Unexpected error in URL ranking: %s", e)
+            # Return all URLs with neutral score
+            return [
+                URLRanking(
+                    url=r["url"],
+                    title=r["title"],
+                    snippet=r.get("snippet", ""),
+                    score=0.5,
+                    reasoning=f"Unexpected error: {e}",
                 )
                 for r in search_results
             ]
@@ -567,7 +566,7 @@ Be selective - most URLs should score below 0.7."""
                 urls=urls,
                 urls_stored=urls_stored,
                 chunks_stored=chunks_stored,
-            )
+            ),
         )
 
         # TODO: Implement search hints generation if use_hints=True
@@ -576,9 +575,9 @@ Be selective - most URLs should score below 0.7."""
             logger.info("Search hints requested but not yet implemented")
 
     async def _stage4_query_refinement(
-        self, original_query: str, current_query: str, gaps: list[str]
+        self, original_query: str, current_query: str, gaps: list[str],
     ) -> QueryRefinement:
-        """STAGE 4: Generate refined queries for next iteration.
+        """STAGE 4: Generate refined queries using LLM with Pydantic structured output.
 
         Args:
             original_query: Original user query
@@ -603,40 +602,60 @@ Knowledge Gaps:
 Generate 2-3 refined search queries that are more likely to find information filling these gaps.
 Make queries more specific, use different terminology, or approach from different angles.
 
-Respond with JSON:
-{{
-  "refined_queries": ["query 1", "query 2", "query 3"],
-  "reasoning": "Brief explanation of the refinement strategy"
-}}"""
+Provide:
+- refined_queries: list of 2-3 alternative search queries
+- reasoning: Brief explanation of the refinement strategy"""
 
         try:
-            response = await self.client.chat.completions.create(
+            # Create a temporary model for this response
+            class QueryRefinementResponse(BaseModel):
+                """Response model for query refinement."""
+
+                refined_queries: list[str] = Field(
+                    min_length=1,
+                    max_length=3,
+                    description="List of refined search queries",
+                )
+                reasoning: str = Field(
+                    min_length=1,
+                    description="Explanation of refinement strategy",
+                )
+
+            response = await self.client.beta.chat.completions.parse(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.5,  # Slightly more creative for query generation
-                response_format={"type": "json_object"},
+                response_format=QueryRefinementResponse,
             )
 
-            content = response.choices[0].message.content
-            if not content:
-                raise ValueError("Empty response from LLM")
+            if not response.choices[0].message.parsed:
+                msg = "LLM returned empty parsed response"
+                raise ValueError(msg)
 
-            data = json.loads(content)
+            parsed = response.choices[0].message.parsed
             return QueryRefinement(
                 original_query=original_query,
                 current_query=current_query,
-                refined_queries=data.get("refined_queries", [current_query]),
-                reasoning=data.get("reasoning", ""),
+                refined_queries=parsed.refined_queries,
+                reasoning=parsed.reasoning,
             )
 
-        except (openai.OpenAIError, json.JSONDecodeError, ValueError) as e:
-            logger.error(f"Query refinement failed: {e}")
+        except OpenAIError as e:
+            logger.exception("Query refinement failed: %s", e)
             # Return current query as fallback
             return QueryRefinement(
                 original_query=original_query,
                 current_query=current_query,
                 refined_queries=[current_query],
                 reasoning=f"Refinement failed: {e}",
+            )
+        except Exception as e:
+            logger.exception("Unexpected error in query refinement: %s", e)
+            return QueryRefinement(
+                original_query=original_query,
+                current_query=current_query,
+                refined_queries=[current_query],
+                reasoning=f"Unexpected error: {e}",
             )
 
 
@@ -669,8 +688,9 @@ async def agentic_search_impl(
         MCPToolError: If search fails
     """
     if not settings.agentic_search_enabled:
+        msg = "Agentic search is not enabled. Set AGENTIC_SEARCH_ENABLED=true in your environment."
         raise MCPToolError(
-            "Agentic search is not enabled. Set AGENTIC_SEARCH_ENABLED=true in your environment."
+            msg,
         )
 
     try:

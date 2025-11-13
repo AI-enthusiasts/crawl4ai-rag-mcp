@@ -1,14 +1,12 @@
 """Embedding generation utilities using OpenAI."""
 
 import os
-import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import openai
 from anyio.to_thread import run_sync as run_in_thread
-
-from concurrent.futures import ThreadPoolExecutor
 
 
 def _get_embedding_dimensions(model: str) -> int:
@@ -130,11 +128,10 @@ def create_embedding(text: str) -> list[float]:
         embeddings = create_embeddings_batch([text])
         if embeddings:
             return embeddings[0]
-        else:
-            # Fallback with dynamic dimensions
-            model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
-            dimensions = _get_embedding_dimensions(model)
-            return [0.0] * dimensions
+        # Fallback with dynamic dimensions
+        model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+        dimensions = _get_embedding_dimensions(model)
+        return [0.0] * dimensions
     except Exception as e:
         logger.error("Error creating embedding: %s", str(e))
         # Return empty embedding with dynamic dimensions
@@ -144,7 +141,7 @@ def create_embedding(text: str) -> list[float]:
 
 
 def generate_contextual_embedding(
-    chunk: str, full_document: str, chunk_index: int = 0, total_chunks: int = 1
+    chunk: str, full_document: str, chunk_index: int = 0, total_chunks: int = 1,
 ) -> str:
     """
     Generate contextual information for a chunk within a document to improve retrieval.
@@ -168,12 +165,12 @@ def generate_contextual_embedding(
         max_tokens = int(os.getenv("CONTEXTUAL_EMBEDDING_MAX_TOKENS", "200"))
         if not (1 <= max_tokens <= 4096):
             logger.warning(
-                f"CONTEXTUAL_EMBEDDING_MAX_TOKENS ({max_tokens}) out of range 1-4096, using default 200"
+                f"CONTEXTUAL_EMBEDDING_MAX_TOKENS ({max_tokens}) out of range 1-4096, using default 200",
             )
             max_tokens = 200
     except ValueError:
         logger.warning(
-            "CONTEXTUAL_EMBEDDING_MAX_TOKENS must be an integer, using default 200"
+            "CONTEXTUAL_EMBEDDING_MAX_TOKENS must be an integer, using default 200",
         )
         max_tokens = 200
 
@@ -182,12 +179,12 @@ def generate_contextual_embedding(
         temperature = float(os.getenv("CONTEXTUAL_EMBEDDING_TEMPERATURE", "0.3"))
         if not (0.0 <= temperature <= 2.0):
             logger.warning(
-                f"CONTEXTUAL_EMBEDDING_TEMPERATURE ({temperature}) out of range 0.0-2.0, using default 0.3"
+                f"CONTEXTUAL_EMBEDDING_TEMPERATURE ({temperature}) out of range 0.0-2.0, using default 0.3",
             )
             temperature = 0.3
     except ValueError:
         logger.warning(
-            "CONTEXTUAL_EMBEDDING_TEMPERATURE must be a number, using default 0.3"
+            "CONTEXTUAL_EMBEDDING_TEMPERATURE must be a number, using default 0.3",
         )
         temperature = 0.3
 
@@ -196,12 +193,12 @@ def generate_contextual_embedding(
         max_doc_chars = int(os.getenv("CONTEXTUAL_EMBEDDING_MAX_DOC_CHARS", "25000"))
         if max_doc_chars <= 0:
             logger.warning(
-                f"CONTEXTUAL_EMBEDDING_MAX_DOC_CHARS ({max_doc_chars}) must be positive, using default 25000"
+                f"CONTEXTUAL_EMBEDDING_MAX_DOC_CHARS ({max_doc_chars}) must be positive, using default 25000",
             )
             max_doc_chars = 25000
     except ValueError:
         logger.warning(
-            "CONTEXTUAL_EMBEDDING_MAX_DOC_CHARS must be a positive integer, using default 25000"
+            "CONTEXTUAL_EMBEDDING_MAX_DOC_CHARS must be a positive integer, using default 25000",
         )
         max_doc_chars = 25000
 
@@ -248,9 +245,8 @@ Please give a short succinct context to situate this chunk within the overall do
         context = content.strip() if content else ""
 
         # Combine the context with the original chunk
-        contextual_text = f"{context}\n---\n{chunk}"
+        return f"{context}\n---\n{chunk}"
 
-        return contextual_text
 
     except Exception as e:
         logger.error(
@@ -275,7 +271,7 @@ def process_chunk_with_context(args) -> tuple[str, list[float]]:
     """
     chunk, full_document, chunk_index, total_chunks = args
     contextual_text = generate_contextual_embedding(
-        chunk, full_document, chunk_index, total_chunks
+        chunk, full_document, chunk_index, total_chunks,
     )
     embedding = create_embedding(contextual_text)
     return contextual_text, embedding
@@ -307,8 +303,9 @@ async def add_documents_to_database(
         batch_size: Size of each batch for insertion
         source_ids: Optional list of source IDs
     """
-    from core.logging import logger
     from concurrent.futures import as_completed
+
+    from core.logging import logger
 
     # Check if we should use contextual embeddings
     use_contextual_embeddings = (
@@ -320,13 +317,13 @@ async def add_documents_to_database(
 
         # Use ThreadPoolExecutor for parallel processing with individual error handling
         with ThreadPoolExecutor(
-            max_workers=int(os.getenv("CONTEXTUAL_EMBEDDING_MAX_WORKERS", "10"))
+            max_workers=int(os.getenv("CONTEXTUAL_EMBEDDING_MAX_WORKERS", "10")),
         ) as executor:
             # Submit tasks individually for better error handling
             future_to_index = {}
             total_chunks = len(contents)
 
-            for i, (url, content) in enumerate(zip(urls, contents)):
+            for i, (url, content) in enumerate(zip(urls, contents, strict=False)):
                 full_document = url_to_full_document.get(url, "")
                 args = (content, full_document, i, total_chunks)
                 future = executor.submit(process_chunk_with_context, args)
@@ -336,9 +333,6 @@ async def add_documents_to_database(
             contextual_contents = contents.copy()  # Start with original contents
             # Pre-allocate embeddings list with correct size (Python docs: list assignment requires existing index)
             embeddings: list[list[float] | None] = [None] * len(contents)
-            embeddings_dict: dict[
-                int, list[float]
-            ] = {}  # Temporary dict for out-of-order results
             successful_contextual_count = 0
             failed_contextual_count = 0
 
@@ -352,7 +346,7 @@ async def add_documents_to_database(
                         successful_contextual_count += 1
                     except Exception as e:
                         logger.warning(
-                            f"Failed to generate contextual embedding for chunk {index}: {e}. Using original content."
+                            f"Failed to generate contextual embedding for chunk {index}: {e}. Using original content.",
                         )
                         # Keep original content and generate standard embedding
                         embedding = create_embedding(contents[index])
@@ -369,12 +363,12 @@ async def add_documents_to_database(
                     )
 
                 logger.info(
-                    f"Contextual embedding processing: {successful_contextual_count} successful, {failed_contextual_count} failed"
+                    f"Contextual embedding processing: {successful_contextual_count} successful, {failed_contextual_count} failed",
                 )
 
             except Exception as e:
                 logger.error(
-                    f"Error during contextual embedding processing: {e}. Falling back to standard embeddings."
+                    f"Error during contextual embedding processing: {e}. Falling back to standard embeddings.",
                 )
                 # Fall back to standard embedding generation for all
 
@@ -383,7 +377,7 @@ async def add_documents_to_database(
                     batch_texts = contents[i : i + batch_size]
                     # Run in thread to avoid blocking event loop
                     batch_embeddings = await run_in_thread(
-                        create_embeddings_batch, batch_texts
+                        create_embeddings_batch, batch_texts,
                     )
                     embeddings.extend(batch_embeddings)
     else:
@@ -550,7 +544,7 @@ async def _add_web_sources_to_database(
         # Group by source_id to create source summaries
         source_data = {}
 
-        for i, (url, source_id) in enumerate(zip(urls, source_ids)):
+        for _i, (url, source_id) in enumerate(zip(urls, source_ids, strict=False)):
             if source_id and source_id not in source_data:
                 # Get full document for this URL
                 full_document = url_to_full_document.get(url, "")
@@ -586,7 +580,7 @@ async def _add_web_sources_to_database(
                     # Qdrant adapter - needs embedding
                     # Run in thread to avoid blocking event loop
                     source_embeddings = await run_in_thread(
-                        create_embeddings_batch, [data["description"]]
+                        create_embeddings_batch, [data["description"]],
                     )
                     source_embedding = source_embeddings[0]
                     await database.add_source(
@@ -609,7 +603,7 @@ async def _add_web_sources_to_database(
                     logger.info(f"Added web source to Supabase: {source_id}")
 
                 else:
-                    logger.warning(f"Database adapter does not support adding sources")
+                    logger.warning("Database adapter does not support adding sources")
 
             except Exception as e:
                 logger.warning(f"Failed to add web source {source_id}: {e}")

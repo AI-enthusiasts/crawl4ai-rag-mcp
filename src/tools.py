@@ -1272,7 +1272,7 @@ def register_tools(mcp: "FastMCP") -> None:
         # Check which directories actually exist
         from typing import cast
 
-        accessible_paths = cast(dict[str, str], info["accessible_paths"])
+        accessible_paths = cast("dict[str, str]", info["accessible_paths"])
         for key, path in accessible_paths.items():
             if "(" not in path:  # Skip paths with descriptions
                 container_path = f"/app/analysis_scripts/{key.replace('_', '_')}/"
@@ -1300,7 +1300,7 @@ def register_tools(mcp: "FastMCP") -> None:
 
         The tool analyzes multiple programming languages including:
         - Python (.py files)
-        - JavaScript/TypeScript (.js, .ts, .jsx, .tsx files)  
+        - JavaScript/TypeScript (.js, .ts, .jsx, .tsx files)
         - Go (.go files)
         - And more based on the multi-language analyzer factory
 
@@ -1310,8 +1310,8 @@ def register_tools(mcp: "FastMCP") -> None:
         Returns:
             JSON string with parsing results, statistics, and repository information
         """
-        import os
         import json
+        import os
 
         try:
             # Get the app context
@@ -1339,7 +1339,7 @@ def register_tools(mcp: "FastMCP") -> None:
 
             # Security: Validate and sanitize local path
             local_path = os.path.abspath(os.path.expanduser(local_path))
-            
+
             # Define allowed directories for repository parsing (configurable)
             allowed_prefixes = [
                 os.path.expanduser("~/"),  # User home directory
@@ -1347,19 +1347,19 @@ def register_tools(mcp: "FastMCP") -> None:
                 "/var/tmp/",               # Var temporary
                 "/workspace/",             # Common workspace directory
             ]
-            
+
             # Check if path is within allowed directories
             path_allowed = any(local_path.startswith(os.path.abspath(prefix)) for prefix in allowed_prefixes)
-            
+
             if not path_allowed:
                 return json.dumps(
                     {
                         "success": False,
-                        "error": f"Path is not within allowed directories. Repository must be in home directory or temporary directories.",
+                        "error": "Path is not within allowed directories. Repository must be in home directory or temporary directories.",
                     },
                     indent=2,
                 )
-            
+
             # Validate local path exists
             if not os.path.exists(local_path):
                 return json.dumps(
@@ -1392,7 +1392,7 @@ def register_tools(mcp: "FastMCP") -> None:
 
             # Extract repository name from path
             repo_name = os.path.basename(os.path.abspath(local_path))
-            
+
             logger.info(f"Parsing local repository: {repo_name} at {local_path}")
 
             # Use a custom method to analyze local repository
@@ -1532,7 +1532,7 @@ def register_tools(mcp: "FastMCP") -> None:
             # Get all available sources first to understand what repositories we have
             sources_result = await get_available_sources(database_client)
             sources_data = json.loads(sources_result)
-            
+
             if not sources_data.get("success", False):
                 return json.dumps(
                     {
@@ -1550,9 +1550,9 @@ def register_tools(mcp: "FastMCP") -> None:
                 source=source_filter,
                 match_count=match_count * 3,  # Get more results to filter by language
             )
-            
+
             rag_data = json.loads(rag_result)
-            
+
             if not rag_data.get("success", False):
                 return json.dumps(
                     {
@@ -1565,13 +1565,13 @@ def register_tools(mcp: "FastMCP") -> None:
 
             # Organize results by language
             results_by_language = {}
-            
+
             for result in rag_data.get("results", []):
                 # Extract language information from metadata or URL
                 language = "unknown"
                 metadata = result.get("metadata", {})
                 url = result.get("url", "")
-                
+
                 # Try to determine language from metadata
                 if "language" in metadata:
                     language = metadata["language"].lower()
@@ -1579,7 +1579,7 @@ def register_tools(mcp: "FastMCP") -> None:
                     ext = metadata["file_extension"].lower()
                     language_map = {
                         "py": "python",
-                        "js": "javascript", 
+                        "js": "javascript",
                         "ts": "typescript",
                         "jsx": "javascript",
                         "tsx": "typescript",
@@ -1600,7 +1600,7 @@ def register_tools(mcp: "FastMCP") -> None:
                     for ext, lang in {
                         ".py": "python",
                         ".js": "javascript",
-                        ".ts": "typescript", 
+                        ".ts": "typescript",
                         ".jsx": "javascript",
                         ".tsx": "typescript",
                         ".go": "go",
@@ -1647,7 +1647,7 @@ def register_tools(mcp: "FastMCP") -> None:
                 results_by_language[language] = sorted(
                     results_by_language[language],
                     key=lambda x: x.get("similarity_score", 0),
-                    reverse=True
+                    reverse=True,
                 )[:match_count]
 
             # Calculate summary statistics
@@ -1667,7 +1667,7 @@ def register_tools(mcp: "FastMCP") -> None:
                         "coverage": f"{len(languages_found)} languages analyzed",
                         "avg_similarity_per_language": {
                             lang: round(
-                                sum(r.get("similarity_score", 0) for r in results) / len(results), 3
+                                sum(r.get("similarity_score", 0) for r in results) / len(results), 3,
                             ) if results else 0
                             for lang, results in results_by_language.items()
                         },
