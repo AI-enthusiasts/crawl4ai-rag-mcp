@@ -370,6 +370,36 @@ class QdrantAdapter:
 
         return final_results[:match_count]
 
+    async def url_exists(self, url: str) -> bool:
+        """Check if URL exists in database (efficient existence check).
+
+        Uses count() instead of scroll() for performance.
+        Per Qdrant docs: count() only returns number, not point data.
+
+        Args:
+            url: URL to check
+
+        Returns:
+            True if URL exists, False otherwise
+        """
+        filter_condition = Filter(
+            must=[
+                FieldCondition(
+                    key="url",
+                    match=MatchValue(value=url),
+                ),
+            ],
+        )
+
+        # Use count for efficient existence check
+        count_result = await self.client.count(
+            collection_name=self.CRAWLED_PAGES,
+            count_filter=filter_condition,
+            exact=False,  # Approximate count is fine for existence check
+        )
+
+        return count_result.count > 0
+
     async def get_documents_by_url(self, url: str) -> list[dict[str, Any]]:
         """Get all document chunks for a specific URL"""
         filter_condition = Filter(

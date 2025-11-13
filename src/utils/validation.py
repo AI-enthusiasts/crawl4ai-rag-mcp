@@ -1,13 +1,141 @@
 """Validation utilities for the Crawl4AI MCP server."""
 
+import ipaddress
 import os
 import re
+import socket
 from typing import Any
+from urllib.parse import urlparse
 
 from config import get_settings
 
 # Get settings instance
 settings = get_settings()
+
+
+def is_safe_hostname(hostname: str) -> dict[str, Any]:
+    """Validate hostname is safe for crawling (SSRF protection).
+
+    Blocks:
+    - Localhost addresses (127.0.0.1, ::1, localhost, etc.)
+    - Private IP ranges (RFC 1918: 10.x.x.x, 172.16-31.x.x, 192.168.x.x)
+    - Link-local addresses (169.254.x.x - includes cloud metadata 169.254.169.254)
+    - Reserved IP addresses
+    - Internal domain suffixes (.local, .internal, .corp)
+
+    Args:
+        hostname: Hostname or IP address from URL
+
+    Returns:
+        Dictionary with validation result
+    """
+    if not hostname:
+        return {"safe": False, "error": "Empty hostname"}
+
+    # Normalize hostname to lowercase
+    hostname = hostname.lower().strip()
+
+    # Block localhost variants (per Python docs - multiple forms exist)
+    localhost_variants = {
+        "localhost",
+        "localhost.localdomain",
+        "127.0.0.1",
+        "::1",
+        "0.0.0.0",
+        "0000:0000:0000:0000:0000:0000:0000:0001",
+        "::ffff:127.0.0.1",  # IPv4-mapped IPv6
+    }
+    if hostname in localhost_variants:
+        return {
+            "safe": False,
+            "error": f"Localhost addresses are not allowed: {hostname}",
+        }
+
+    # Block internal domain suffixes
+    internal_suffixes = (".local", ".internal", ".corp", ".localhost")
+    if any(hostname.endswith(suffix) for suffix in internal_suffixes):
+        return {
+            "safe": False,
+            "error": f"Internal domain suffixes are not allowed: {hostname}",
+        }
+
+    # Try to parse as IP address
+    try:
+        # Remove IPv6 brackets if present (e.g., [::1])
+        ip_str = hostname.strip("[]")
+
+        # Parse IP address - raises ValueError if not valid IP
+        ip_obj = ipaddress.ip_address(ip_str)
+
+        # Check if IP is loopback (per ipaddress module docs)
+        if ip_obj.is_loopback:
+            return {
+                "safe": False,
+                "error": f"Loopback addresses are not allowed: {hostname}",
+            }
+
+        # Check if IP is private (per IANA registries - ipaddress docs)
+        if ip_obj.is_private:
+            return {
+                "safe": False,
+                "error": f"Private IP addresses are not allowed: {hostname}",
+            }
+
+        # Check if IP is link-local (includes 169.254.x.x - cloud metadata!)
+        if ip_obj.is_link_local:
+            return {
+                "safe": False,
+                "error": f"Link-local addresses are not allowed (includes cloud metadata): {hostname}",
+            }
+
+        # Check if IP is reserved (per IETF - ipaddress docs)
+        if ip_obj.is_reserved:
+            return {
+                "safe": False,
+                "error": f"Reserved IP addresses are not allowed: {hostname}",
+            }
+
+        # IP is public and safe
+        return {"safe": True}
+
+    except ValueError:
+        # Not an IP address, treat as hostname
+        pass
+
+    # For hostnames, try to resolve to IP and validate
+    # Per urllib.parse docs: "code defensively" for security-sensitive operations
+    try:
+        # Resolve hostname to IP addresses (returns list of tuples)
+        # socket.getaddrinfo is the recommended way per Python docs
+        addr_info = socket.getaddrinfo(
+            hostname,
+            None,
+            family=socket.AF_UNSPEC,  # Support both IPv4 and IPv6
+            type=socket.SOCK_STREAM,
+        )
+
+        # Check all resolved IPs
+        for family, _, _, _, sockaddr in addr_info:
+            ip_str = sockaddr[0]  # Extract IP from (ip, port) tuple
+
+            # Recursively validate resolved IP
+            ip_check = is_safe_hostname(ip_str)
+            if not ip_check["safe"]:
+                return {
+                    "safe": False,
+                    "error": f"Hostname {hostname} resolves to unsafe IP: {ip_check['error']}",
+                }
+
+        # All resolved IPs are safe
+        return {"safe": True}
+
+    except (socket.gaierror, OSError) as e:
+        # DNS resolution failed - could be invalid hostname
+        # Per urllib.parse security guidance: validate before trusting
+        return {
+            "safe": False,
+            "error": f"Cannot resolve hostname {hostname}: {e}",
+        }
 
 
 def validate_neo4j_connection() -> bool:
@@ -172,7 +300,8 @@ def validate_crawl_url(url: str) -> dict[str, Any]:
         return {"valid": False, "error": fix_result["error"]}
 
     # Check if URL starts with allowed protocols for crawl4ai
-    allowed_protocols = ["http://", "https://", "file://", "raw:"]
+    # Note: file:// protocol removed for SSRF protection (can read local files)
+    allowed_protocols = ["http://", "https://", "raw:"]
     if not any(url.startswith(protocol) for protocol in allowed_protocols):
         error_msg = (
             f"URL must start with one of: {', '.join(allowed_protocols)}. Got: '{url}'"
@@ -202,6 +331,32 @@ def validate_crawl_url(url: str) -> dict[str, Any]:
             return {
                 "valid": False,
                 "error": f"Invalid URL format - missing domain: {url}",
+            }
+
+        # SSRF Protection: Validate hostname is safe for crawling
+        # Per urllib.parse docs: "code defensively" for security-sensitive operations
+        try:
+            parsed = urlparse(url)
+            hostname = parsed.hostname  # Extracts hostname (lowercase, no port/brackets)
+
+            if not hostname:
+                return {
+                    "valid": False,
+                    "error": f"Invalid URL - cannot extract hostname: {url}",
+                }
+
+            # Check if hostname is safe (blocks localhost, private IPs, cloud metadata)
+            hostname_check = is_safe_hostname(hostname)
+            if not hostname_check["safe"]:
+                return {
+                    "valid": False,
+                    "error": f"SSRF protection: {hostname_check['error']}",
+                }
+
+        except Exception as e:
+            return {
+                "valid": False,
+                "error": f"URL parsing failed: {e}",
             }
 
     # Normalize URL by removing fragment
