@@ -54,16 +54,19 @@ class AgenticSearchService:
 
     def __init__(self) -> None:
         """Initialize the agentic search service."""
-        # Configure timeout per OpenAI SDK docs: default is 10 minutes (too long)
-        # Use httpx.Timeout for granular control over connection/read timeouts
+        # Per OpenAI Pydantic structured outputs docs:
+        # - timeout: default is 10 minutes (too long for production)
+        # - max_retries: default is 2, retry on 408/409/429/5xx errors
+        # - Connection errors, timeouts, rate limits are retried automatically
         from core.constants import (
             LLM_API_CONNECT_TIMEOUT,
             LLM_API_READ_TIMEOUT,
             LLM_API_TIMEOUT_DEFAULT,
+            MAX_RETRIES_DEFAULT,
         )
 
         timeout = httpx.Timeout(
-            timeout=LLM_API_TIMEOUT_DEFAULT,  # Total timeout
+            timeout=LLM_API_TIMEOUT_DEFAULT,  # Total timeout (60s)
             connect=LLM_API_CONNECT_TIMEOUT,  # Connection timeout (5s)
             read=LLM_API_READ_TIMEOUT,  # Read timeout for responses (60s)
         )
@@ -71,6 +74,7 @@ class AgenticSearchService:
         self.client = AsyncOpenAI(
             api_key=settings.openai_api_key,
             timeout=timeout,
+            max_retries=MAX_RETRIES_DEFAULT,  # Retry 3 times (default is 2)
         )
         self.model = settings.model_choice
         self.temperature = settings.agentic_search_llm_temperature
@@ -591,10 +595,41 @@ Return a list of rankings with url, title, snippet, score, and reasoning for eac
         """
         logger.info(f"STAGE 3: Recursively crawling {len(urls)} promising URLs")
 
+        # HIGH PRIORITY FIX #10: Duplicate detection - filter out already crawled URLs
+        # Uses Qdrant count() for efficient existence check (per Qdrant docs)
+        app_ctx = get_app_context(ctx)
+        database_client = app_ctx.database_client
+        urls_to_crawl = []
+        urls_skipped = 0
+
+        for url in urls:
+            # Check if URL already exists in Qdrant (efficient count-based check)
+            try:
+                exists = await database_client.url_exists(url)
+                if exists:
+                    logger.info(f"Skipping duplicate URL (already in database): {url}")
+                    urls_skipped += 1
+                else:
+                    urls_to_crawl.append(url)
+            except Exception as e:
+                # On error, include URL (fail open)
+                logger.warning(f"Error checking duplicate for {url}: {e}")
+                urls_to_crawl.append(url)
+
+        if urls_skipped > 0:
+            logger.info(
+                f"Filtered {urls_skipped}/{len(urls)} duplicate URLs, "
+                f"crawling {len(urls_to_crawl)} new URLs",
+            )
+
+        if not urls_to_crawl:
+            logger.info("All URLs already in database, skipping crawl")
+            return 0
+
         # Crawl recursively with smart limits and filtering
         crawl_result = await crawl_urls_for_agentic_search(
             ctx=ctx,
-            urls=urls,
+            urls=urls_to_crawl,  # Use filtered URLs (duplicates removed)
             max_pages=self.max_pages_per_iteration,
             enable_url_filtering=self.enable_url_filtering,
         )
