@@ -88,11 +88,14 @@ class TestAgenticSearchService:
 
     @pytest.mark.asyncio
     async def test_service_initialization(self, test_settings):
-        """Test that service initializes correctly with settings."""
+        """Test that service initializes correctly with Pydantic AI agents."""
         service = AgenticSearchService()
 
-        assert service.client is not None
-        assert service.model == test_settings.model_choice
+        # Verify Pydantic AI agents are initialized
+        assert service.completeness_agent is not None
+        assert service.ranking_agent is not None
+        assert service.openai_model is not None
+        assert service.model_name == test_settings.model_choice
         assert service.temperature == test_settings.agentic_search_llm_temperature
         assert (
             service.completeness_threshold
