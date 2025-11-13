@@ -7,7 +7,8 @@ This module implements the complete agentic search pipeline:
 4. Query Refinement (LLM-based iteration)
 
 The implementation is production-ready with:
-- Full type safety using Pydantic models and OpenAI structured outputs
+- Full type safety using Pydantic AI agents with structured outputs
+- Automatic retry handling with validation
 - Comprehensive error handling
 - Detailed logging
 - Configurable thresholds and limits
@@ -18,14 +19,22 @@ import logging
 from typing import Any
 
 from fastmcp import Context
-from openai import AsyncOpenAI, OpenAIError  # type: ignore[attr-defined]
 from pydantic import BaseModel, Field
+from pydantic_ai import Agent
+from pydantic_ai.exceptions import UnexpectedModelBehavior
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.settings import ModelSettings
 
 from config import get_settings
 from core import MCPToolError
+from core.constants import (
+    LLM_API_TIMEOUT_DEFAULT,
+    MAX_RETRIES_DEFAULT,
+    SCORE_IMPROVEMENT_THRESHOLD,
+)
 from core.context import get_app_context
 from database import perform_rag_query
-from services.crawling import process_urls_for_mcp
+from services.crawling import crawl_urls_for_agentic_search
 from services.search import _search_searxng
 
 from .agentic_models import (
@@ -52,15 +61,59 @@ class AgenticSearchService:
     """
 
     def __init__(self) -> None:
-        """Initialize the agentic search service."""
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
-        self.model = settings.model_choice
+        """Initialize the agentic search service with Pydantic AI agents."""
+        # Per Pydantic AI docs: Use ModelSettings for timeout and temperature
+        # Create OpenAI model instance with API key
+        # Per Pydantic AI docs: OpenAIModel wraps the OpenAI client
+        model = OpenAIModel(
+            model_name=settings.model_choice,
+            api_key=settings.openai_api_key,
+        )
+
+        # Shared model settings for all agents
+        # Per Pydantic AI docs: timeout, temperature configured via ModelSettings
+        self.base_model_settings = ModelSettings(
+            temperature=settings.agentic_search_llm_temperature,
+            timeout=LLM_API_TIMEOUT_DEFAULT,  # 60s timeout
+        )
+
+        # Create specialized agents for each LLM task
+        # Per Pydantic AI docs: Agent with output_type for structured outputs
+        self.completeness_agent = Agent(
+            model=model,
+            output_type=CompletenessEvaluation,
+            output_retries=MAX_RETRIES_DEFAULT,  # Retry 3 times for validation errors
+            model_settings=self.base_model_settings,
+        )
+
+        self.ranking_agent = Agent(
+            model=model,
+            output_type=URLRankingList,
+            output_retries=MAX_RETRIES_DEFAULT,
+            model_settings=self.base_model_settings,
+        )
+
+        # Query refinement agent with custom temperature for creativity
+        # Per Pydantic AI docs: Use ModelSettings to override temperature per agent
+        # Note: output_type defined inline in _stage4_query_refinement (dynamic model)
+        refinement_settings = ModelSettings(
+            temperature=0.5,  # More creative for query generation
+            timeout=LLM_API_TIMEOUT_DEFAULT,
+        )
+        self.refinement_model_settings = refinement_settings
+        self.openai_model = model  # Store for dynamic agent creation
+
+        # Configuration parameters
+        self.model_name = settings.model_choice
         self.temperature = settings.agentic_search_llm_temperature
         self.completeness_threshold = settings.agentic_search_completeness_threshold
         self.max_iterations = settings.agentic_search_max_iterations
         self.max_urls_per_iteration = settings.agentic_search_max_urls_per_iteration
+        self.max_pages_per_iteration = settings.agentic_search_max_pages_per_iteration
         self.url_score_threshold = settings.agentic_search_url_score_threshold
         self.use_search_hints = settings.agentic_search_use_search_hints
+        self.enable_url_filtering = settings.agentic_search_enable_url_filtering
+        self.max_urls_to_rank = settings.agentic_search_max_urls_to_rank
         self.max_qdrant_results = settings.agentic_search_max_qdrant_results
 
     async def execute_search(
@@ -166,7 +219,8 @@ class AgenticSearchService:
                     break
 
                 # STAGE 3: Selective Crawling & Indexing
-                await self._stage3_selective_crawl(
+                previous_score = final_completeness  # Save score before crawling
+                urls_stored = await self._stage3_selective_crawl(
                     ctx,
                     promising_urls,
                     current_query,
@@ -175,34 +229,50 @@ class AgenticSearchService:
                     search_history,
                 )
 
-                # Re-evaluate after crawling
-                evaluation, rag_results = await self._stage1_local_check(
-                    ctx, current_query, iteration, search_history, is_recheck=True,
-                )
+                # OPTIMIZATION 1: Skip re-check if no content was stored
+                # Saves 1 LLM call per failed crawl
+                if urls_stored > 0:
+                    logger.info(f"Re-checking completeness after storing {urls_stored} URLs")
+                    evaluation, rag_results = await self._stage1_local_check(
+                        ctx, current_query, iteration, search_history, is_recheck=True,
+                    )
 
-                final_completeness = evaluation.score
-                final_results = rag_results
+                    final_completeness = evaluation.score
+                    final_results = rag_results
 
-                if evaluation.score >= threshold:
+                    if evaluation.score >= threshold:
+                        logger.info(
+                            f"Completeness threshold met after crawling: {evaluation.score:.2f}",
+                        )
+                        return AgenticSearchResult(
+                            success=True,
+                            query=query,
+                            iterations=iteration,
+                            completeness=evaluation.score,
+                            results=rag_results,
+                            search_history=search_history,
+                            status=SearchStatus.COMPLETE,
+                        )
+                else:
                     logger.info(
-                        f"Completeness threshold met after crawling: {evaluation.score:.2f}",
-                    )
-                    return AgenticSearchResult(
-                        success=True,
-                        query=query,
-                        iterations=iteration,
-                        completeness=evaluation.score,
-                        results=rag_results,
-                        search_history=search_history,
-                        status=SearchStatus.COMPLETE,
+                        "No content stored during crawl, skipping re-check (optimization)",
                     )
 
-                # Still incomplete, try refining query for next iteration
+                # OPTIMIZATION 2: Skip refinement if score improved significantly
+                # Saves 1 LLM call when making good progress
+                score_improvement = final_completeness - previous_score
                 if iteration < max_iter:
-                    refined = await self._stage4_query_refinement(
-                        query, current_query, evaluation.gaps,
-                    )
-                    current_query = refined.refined_queries[0]
+                    if score_improvement >= SCORE_IMPROVEMENT_THRESHOLD:
+                        logger.info(
+                            f"Score improved significantly ({previous_score:.2f} → "
+                            f"{final_completeness:.2f}, +{score_improvement:.2f}), "
+                            f"skipping refinement (optimization)",
+                        )
+                    else:
+                        refined = await self._stage4_query_refinement(
+                            query, current_query, evaluation.gaps,
+                        )
+                        current_query = refined.refined_queries[0]
 
             # Max iterations reached
             logger.info(f"Max iterations reached: {iteration}/{max_iter}")
@@ -338,35 +408,19 @@ Provide:
 - gaps: List of missing information or knowledge gaps (empty list if complete)"""
 
         try:
-            response = await self.client.beta.chat.completions.parse(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=self.temperature,
-                response_format=CompletenessEvaluation,
-            )
+            # Per Pydantic AI docs: agent.run() returns RunResult with typed output
+            # Retries and validation handled automatically
+            result = await self.completeness_agent.run(prompt)
+            return result.output
 
-            parsed_response = response.choices[0].message.parsed
-            if not parsed_response:
-                msg = "LLM returned empty parsed response"
-                raise ValueError(msg)
+        except UnexpectedModelBehavior:
+            # Per Pydantic AI docs: Raised when retries exhausted
+            logger.exception("Completeness evaluation failed after retries")
+            raise  # Re-raise to propagate error
 
-            return parsed_response  # type: ignore[return-value]
-
-        except OpenAIError as e:
-            logger.exception("Completeness evaluation failed: %s", e)
-            # Return safe default
-            return CompletenessEvaluation(
-                score=0.0,
-                reasoning=f"Evaluation failed: {e}",
-                gaps=["Unable to evaluate completeness"],
-            )
-        except Exception as e:
-            logger.exception("Unexpected error in completeness evaluation: %s", e)
-            return CompletenessEvaluation(
-                score=0.0,
-                reasoning=f"Unexpected error: {e}",
-                gaps=["Unable to evaluate completeness"],
-            )
+        except Exception:
+            logger.exception("Unexpected error in completeness evaluation")
+            raise  # Re-raise instead of returning default
 
     async def _stage2_web_search(
         self,
@@ -410,6 +464,14 @@ Provide:
             return []
 
         logger.info(f"Found {len(search_results)} search results")
+
+        # OPTIMIZATION 3: Limit URLs to rank (configurable)
+        # Reduces LLM tokens and speeds up ranking
+        if len(search_results) > self.max_urls_to_rank:
+            logger.info(
+                f"Limiting ranking to top {self.max_urls_to_rank} of {len(search_results)} results",
+            )
+            search_results = search_results[: self.max_urls_to_rank]
 
         # LLM ranking of URLs
         rankings = await self._rank_urls(query, gaps, search_results)
@@ -479,50 +541,22 @@ Be selective - most URLs should score below 0.7.
 Return a list of rankings with url, title, snippet, score, and reasoning for each."""
 
         try:
-            response = await self.client.beta.chat.completions.parse(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=self.temperature,
-                response_format=URLRankingList,
-            )
-
-            parsed_response = response.choices[0].message.parsed
-            if not parsed_response:
-                msg = "LLM returned empty parsed response"
-                raise ValueError(msg)
-
-            rankings = parsed_response.rankings  # type: ignore[union-attr]
+            # Per Pydantic AI docs: agent.run() returns RunResult with typed output
+            result = await self.ranking_agent.run(prompt)
+            rankings = result.output.rankings
 
             # Sort by score descending
             rankings.sort(key=lambda r: r.score, reverse=True)
             return rankings
 
-        except OpenAIError as e:
-            logger.exception("URL ranking failed: %s", e)
-            # Return all URLs with neutral score
-            return [
-                URLRanking(
-                    url=r["url"],
-                    title=r["title"],
-                    snippet=r.get("snippet", ""),
-                    score=0.5,
-                    reasoning="Ranking failed, using neutral score",
-                )
-                for r in search_results
-            ]
-        except Exception as e:
-            logger.exception("Unexpected error in URL ranking: %s", e)
-            # Return all URLs with neutral score
-            return [
-                URLRanking(
-                    url=r["url"],
-                    title=r["title"],
-                    snippet=r.get("snippet", ""),
-                    score=0.5,
-                    reasoning=f"Unexpected error: {e}",
-                )
-                for r in search_results
-            ]
+        except UnexpectedModelBehavior:
+            # Per Pydantic AI docs: Raised when retries exhausted
+            logger.exception("URL ranking failed after retries")
+            raise  # Re-raise to propagate error
+
+        except Exception:
+            logger.exception("Unexpected error in URL ranking")
+            raise  # Re-raise instead of returning defaults
 
     async def _stage3_selective_crawl(
         self,
@@ -532,33 +566,71 @@ Return a list of rankings with url, title, snippet, score, and reasoning for eac
         use_hints: bool,
         iteration: int,
         search_history: list[SearchIteration],
-    ) -> None:
-        """STAGE 3: Crawl promising URLs and index in Qdrant.
+    ) -> int:
+        """STAGE 3: Crawl promising URLs recursively with smart filtering and limits.
 
         Args:
             ctx: FastMCP context
-            urls: URLs to crawl
+            urls: URLs to crawl (starting points)
             query: Original query
             use_hints: Whether to use search hints
             iteration: Current iteration number
             search_history: History to append to
-        """
-        logger.info(f"STAGE 3: Crawling {len(urls)} promising URLs")
 
-        # Crawl and index URLs (process_urls_for_mcp handles full indexing)
-        crawl_result = await process_urls_for_mcp(
+        Returns:
+            Number of URLs successfully stored in Qdrant
+        """
+        logger.info(f"STAGE 3: Recursively crawling {len(urls)} promising URLs")
+
+        # HIGH PRIORITY FIX #10: Duplicate detection - filter out already crawled URLs
+        # Uses Qdrant count() for efficient existence check (per Qdrant docs)
+        app_ctx = get_app_context(ctx)
+        database_client = app_ctx.database_client
+        urls_to_crawl = []
+        urls_skipped = 0
+
+        for url in urls:
+            # Check if URL already exists in Qdrant (efficient count-based check)
+            try:
+                exists = await database_client.url_exists(url)
+                if exists:
+                    logger.info(f"Skipping duplicate URL (already in database): {url}")
+                    urls_skipped += 1
+                else:
+                    urls_to_crawl.append(url)
+            except Exception as e:
+                # On error, include URL (fail open)
+                logger.warning(f"Error checking duplicate for {url}: {e}")
+                urls_to_crawl.append(url)
+
+        if urls_skipped > 0:
+            logger.info(
+                f"Filtered {urls_skipped}/{len(urls)} duplicate URLs, "
+                f"crawling {len(urls_to_crawl)} new URLs",
+            )
+
+        if not urls_to_crawl:
+            logger.info("All URLs already in database, skipping crawl")
+            return 0
+
+        # Crawl recursively with smart limits and filtering
+        crawl_result = await crawl_urls_for_agentic_search(
             ctx=ctx,
-            urls=urls,
-            batch_size=20,
-            return_raw_markdown=False,  # Store in database
+            urls=urls_to_crawl,  # Use filtered URLs (duplicates removed)
+            max_pages=self.max_pages_per_iteration,
+            enable_url_filtering=self.enable_url_filtering,
         )
 
-        # Parse crawl results
-        crawl_data = json.loads(crawl_result)
-        urls_stored = sum(1 for r in crawl_data.get("results", []) if r.get("success"))
-        chunks_stored = sum(r.get("chunks_stored", 0) for r in crawl_data.get("results", []))
+        # Extract results
+        urls_crawled = crawl_result.get("urls_crawled", 0)
+        urls_stored = crawl_result.get("urls_stored", 0)
+        chunks_stored = crawl_result.get("chunks_stored", 0)
+        urls_filtered = crawl_result.get("urls_filtered", 0)
 
-        logger.info(f"Stored {urls_stored}/{len(urls)} URLs, {chunks_stored} chunks total")
+        logger.info(
+            f"Crawled {urls_crawled} pages, stored {urls_stored} URLs, "
+            f"{chunks_stored} chunks, filtered {urls_filtered} URLs",
+        )
 
         search_history.append(
             SearchIteration(
@@ -571,10 +643,12 @@ Return a list of rankings with url, title, snippet, score, and reasoning for eac
             ),
         )
 
-        # TODO: Implement search hints generation if use_hints=True
-        # This requires investigating Crawl4AI's metadata capabilities
+        # Note: Search hints feature requires Crawl4AI metadata capabilities
+        # Currently not implemented - would generate optimized Qdrant queries from metadata
         if use_hints:
             logger.info("Search hints requested but not yet implemented")
+
+        return urls_stored
 
     async def _stage4_query_refinement(
         self, original_query: str, current_query: str, gaps: list[str],
@@ -610,6 +684,7 @@ Provide:
 
         try:
             # Create a temporary model for this response
+            # Per Pydantic AI docs: Can create Agent with any Pydantic model as output_type
             class QueryRefinementResponse(BaseModel):
                 """Response model for query refinement."""
 
@@ -623,18 +698,19 @@ Provide:
                     description="Explanation of refinement strategy",
                 )
 
-            response = await self.client.beta.chat.completions.parse(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.5,  # Slightly more creative for query generation
-                response_format=QueryRefinementResponse,
+            # Create temporary agent with inline response model
+            # Per Pydantic AI docs: Create Agent instance with specific output_type
+            refinement_agent = Agent(
+                model=self.openai_model,
+                output_type=QueryRefinementResponse,
+                output_retries=MAX_RETRIES_DEFAULT,
+                model_settings=self.refinement_model_settings,
             )
 
-            if not response.choices[0].message.parsed:
-                msg = "LLM returned empty parsed response"
-                raise ValueError(msg)
+            # Per Pydantic AI docs: agent.run() returns RunResult with typed output
+            result = await refinement_agent.run(prompt)
+            parsed = result.output
 
-            parsed = response.choices[0].message.parsed
             return QueryRefinement(
                 original_query=original_query,
                 current_query=current_query,
@@ -642,23 +718,33 @@ Provide:
                 reasoning=parsed.reasoning,
             )
 
-        except OpenAIError as e:
-            logger.exception("Query refinement failed: %s", e)
-            # Return current query as fallback
-            return QueryRefinement(
-                original_query=original_query,
-                current_query=current_query,
-                refined_queries=[current_query],
-                reasoning=f"Refinement failed: {e}",
-            )
-        except Exception as e:
-            logger.exception("Unexpected error in query refinement: %s", e)
-            return QueryRefinement(
-                original_query=original_query,
-                current_query=current_query,
-                refined_queries=[current_query],
-                reasoning=f"Unexpected error: {e}",
-            )
+        except UnexpectedModelBehavior:
+            # Per Pydantic AI docs: Raised when retries exhausted
+            logger.exception("Query refinement failed after retries")
+            raise  # Re-raise to propagate error
+
+        except Exception:
+            logger.exception("Unexpected error in query refinement")
+            raise  # Re-raise instead of returning fallback
+
+
+# Singleton instance for connection pooling (per Pydantic AI best practices)
+_agentic_search_service: AgenticSearchService | None = None
+
+
+def get_agentic_search_service() -> AgenticSearchService:
+    """Get singleton instance of AgenticSearchService.
+
+    Per Pydantic AI docs: Reuse Agent instances to benefit from connection pooling.
+    Creating new agents for every request wastes resources and degrades performance.
+
+    Returns:
+        Singleton AgenticSearchService instance with cached Pydantic AI agents
+    """
+    global _agentic_search_service
+    if _agentic_search_service is None:
+        _agentic_search_service = AgenticSearchService()
+    return _agentic_search_service
 
 
 async def agentic_search_impl(
@@ -696,7 +782,8 @@ async def agentic_search_impl(
         )
 
     try:
-        service = AgenticSearchService()
+        # Get singleton service instance (connection pooling optimization)
+        service = get_agentic_search_service()
         result = await service.execute_search(
             ctx=ctx,
             query=query,
@@ -709,6 +796,6 @@ async def agentic_search_impl(
         return result.model_dump_json()
 
     except Exception as e:
-        logger.exception(f"Agentic search implementation failed: {e}")
+        logger.exception("Agentic search implementation failed")
         msg = f"Agentic search failed: {e!s}"
-        raise MCPToolError(msg)
+        raise MCPToolError(msg) from e

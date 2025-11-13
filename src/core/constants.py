@@ -24,19 +24,69 @@ MAX_ITERATIONS_DEFAULT = 3  # Default maximum search iterations
 MAX_ITERATIONS_EXTENSIVE = 5  # Extensive search iterations
 MAX_ITERATIONS_QUICK = 1  # Quick single-pass search
 
-MAX_URLS_PER_ITERATION_DEFAULT = 3  # Default URLs to crawl per iteration
-MAX_URLS_PER_ITERATION_EXTENSIVE = 5  # More URLs for comprehensive search
+MAX_URLS_PER_ITERATION_DEFAULT = 5  # Default URLs to crawl per iteration
+MAX_URLS_PER_ITERATION_EXTENSIVE = 10  # More URLs for comprehensive search
 MAX_URLS_PER_ITERATION_QUICK = 1  # Single URL for quick search
+
+# Recursive crawling limits
+MAX_PAGES_PER_ITERATION_DEFAULT = 50  # Maximum pages to crawl across all URLs in iteration
+MAX_PAGES_PER_ITERATION_EXTENSIVE = 100  # More pages for comprehensive search
+MAX_PAGES_PER_ITERATION_QUICK = 10  # Fewer pages for quick search
+
+MAX_CRAWL_DEPTH_DEFAULT = 3  # Default depth for recursive crawling
+MAX_CRAWL_DEPTH_SHALLOW = 1  # Single level (no recursion)
+MAX_CRAWL_DEPTH_DEEP = 5  # Deep crawling for comprehensive coverage
+
+# Memory protection limits
+MAX_VISITED_URLS_LIMIT = 10000  # Maximum visited URLs to track (prevents memory exhaustion)
 
 # LLM parameters
 LLM_TEMPERATURE_DETERMINISTIC = 0.3  # Deterministic for completeness/ranking
 LLM_TEMPERATURE_BALANCED = 0.5  # Balanced for query refinement
 LLM_TEMPERATURE_CREATIVE = 0.7  # Creative for ideation
 
+# LLM call optimization thresholds
+SCORE_IMPROVEMENT_THRESHOLD = 0.1  # Skip refinement if score improved by this much
+MAX_URLS_TO_RANK_DEFAULT = 20  # Default number of URLs to rank with LLM
+
 # Qdrant limits
 MAX_QDRANT_RESULTS_DEFAULT = 10  # Default results from Qdrant
 MAX_QDRANT_RESULTS_COMPREHENSIVE = 20  # More results for thorough analysis
 MAX_QDRANT_RESULTS_QUICK = 5  # Fewer results for speed
+
+# URL filtering patterns (avoid these in recursive crawling)
+URL_FILTER_PATTERNS = [
+    # GitHub patterns to avoid infinite crawling
+    r"/commit/",  # Individual commits
+    r"/commits/",  # Commit history pages
+    r"/blame/",  # Blame pages
+    r"/compare/",  # Compare pages
+    r"/pull/\d+/commits",  # PR commit pages
+    r"/pull/\d+/files",  # PR files pages
+    r"/issues/\d+/events",  # Issue events
+    r"/actions/runs/",  # GitHub Actions runs
+    r"/network/dependencies",  # Dependency graph
+    r"/pulse",  # Pulse/activity pages
+    r"/graphs/",  # Graph pages
+    r"/security/",  # Security advisories
+    # GitLab patterns
+    r"/-/commit/",
+    r"/-/commits/",
+    r"/-/merge_requests/\d+/diffs",
+    # Documentation patterns to filter
+    r"/search\?",  # Search result pages
+    r"/tag/",  # Tag pages
+    r"/tags\?",  # Tag listing pages
+    r"/releases\?",  # Release listing pages
+    # General patterns
+    r"\?page=\d+$",  # Pagination pages (often duplicates)
+    r"/archive/",  # Archive pages
+    r"\.git$",  # Git repositories
+    r"\.zip$",  # Downloads
+    r"\.tar\.gz$",  # Downloads
+    r"/rss$",  # RSS feeds
+    r"/atom$",  # Atom feeds
+]
 
 # ========================================
 # Vector Database Constants
@@ -68,6 +118,9 @@ SEARXNG_TIMEOUT_DEFAULT = 30
 NEO4J_BATCH_TIMEOUT_DEFAULT = 120
 HTTP_REQUEST_TIMEOUT_DEFAULT = 30
 CRAWL_TIMEOUT_DEFAULT = 60
+LLM_API_TIMEOUT_DEFAULT = 60  # OpenAI API timeout (default is 10 minutes - too long)
+LLM_API_CONNECT_TIMEOUT = 5  # Connection timeout for LLM API
+LLM_API_READ_TIMEOUT = 60  # Read timeout for LLM responses
 
 # Retry limits
 MAX_RETRIES_DEFAULT = 3
