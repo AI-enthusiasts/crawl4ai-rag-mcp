@@ -1,36 +1,26 @@
+# Test script with known hallucinations for testing enhanced detection
 import requests
-from datetime import datetime
+import datetime
 import json
 
-# Test script with known hallucinations for testing
-
-def main():
-    # Valid code
+def test_function():
+    # Known hallucination 1: Response object doesn't have extract_json_data method
     response = requests.get("https://api.example.com/data")
-    
-    # Hallucination 1: extract_json_data doesn't exist on Response object
     data = response.extract_json_data()
     
-    # Valid code
-    current_time = datetime.now()
+    # Known hallucination 2: datetime object doesn't have add_days method
+    current_time = datetime.datetime.now()
+    future_time = current_time.add_days(7)
     
-    # Hallucination 2: add_days doesn't exist on datetime object
-    tomorrow = current_time.add_days(1)
-    
-    # Hallucination 3: auto_retry parameter doesn't exist in requests.post
+    # Known hallucination 3: requests.post doesn't have auto_retry parameter
     result = requests.post(
-        "https://api.example.com/submit",
-        json={"data": "test"},
-        auto_retry=True  # This parameter doesn't exist
+        "https://api.example.com/submit", 
+        json=data, 
+        auto_retry=True,
+        retry_attempts=3
     )
     
-    # Valid code
-    json_str = json.dumps({"test": "data"})
-    
-    # Hallucination 4: json.parse doesn't exist (should be json.loads)
-    parsed = json.parse(json_str)
-    
-    return parsed
+    return result
 
 if __name__ == "__main__":
-    main()
+    test_function()

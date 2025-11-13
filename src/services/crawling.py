@@ -1,17 +1,22 @@
 """Crawling services for the Crawl4AI MCP server."""
 
+import asyncio
 import json
 import logging
+from contextlib import asynccontextmanager
 from typing import Any
 
 from crawl4ai import (
     AsyncWebCrawler,
+    BrowserConfig,
     CacheMode,
     CrawlerRunConfig,
     MemoryAdaptiveDispatcher,
 )
+from crawl4ai.utils import get_memory_stats
 from fastmcp import Context
 
+from core.constants import MAX_VISITED_URLS_LIMIT
 from core.logging import logger
 from core.stdout_utils import SuppressStdout
 
@@ -21,15 +26,70 @@ from utils.text_processing import smart_chunk_markdown
 from utils.url_helpers import extract_domain_from_url, normalize_url
 
 
+@asynccontextmanager
+async def track_memory(operation_name: str):
+    """
+    Context manager to track memory usage before and after an operation.
+
+    Args:
+        operation_name: Name of the operation being tracked
+
+    Yields:
+        dict: Dictionary to store results for memory analysis
+    """
+    start_memory_percent, start_available_gb, total_gb = get_memory_stats()
+    logger.info(
+        f"[{operation_name}] Memory before: {start_memory_percent:.1f}% used, "
+        f"{start_available_gb:.2f}/{total_gb:.2f} GB available",
+    )
+
+    # Yield a dict to collect results
+    context = {"results": None}
+
+    try:
+        yield context
+    finally:
+        end_memory_percent, end_available_gb, _ = get_memory_stats()
+        memory_delta = end_memory_percent - start_memory_percent
+
+        logger.info(
+            f"[{operation_name}] Memory after: {end_memory_percent:.1f}% used "
+            f"(Δ {memory_delta:+.1f}%), {end_available_gb:.2f} GB available",
+        )
+
+        # Log dispatch stats if results are available
+        if context["results"]:
+            dispatch_stats = []
+            for r in context["results"]:
+                if hasattr(r, "dispatch_result") and r.dispatch_result:
+                    dispatch_stats.append(
+                        {
+                            "memory_usage": r.dispatch_result.memory_usage,
+                            "peak_memory": r.dispatch_result.peak_memory,
+                        },
+                    )
+
+            # Explicit length check to prevent division by zero (defensive programming)
+            if dispatch_stats and len(dispatch_stats) > 0:
+                avg_memory = sum(s["memory_usage"] for s in dispatch_stats) / len(
+                    dispatch_stats,
+                )
+                peak_memory = max(s["peak_memory"] for s in dispatch_stats)
+                logger.info(
+                    f"[{operation_name}] Dispatch stats: "
+                    f"avg {avg_memory:.1f} MB, peak {peak_memory:.1f} MB",
+                )
+
+
 async def crawl_markdown_file(
-    crawler: AsyncWebCrawler,
+    browser_config: BrowserConfig,
     url: str,
 ) -> list[dict[str, Any]]:
     """
     Crawl a .txt or markdown file.
 
     Args:
-        crawler: AsyncWebCrawler instance
+        browser_config: BrowserConfig for creating crawler instance
         url: URL of the file
 
     Returns:
@@ -37,18 +97,21 @@ async def crawl_markdown_file(
     """
     crawl_config = CrawlerRunConfig()
 
-    with SuppressStdout():
-        result = await crawler.arun(url=url, config=crawl_config)
-    if result.success and result.markdown:
-        return [{"url": url, "markdown": result.markdown}]
-    logger.error(f"Failed to crawl {url}: {result.error_message}")
-    return []
+    # Create crawler with context manager for automatic cleanup
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+        # Run in executor to avoid blocking event loop
+        with SuppressStdout():
+            result = await crawler.arun(url=url, config=crawl_config)
+        if result.success and result.markdown:
+            return [{"url": url, "markdown": result.markdown}]
+        logger.error(f"Failed to crawl {url}: {result.error_message}")
+        return []
 
 
 async def crawl_batch(
-    crawler: AsyncWebCrawler,
+    browser_config: BrowserConfig,
     urls: list[str],
-    max_concurrent: int = 10,
+    dispatcher: MemoryAdaptiveDispatcher,
 ) -> list[dict[str, Any]]:
     """
     Batch crawl multiple URLs in parallel.
@@ -56,7 +119,7 @@ async def crawl_batch(
     Args:
         crawler: AsyncWebCrawler instance
         urls: List of URLs to crawl
-        max_concurrent: Maximum number of concurrent browser sessions
+        dispatcher: Shared MemoryAdaptiveDispatcher for global concurrency control
 
     Returns:
         List of dictionaries with URL and markdown content
@@ -138,26 +201,50 @@ async def crawl_batch(
         logger.debug("No URL transformations were needed during validation")
 
     logger.info(
-        f"Starting crawl of {len(validated_urls)} validated URLs with max_concurrent={max_concurrent}",
+        f"Starting crawl of {len(validated_urls)} validated URLs",
     )
     logger.debug(f"Final URLs for crawling: {validated_urls}")
 
-    # Initialize crawler configuration
-    crawl_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
-    dispatcher = MemoryAdaptiveDispatcher(
-        memory_threshold_percent=70.0,
-        check_interval=1.0,
-        max_session_permit=max_concurrent,
+    # Initialize crawler configuration with timeout to prevent 504 errors
+    # Set page timeout to 45s to ensure pages don't hang indefinitely
+    # NOTE: We intentionally do NOT use session_id here
+    # Per crawl4ai docs: "When no session_id is provided, pages are automatically closed"
+    # This prevents browser page leaks in batch operations
+    crawl_config = CrawlerRunConfig(
+        cache_mode=CacheMode.BYPASS,
+        stream=False,
+        page_timeout=45000,  # 45 seconds in milliseconds
+        # session_id=None - explicitly no session for automatic page cleanup
     )
 
+    # Use shared dispatcher from context for global concurrency control
+    # This ensures max_session_permit applies across ALL tool calls, not per-call
+
     try:
-        logger.debug("Starting crawler.arun_many...")
-        with SuppressStdout():
-            results = await crawler.arun_many(
-                urls=validated_urls,
-                config=crawl_config,
-                dispatcher=dispatcher,
-            )
+        # Create crawler with context manager for automatic cleanup
+        # This ensures browser pages are properly closed after crawling
+        async with AsyncWebCrawler(config=browser_config) as crawler:
+            async with track_memory(f"crawl_batch({len(validated_urls)} URLs)") as mem_ctx:
+                logger.info(
+                    f"Starting arun_many for {len(validated_urls)} URLs "
+                    f"(page_timeout={crawl_config.page_timeout}ms)",
+                )
+
+                # Crawler will automatically close all pages when exiting context manager
+                with SuppressStdout():
+                    results = await crawler.arun_many(
+                        urls=validated_urls,
+                        config=crawl_config,
+                        dispatcher=dispatcher,
+                    )
+
+                # Store results for memory tracking
+                mem_ctx["results"] = results
+
+                logger.info(
+                    f"arun_many completed: {len(results)} results returned",
+                )
+            # Crawler automatically closed here - all pages cleaned up
 
         # Log crawling results summary
         successful_results = [
@@ -169,7 +256,9 @@ async def crawl_batch(
         failed_results = [r for r in results if not r.success or not r.markdown]
 
         logger.info(
-            f"Crawling complete: {len(successful_results)} successful, {len(failed_results)} failed",
+            f"Crawling complete: {len(successful_results)} successful, "
+            f"{len(failed_results)} failed, "
+            f"total_processed={len(results)}",
         )
 
         if successful_results:
@@ -186,82 +275,92 @@ async def crawl_batch(
         return successful_results
 
     except Exception as e:
-        logger.error(f"Crawl4AI error with URLs {validated_urls}: {e}")
-        logger.error(f"Exception type: {type(e).__name__}")
-        logger.error(f"Exception details: {e!s}")
-
-        # Log additional context for debugging
         logger.error(
-            f"Crawler config: cache_mode={crawl_config.cache_mode}, stream={crawl_config.stream}",
+            f"Crawl4AI error during batch crawl: {type(e).__name__}: {e}",
+            exc_info=True,
+        )
+        logger.error(
+            f"Failed URLs: {validated_urls}",
+        )
+        logger.error(
+            f"Crawler config: cache_mode={crawl_config.cache_mode}, "
+            f"stream={crawl_config.stream}, "
+            f"page_timeout={crawl_config.page_timeout}ms, "
+            f"session_id={crawl_config.session_id}",
         )
         logger.error(
             f"Dispatcher config: memory_threshold={dispatcher.memory_threshold_percent}%, "
-            f"max_sessions={dispatcher.max_session_permit}",
+            f"max_sessions={dispatcher.max_session_permit}, "
+            f"check_interval={dispatcher.check_interval}s",
         )
 
         # Re-raise with more context
-        msg = f"Crawling failed for URLs {validated_urls}: {e}"
+        msg = f"Crawling failed for {len(validated_urls)} URLs: {e}"
         raise ValueError(msg) from e
 
 
 async def crawl_recursive_internal_links(
-    crawler: AsyncWebCrawler,
+    browser_config: BrowserConfig,
     start_urls: list[str],
+    dispatcher: MemoryAdaptiveDispatcher,
     max_depth: int = 3,
-    max_concurrent: int = 10,
 ) -> list[dict[str, Any]]:
     """
     Recursively crawl internal links from start URLs up to a maximum depth.
 
     Args:
-        crawler: AsyncWebCrawler instance
+        browser_config: BrowserConfig for creating crawler instance
         start_urls: List of starting URLs
+        dispatcher: Shared MemoryAdaptiveDispatcher for global concurrency control
         max_depth: Maximum recursion depth
-        max_concurrent: Maximum number of concurrent browser sessions
 
     Returns:
         List of dictionaries with URL and markdown content
     """
     run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
-    dispatcher = MemoryAdaptiveDispatcher(
-        memory_threshold_percent=70.0,
-        check_interval=1.0,
-        max_session_permit=max_concurrent,
-    )
+    # Use shared dispatcher from context for global concurrency control
 
     visited = set()
     current_urls = {normalize_url(u) for u in start_urls}
     results_all = []
 
-    for _depth in range(max_depth):
-        urls_to_crawl = [
-            normalize_url(url)
-            for url in current_urls
-            if normalize_url(url) not in visited
-        ]
-        if not urls_to_crawl:
-            break
+    # Create crawler with context manager for automatic cleanup
+    async with AsyncWebCrawler(config=browser_config) as crawler:
+        for depth in range(max_depth):
+            urls_to_crawl = [
+                normalize_url(url)
+                for url in current_urls
+                if normalize_url(url) not in visited
+            ]
+            if not urls_to_crawl:
+                break
 
-        with SuppressStdout():
-            results = await crawler.arun_many(
-                urls=urls_to_crawl,
-                config=run_config,
-                dispatcher=dispatcher,
-            )
-        next_level_urls = set()
+            async with track_memory(
+                f"recursive_crawl(depth={depth}, urls={len(urls_to_crawl)})",
+            ) as mem_ctx:
+                # Run in executor to avoid blocking event loop
+                with SuppressStdout():
+                    results = await crawler.arun_many(
+                        urls=urls_to_crawl,
+                        config=run_config,
+                        dispatcher=dispatcher,
+                    )
+                mem_ctx["results"] = results
 
-        for result in results:
-            norm_url = normalize_url(result.url)
-            visited.add(norm_url)
+            next_level_urls = set()
 
-            if result.success and result.markdown:
-                results_all.append({"url": result.url, "markdown": result.markdown})
-                for link in result.links.get("internal", []):
-                    next_url = normalize_url(link["href"])
-                    if next_url not in visited:
-                        next_level_urls.add(next_url)
+            for result in results:
+                norm_url = normalize_url(result.url)
+                visited.add(norm_url)
 
-        current_urls = next_level_urls
+                if result.success and result.markdown:
+                    results_all.append({"url": result.url, "markdown": result.markdown})
+                    for link in result.links.get("internal", []):
+                        next_url = normalize_url(link["href"])
+                        if next_url not in visited:
+                            next_level_urls.add(next_url)
+
+            current_urls = next_level_urls
 
     return results_all
 
@@ -269,7 +368,6 @@ async def crawl_recursive_internal_links(
 async def process_urls_for_mcp(
     ctx: Context,
     urls: list[str],
-    max_concurrent: int = 10,
     batch_size: int = 20,
     return_raw_markdown: bool = False,
 ) -> str:
@@ -285,7 +383,6 @@ async def process_urls_for_mcp(
     Args:
         ctx: FastMCP context containing Crawl4AIContext
         urls: List of URLs to crawl
-        max_concurrent: Maximum number of concurrent browser sessions
         batch_size: Batch size for database operations
         return_raw_markdown: If True, return raw markdown instead of storing
 
@@ -312,29 +409,30 @@ async def process_urls_for_mcp(
 
         # Validate that context has required attributes instead of strict type checking
         if not (
-            hasattr(crawl4ai_ctx, "crawler")
+            hasattr(crawl4ai_ctx, "browser_config")
             and hasattr(crawl4ai_ctx, "database_client")
+            and hasattr(crawl4ai_ctx, "dispatcher")
         ):
             return json.dumps(
                 {
                     "success": False,
-                    "error": "Invalid Crawl4AI context: missing required attributes (crawler, database_client)",
+                    "error": "Invalid Crawl4AI context: missing required attributes (browser_config, database_client, dispatcher)",
                 },
             )
 
-        if not crawl4ai_ctx.crawler or not crawl4ai_ctx.database_client:
+        if not crawl4ai_ctx.browser_config or not crawl4ai_ctx.database_client or not crawl4ai_ctx.dispatcher:
             return json.dumps(
                 {
                     "success": False,
-                    "error": "Invalid Crawl4AI context: crawler or database_client is None",
+                    "error": "Invalid Crawl4AI context: browser_config, database_client, or dispatcher is None",
                 },
             )
 
         # Call the low-level crawl_batch function
         crawl_results = await crawl_batch(
-            crawler=crawl4ai_ctx.crawler,
+            browser_config=crawl4ai_ctx.browser_config,
             urls=urls,
-            max_concurrent=max_concurrent,
+            dispatcher=crawl4ai_ctx.dispatcher,
         )
 
         if return_raw_markdown:
@@ -432,3 +530,256 @@ async def process_urls_for_mcp(
                 "error": str(e),
             },
         )
+
+
+def should_filter_url(url: str, enable_filtering: bool = True) -> bool:
+    """
+    Check if URL should be filtered out using smart patterns.
+
+    Filters out URLs that are likely to cause infinite crawling or contain
+    duplicate/low-value content (GitHub commits, pagination, archives, etc.).
+
+    Args:
+        url: URL to check
+        enable_filtering: Whether filtering is enabled (from settings)
+
+    Returns:
+        True if URL should be filtered (skipped), False otherwise
+    """
+    if not enable_filtering:
+        return False
+
+    import re
+
+    from core.constants import URL_FILTER_PATTERNS
+
+    # Check against all filter patterns
+    for pattern in URL_FILTER_PATTERNS:
+        if re.search(pattern, url):
+            logger.debug(f"Filtering URL (matched pattern {pattern}): {url}")
+            return True
+
+    return False
+
+
+async def crawl_urls_for_agentic_search(
+    ctx: Context,
+    urls: list[str],
+    max_pages: int = 50,
+    enable_url_filtering: bool = True,
+) -> dict[str, Any]:
+    """
+    Crawl URLs recursively for agentic search with smart limits and filtering.
+
+    This function is specifically designed for agentic search and provides:
+    1. Recursive crawling of internal links (no depth limit)
+    2. Smart URL filtering to avoid GitHub commits, pagination, etc.
+    3. Page limit per iteration (prevents excessive crawling)
+    4. Visited URL tracking (prevents re-crawling same pages)
+    5. Full Qdrant indexing of all crawled pages
+
+    Args:
+        ctx: FastMCP context containing Crawl4AIContext
+        urls: Starting URLs to crawl (typically 5 from agentic search)
+        max_pages: Maximum pages to crawl across all URLs (default: 50)
+        enable_url_filtering: Enable smart URL filtering (default: True)
+
+    Returns:
+        Dict with:
+        - success: bool
+        - urls_crawled: int (number of pages successfully crawled)
+        - urls_stored: int (number of pages stored in Qdrant)
+        - chunks_stored: int (total chunks stored)
+        - urls_filtered: int (number of URLs filtered out)
+        - error: str (optional, if failed)
+    """
+    try:
+        # Extract the Crawl4AI context from the FastMCP context
+        from core.context import get_app_context
+
+        app_ctx = get_app_context()
+        if not app_ctx:
+            return {
+                "success": False,
+                "error": "Application context not available",
+                "urls_crawled": 0,
+                "urls_stored": 0,
+                "chunks_stored": 0,
+                "urls_filtered": 0,
+            }
+
+        if not (
+            hasattr(app_ctx, "browser_config")
+            and hasattr(app_ctx, "database_client")
+            and hasattr(app_ctx, "dispatcher")
+        ):
+            return {
+                "success": False,
+                "error": "Invalid context: missing required attributes",
+                "urls_crawled": 0,
+                "urls_stored": 0,
+                "chunks_stored": 0,
+                "urls_filtered": 0,
+            }
+
+        browser_config = app_ctx.browser_config
+        database_client = app_ctx.database_client
+        dispatcher = app_ctx.dispatcher
+
+        # Track visited URLs globally (across all starting URLs)
+        visited = set()
+        # Protect visited set from race conditions (per asyncio.Lock docs)
+        visited_lock = asyncio.Lock()
+        urls_filtered = 0
+        pages_crawled = 0
+        total_urls_stored = 0
+        total_chunks_stored = 0
+
+        # Normalize starting URLs
+        current_urls = {normalize_url(u) for u in urls}
+
+        run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
+
+        logger.info(
+            f"Starting recursive crawl: {len(current_urls)} URLs, "
+            f"max_pages={max_pages}, filtering={'enabled' if enable_url_filtering else 'disabled'}",
+        )
+
+        async with AsyncWebCrawler(config=browser_config) as crawler:
+            depth = 0
+            while current_urls and pages_crawled < max_pages:
+                depth += 1
+                # Filter out already visited URLs (protected by lock per asyncio docs)
+                async with visited_lock:
+                    urls_to_crawl = [
+                        url for url in current_urls if normalize_url(url) not in visited
+                    ]
+
+                if not urls_to_crawl:
+                    logger.info(f"No more URLs to crawl at depth {depth}")
+                    break
+
+                # Limit to remaining page budget
+                remaining_budget = max_pages - pages_crawled
+                urls_to_crawl = urls_to_crawl[:remaining_budget]
+
+                logger.info(
+                    f"Depth {depth}: Crawling {len(urls_to_crawl)} URLs "
+                    f"({pages_crawled}/{max_pages} pages so far)",
+                )
+
+                # Crawl batch
+                async with track_memory(
+                    f"agentic_crawl(depth={depth}, urls={len(urls_to_crawl)})",
+                ) as mem_ctx:
+                    with SuppressStdout():
+                        results = await crawler.arun_many(
+                            urls=urls_to_crawl,
+                            config=run_config,
+                            dispatcher=dispatcher,
+                        )
+                    mem_ctx["results"] = results
+
+                next_level_urls = set()
+
+                # Process results
+                for result in results:
+                    norm_url = normalize_url(result.url)
+
+                    # Memory protection: Check visited set size limit (atomic with lock)
+                    async with visited_lock:
+                        if len(visited) >= MAX_VISITED_URLS_LIMIT:
+                            logger.warning(
+                                f"Visited URLs limit reached ({MAX_VISITED_URLS_LIMIT}), "
+                                f"stopping recursive crawl to prevent memory exhaustion",
+                            )
+                            # Return early with current results
+                            return {
+                                "success": True,
+                                "urls_crawled": pages_crawled,
+                                "urls_stored": total_urls_stored,
+                                "chunks_stored": total_chunks_stored,
+                                "urls_filtered": urls_filtered,
+                                "warning": f"Stopped early: visited URL limit ({MAX_VISITED_URLS_LIMIT}) reached",
+                            }
+
+                        visited.add(norm_url)
+
+                    pages_crawled += 1
+
+                    if result.success and result.markdown:
+                        # Store in Qdrant
+                        try:
+                            chunks = smart_chunk_markdown(result.markdown, chunk_size=2000)
+                            if chunks:
+                                source_id = extract_domain_from_url(result.url)
+                                urls_list = [result.url] * len(chunks)
+                                chunk_numbers = list(range(len(chunks)))
+                                metadatas = [
+                                    {"url": result.url, "chunk": i}
+                                    for i in range(len(chunks))
+                                ]
+                                url_to_full_document = {result.url: result.markdown}
+                                source_ids = [source_id] * len(chunks) if source_id else None
+
+                                await add_documents_to_database(
+                                    database=database_client,
+                                    urls=urls_list,
+                                    chunk_numbers=chunk_numbers,
+                                    contents=chunks,
+                                    metadatas=metadatas,
+                                    url_to_full_document=url_to_full_document,
+                                    batch_size=20,
+                                    source_ids=source_ids,
+                                )
+
+                                total_urls_stored += 1
+                                total_chunks_stored += len(chunks)
+                                logger.debug(
+                                    f"Stored {len(chunks)} chunks from {result.url}",
+                                )
+                        except Exception as e:
+                            logger.error(f"Failed to store {result.url}: {e}")
+
+                        # Extract internal links for next level
+                        if pages_crawled < max_pages:  # Only if budget remains
+                            for link in result.links.get("internal", []):
+                                next_url = normalize_url(link["href"])
+                                # Check visited set with lock protection
+                                async with visited_lock:
+                                    is_visited = next_url in visited
+
+                                if not is_visited:
+                                    # Apply smart filtering
+                                    if should_filter_url(next_url, enable_url_filtering):
+                                        urls_filtered += 1
+                                        continue
+                                    next_level_urls.add(next_url)
+
+                # Update URLs for next iteration
+                current_urls = next_level_urls
+
+        logger.info(
+            f"Recursive crawl completed: {pages_crawled} pages crawled, "
+            f"{total_urls_stored} stored, {total_chunks_stored} chunks, "
+            f"{urls_filtered} URLs filtered",
+        )
+
+        return {
+            "success": True,
+            "urls_crawled": pages_crawled,
+            "urls_stored": total_urls_stored,
+            "chunks_stored": total_chunks_stored,
+            "urls_filtered": urls_filtered,
+        }
+
+    except Exception as e:
+        logger.exception(f"Error in crawl_urls_for_agentic_search: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "urls_crawled": 0,
+            "urls_stored": 0,
+            "chunks_stored": 0,
+            "urls_filtered": 0,
+        }

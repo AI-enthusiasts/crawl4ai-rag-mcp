@@ -1,5 +1,6 @@
 .env
 .env.*
+docker-compose.yml
 .venv
 __pycache__
 crawl4ai_mcp.egg-info
@@ -11,6 +12,10 @@ test_script_hallucination*
 coverage.xml
 qa-logs/
 CLAUDE.md
+
+# Test logs and outputs
+*.log
+tests/results/docker_logs/
 
 # Pre-commit and security scanning
 bandit-report.json
@@ -28,3 +33,15 @@ analysis_scripts/validation_results/*
 # VS Code workspace files
 *.code-workspace
 *.code-workspace.bak
+
+.idea/workspace.xml
+.idea/misc.xml
+.idea/*.iml
+.idea/inspectionProfiles
+.idea/shelf.mypy_cache/
+
+# Logs and debug artifacts
+*.log
+build.log
+problem/
+tests/results/

@@ -11,6 +11,13 @@ import pytest
 
 from database.factory import create_database_client
 from database.qdrant_adapter import QdrantAdapter
+from .qdrant_test_helpers import (
+    store_crawled_page,
+    search_crawled_pages,
+    store_code_example,
+    create_embedding,
+    search_code_examples,
+)
 
 
 class TestQdrantIntegration:
@@ -29,7 +36,7 @@ class TestQdrantIntegration:
         cls.qdrant_running = cls._check_qdrant_health()
         if not cls.qdrant_running:
             pytest.skip(
-                "Qdrant not running. Start with: docker run -p 6333:6333 qdrant/qdrant",
+                "Qdrant not running. Start with: docker run qdrant/qdrant (no port mapping)",
             )
 
     @classmethod
@@ -57,7 +64,7 @@ class TestQdrantIntegration:
         assert client.collection_name == "crawled_pages"
 
     @pytest.mark.asyncio
-    async def test_complete_crawl_workflow(self):
+    async def test_complete_crawl_workflow(self, mock_openai_embeddings):
         """Test end-to-end crawl -> store -> search workflow"""
         client = create_database_client()
 

@@ -3,37 +3,54 @@
 import functools
 import traceback
 import uuid
-from datetime import datetime
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
+from typing import ParamSpec, TypeVar
 
-from fastmcp import Context
+from .logging import logger, request_id_ctx
 
-from .logging import logger
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
-def track_request(tool_name: str):
-    """Decorator to track MCP tool requests with timing and error handling."""
+def track_request(
+    tool_name: str,
+) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
+    """Decorator to track MCP tool requests with timing and error handling.
 
-    def decorator(func):
+    Args:
+        tool_name: Name of the tool being tracked
+
+    Returns:
+        Decorated function with request tracking
+    """
+
+    def decorator(func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
         @functools.wraps(func)
-        async def wrapper(ctx: Context, *args, **kwargs):
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             request_id = str(uuid.uuid4())[:8]
-            start_time = datetime.now().timestamp()
+            start_time = datetime.now(UTC).timestamp()
 
-            logger.info(f"[{request_id}] Starting {tool_name} request")
-            logger.debug(f"[{request_id}] Arguments: {kwargs}")
+            # Store request_id in ContextVar for automatic logging
+            request_id_ctx.set(request_id)
+
+            logger.info("Starting %s request", tool_name)
+            if logger.isEnabledFor(10):  # DEBUG level
+                logger.debug("Arguments: %s", kwargs)
 
             try:
-                result = await func(ctx, *args, **kwargs)
-                duration = datetime.now().timestamp() - start_time
-                logger.info(f"[{request_id}] Completed {tool_name} in {duration:.2f}s")
+                result = await func(*args, **kwargs)
+                duration = datetime.now(UTC).timestamp() - start_time
+                logger.info("Completed %s in %.2fs", tool_name, duration)
                 return result
             except Exception as e:
-                duration = datetime.now().timestamp() - start_time
-                logger.error(
-                    f"[{request_id}] Failed {tool_name} after {duration:.2f}s: {e!s}",
-                )
-                logger.debug(f"[{request_id}] Traceback: {traceback.format_exc()}")
+                duration = datetime.now(UTC).timestamp() - start_time
+                logger.error("Failed %s after %.2fs: %s", tool_name, duration, str(e))
+                logger.debug("Traceback: %s", traceback.format_exc())
                 raise
+            finally:
+                # Clean up context variable
+                request_id_ctx.set(None)
 
         return wrapper
 

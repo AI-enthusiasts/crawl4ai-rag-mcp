@@ -6,6 +6,7 @@ from typing import Any
 
 import openai
 
+
 def extract_code_blocks(
     markdown_content: str, min_length: int = 1000,
 ) -> list[dict[str, Any]]:
@@ -119,7 +120,7 @@ Based on the code example and its surrounding context, provide a concise summary
     try:
         # Create OpenAI client instance
         client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        
+
         response = client.chat.completions.create(
             model=model_choice,
             messages=[
@@ -140,7 +141,7 @@ Based on the code example and its surrounding context, provide a concise summary
         return "Code example for demonstration purposes."
 
 
-def process_code_example(args):
+def process_code_example(args: tuple[str, str, str]) -> str:
     """
     Process a single code example to generate its summary.
     This function is designed to be used with concurrent.futures.

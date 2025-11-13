@@ -2,6 +2,7 @@
 
 import json
 import logging
+from typing import Any
 
 import aiohttp
 from bs4 import BeautifulSoup
@@ -9,6 +10,7 @@ from fastmcp import Context
 
 from config import get_settings
 from core import MCPToolError
+from utils.type_guards import is_valid_url
 
 from .crawling import process_urls_for_mcp
 
@@ -22,7 +24,6 @@ async def search_and_process(
     return_raw_markdown: bool = False,
     num_results: int = 6,
     batch_size: int = 20,
-    max_concurrent: int = 10,
 ) -> str:
     """
     Perform search using SearXNG and process results.
@@ -33,7 +34,6 @@ async def search_and_process(
         return_raw_markdown: Return raw markdown instead of storing
         num_results: Number of results to return
         batch_size: Batch size for processing
-        max_concurrent: Max concurrent operations
 
     Returns:
         JSON string with results
@@ -64,7 +64,6 @@ async def search_and_process(
         crawl_result = await process_urls_for_mcp(
             ctx=ctx,
             urls=urls,
-            max_concurrent=max_concurrent,
             batch_size=batch_size,
             return_raw_markdown=return_raw_markdown,
         )
@@ -107,7 +106,7 @@ async def search_and_process(
         raise MCPToolError(msg)
 
 
-async def _search_searxng(query: str, num_results: int) -> list[dict]:
+async def _search_searxng(query: str, num_results: int) -> list[dict[str, Any]]:
     """
     Search using SearXNG instance.
 
@@ -118,6 +117,12 @@ async def _search_searxng(query: str, num_results: int) -> list[dict]:
     Returns:
         List of search results
     """
+    # Use type guard for better type narrowing
+    if not is_valid_url(settings.searxng_url):
+        logger.error("SearXNG URL is not configured or invalid")
+        return []
+
+    # mypy now knows searxng_url is str
     searxng_url = settings.searxng_url.rstrip("/")
     search_url = f"{searxng_url}/search"
 

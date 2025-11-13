@@ -10,8 +10,12 @@ The tools are implemented here and registered in main.py.
 
 import json
 import logging
+from typing import TYPE_CHECKING
 
 from fastmcp import Context
+
+if TYPE_CHECKING:
+    from fastmcp import FastMCP
 
 from core import MCPToolError, track_request
 from database import (
@@ -34,6 +38,7 @@ from services import (
 from services import (
     smart_crawl_url as smart_crawl_url_service_impl,
 )
+from services.agentic_search import agentic_search_impl
 from utils.validation import validate_github_url, validate_script_path
 
 logger = logging.getLogger(__name__)
@@ -43,9 +48,7 @@ from core.context import get_app_context
 
 
 async def parse_github_repository_wrapper(ctx: Context, repo_url: str) -> str:
-    """
-    Wrapper function to properly extract repo_extractor from context and call the implementation.
-    """
+    """Wrapper function to properly extract repo_extractor from context and call the implementation."""
     import json
 
     # Get the app context that was stored during lifespan
@@ -65,7 +68,7 @@ async def parse_github_repository_wrapper(ctx: Context, repo_url: str) -> str:
             indent=2,
         )
 
-    return await parse_github_repository_impl(app_ctx.repo_extractor, repo_url)
+    return await parse_github_repository_impl(app_ctx.repo_extractor, repo_url)  # type: ignore[no-any-return]
 
 
 async def get_available_sources_wrapper(ctx: Context) -> str:
@@ -90,7 +93,7 @@ async def get_available_sources_wrapper(ctx: Context) -> str:
             indent=2,
         )
 
-    return await get_available_sources(app_ctx.database_client)
+    return await get_available_sources(app_ctx.database_client)  # type: ignore[no-any-return]
 
 
 async def perform_rag_query_wrapper(
@@ -120,7 +123,7 @@ async def perform_rag_query_wrapper(
             indent=2,
         )
 
-    return await perform_rag_query(
+    return await perform_rag_query(  # type: ignore[no-any-return]
         app_ctx.database_client,
         query=query,
         source=source,
@@ -155,7 +158,7 @@ async def search_code_examples_wrapper(
             indent=2,
         )
 
-    return await search_code_examples_db(
+    return await search_code_examples_db(  # type: ignore[no-any-return]
         app_ctx.database_client,
         query=query,
         source_id=source_id,
@@ -164,15 +167,13 @@ async def search_code_examples_wrapper(
 
 
 async def query_knowledge_graph_wrapper(ctx: Context, command: str) -> str:
-    """
-    Wrapper function to call the knowledge graph query implementation.
-    """
+    """Wrapper function to call the knowledge graph query implementation."""
     # The query_knowledge_graph function doesn't need a context parameter
     # It creates its own Neo4j connection from environment variables
-    return await query_knowledge_graph(command)
+    return await query_knowledge_graph(command)  # type: ignore[no-any-return]
 
 
-def register_tools(mcp):
+def register_tools(mcp: "FastMCP") -> None:
     """
     Register all MCP tools with the FastMCP instance.
 
@@ -180,7 +181,7 @@ def register_tools(mcp):
         mcp: FastMCP instance to register tools with
     """
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("search")
     async def search(
         ctx: Context,
@@ -188,7 +189,6 @@ def register_tools(mcp):
         return_raw_markdown: bool = False,
         num_results: int = 6,
         batch_size: int = 20,
-        max_concurrent: int = 10,
     ) -> str:
         """
         Comprehensive search tool that integrates SearXNG search with scraping and RAG functionality.
@@ -205,7 +205,6 @@ def register_tools(mcp):
             return_raw_markdown: If True, skip embedding/RAG and return raw markdown content (default: False)
             num_results: Number of search results to return from SearXNG (default: 6)
             batch_size: Batch size for database operations (default: 20)
-            max_concurrent: Maximum concurrent browser sessions for scraping (default: 10)
 
         Returns:
             JSON string with search results, or raw markdown of each URL if `return_raw_markdown=true`
@@ -217,19 +216,17 @@ def register_tools(mcp):
                 return_raw_markdown=return_raw_markdown,
                 num_results=num_results,
                 batch_size=batch_size,
-                max_concurrent=max_concurrent,
             )
         except Exception as e:
             logger.exception(f"Error in search tool: {e}")
             msg = f"Search failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("scrape_urls")
     async def scrape_urls(
         ctx: Context,
         url: str | list[str],
-        max_concurrent: int = 10,
         batch_size: int = 20,
         return_raw_markdown: bool = False,
     ) -> str:
@@ -242,7 +239,6 @@ def register_tools(mcp):
 
         Args:
             url: URL to scrape, or list of URLs for batch processing
-            max_concurrent: Maximum number of concurrent browser sessions for multi-URL mode (default: 10)
             batch_size: Size of batches for database operations (default: 20)
             return_raw_markdown: If True, skip database storage and return raw markdown content (default: False)
 
@@ -313,8 +309,8 @@ def register_tools(mcp):
                 urls = url  # Assume it's already a list
                 logger.debug(f"List parameter received with {len(urls)} URLs")
             else:
-                # Handle other types by converting to string
-                logger.warning(
+                # Handle other types by converting to string (defensive programming)
+                logger.warning(  # type: ignore[unreachable]
                     f"Unexpected URL parameter type {type(url)}, converting to string",
                 )
                 urls = [str(url)]
@@ -366,7 +362,6 @@ def register_tools(mcp):
             return await process_urls_for_mcp(
                 ctx=ctx,
                 urls=cleaned_urls,
-                max_concurrent=max_concurrent,
                 batch_size=batch_size,
                 return_raw_markdown=return_raw_markdown,
             )
@@ -375,16 +370,15 @@ def register_tools(mcp):
             msg = f"Scraping failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("smart_crawl_url")
     async def smart_crawl_url(
         ctx: Context,
         url: str,
         max_depth: int = 3,
-        max_concurrent: int = 10,
         chunk_size: int = 5000,
         return_raw_markdown: bool = False,
-        query: list[str] | None = None,
+        query: list[str] | str | None = None,
     ) -> str:
         """
         Intelligently crawl a URL based on its type and store content in Supabase.
@@ -400,7 +394,6 @@ def register_tools(mcp):
         Args:
             url: URL to crawl (can be a regular webpage, sitemap.xml, or .txt file)
             max_depth: Maximum recursion depth for regular URLs (default: 3)
-            max_concurrent: Maximum number of concurrent browser sessions (default: 10)
             chunk_size: Maximum size of each content chunk in characters (default: 5000)
             return_raw_markdown: If True, return raw markdown content instead of just storing (default: False)
             query: List of queries to perform RAG search on crawled content (default: None)
@@ -436,7 +429,6 @@ def register_tools(mcp):
                 ctx=ctx,
                 url=url,
                 max_depth=max_depth,
-                max_concurrent=max_concurrent,
                 chunk_size=chunk_size,
                 return_raw_markdown=return_raw_markdown,
                 query=parsed_query,
@@ -446,7 +438,7 @@ def register_tools(mcp):
             msg = f"Smart crawl failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("get_available_sources")
     async def get_available_sources(ctx: Context) -> str:
         """
@@ -472,7 +464,7 @@ def register_tools(mcp):
             msg = f"Failed to get sources: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("perform_rag_query")
     async def perform_rag_query(
         ctx: Context,
@@ -507,7 +499,7 @@ def register_tools(mcp):
             msg = f"RAG query failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("search_code_examples")
     async def search_code_examples(
         ctx: Context,
@@ -544,7 +536,7 @@ def register_tools(mcp):
             msg = f"Code example search failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("check_ai_script_hallucinations")
     async def check_ai_script_hallucinations(
         ctx: Context,
@@ -624,7 +616,7 @@ def register_tools(mcp):
             msg = f"Hallucination check failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("query_knowledge_graph")
     async def query_knowledge_graph(
         ctx: Context,
@@ -700,7 +692,7 @@ def register_tools(mcp):
             msg = f"Knowledge graph query failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("parse_github_repository")
     async def parse_github_repository(
         ctx: Context,
@@ -737,7 +729,7 @@ def register_tools(mcp):
             msg = f"Repository parsing failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("parse_repository_branch")
     async def parse_repository_branch(
         ctx: Context,
@@ -779,7 +771,7 @@ def register_tools(mcp):
             msg = f"Repository branch parsing failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("get_repository_info")
     async def get_repository_info(
         ctx: Context,
@@ -812,7 +804,7 @@ def register_tools(mcp):
             msg = f"Failed to get repository info: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("update_parsed_repository")
     async def update_parsed_repository(
         ctx: Context,
@@ -849,7 +841,7 @@ def register_tools(mcp):
             msg = f"Repository update failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("extract_and_index_repository_code")
     async def extract_and_index_repository_code(
         ctx: Context,
@@ -911,6 +903,7 @@ def register_tools(mcp):
                 f"Cleaning up existing code examples for repository: {repo_name}",
             )
             try:
+                # Method exists in QdrantAdapter, added to Protocol
                 await app_ctx.database_client.delete_repository_code_examples(repo_name)
             except Exception as cleanup_error:
                 logger.warning(f"Error during cleanup: {cleanup_error}")
@@ -1031,7 +1024,7 @@ def register_tools(mcp):
                 indent=2,
             )
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("smart_code_search")
     async def smart_code_search(
         ctx: Context,
@@ -1129,7 +1122,7 @@ def register_tools(mcp):
                 indent=2,
             )
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("check_ai_script_hallucinations_enhanced")
     async def check_ai_script_hallucinations_enhanced(
         ctx: Context,
@@ -1216,7 +1209,7 @@ def register_tools(mcp):
             msg = f"Enhanced hallucination check failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()
+    @mcp.tool()  # type: ignore[misc]
     @track_request("get_script_analysis_info")
     async def get_script_analysis_info(ctx: Context) -> str:
         """
@@ -1273,12 +1266,474 @@ def register_tools(mcp):
         }
 
         # Check which directories actually exist
-        for key, path in info["accessible_paths"].items():
+        from typing import cast
+
+        accessible_paths = cast("dict[str, str]", info["accessible_paths"])
+        for key, path in accessible_paths.items():
             if "(" not in path:  # Skip paths with descriptions
                 container_path = f"/app/analysis_scripts/{key.replace('_', '_')}/"
                 if os.path.exists(container_path):
-                    info["accessible_paths"][key] += " ✓ (exists)"
+                    accessible_paths[key] += " ✓ (exists)"
                 else:
-                    info["accessible_paths"][key] += " ✗ (not found)"
+                    accessible_paths[key] += " ✗ (not found)"
 
         return json.dumps(info, indent=2)
+
+    @mcp.tool()  # type: ignore[misc]
+    @track_request("parse_local_repository")
+    async def parse_local_repository(
+        ctx: Context,
+        local_path: str,
+    ) -> str:
+        """
+        Parse a local Git repository into the Neo4j knowledge graph.
+
+        This tool parses a local Git repository directly without cloning, useful for:
+        - Analyzing repositories already present on the system
+        - Parsing private repositories not accessible via URL
+        - Working with repositories that have been modified locally
+        - Faster parsing of repositories you already have locally
+
+        The tool analyzes multiple programming languages including:
+        - Python (.py files)
+        - JavaScript/TypeScript (.js, .ts, .jsx, .tsx files)
+        - Go (.go files)
+        - And more based on the multi-language analyzer factory
+
+        Args:
+            local_path: Absolute path to the local Git repository directory
+
+        Returns:
+            JSON string with parsing results, statistics, and repository information
+        """
+        import json
+        import os
+
+        try:
+            # Get the app context
+            app_ctx = get_app_context()
+
+            if not app_ctx:
+                return json.dumps(
+                    {
+                        "success": False,
+                        "error": "Application context not available",
+                    },
+                    indent=2,
+                )
+
+            # Check if repository extractor is available
+            repo_extractor = getattr(app_ctx, "repo_extractor", None)
+            if not repo_extractor:
+                return json.dumps(
+                    {
+                        "success": False,
+                        "error": "Repository extractor not available. Neo4j may not be configured or USE_KNOWLEDGE_GRAPH may be false.",
+                    },
+                    indent=2,
+                )
+
+            # Security: Validate and sanitize local path
+            local_path = os.path.abspath(os.path.expanduser(local_path))
+
+            # Define allowed directories for repository parsing (configurable)
+            allowed_prefixes = [
+                os.path.expanduser("~/"),  # User home directory
+                "/tmp/",                    # Temporary directory
+                "/var/tmp/",               # Var temporary
+                "/workspace/",             # Common workspace directory
+            ]
+
+            # Check if path is within allowed directories
+            path_allowed = any(local_path.startswith(os.path.abspath(prefix)) for prefix in allowed_prefixes)
+
+            if not path_allowed:
+                return json.dumps(
+                    {
+                        "success": False,
+                        "error": "Path is not within allowed directories. Repository must be in home directory or temporary directories.",
+                    },
+                    indent=2,
+                )
+
+            # Validate local path exists
+            if not os.path.exists(local_path):
+                return json.dumps(
+                    {
+                        "success": False,
+                        "error": f"Local path does not exist: {local_path}",
+                    },
+                    indent=2,
+                )
+
+            if not os.path.isdir(local_path):
+                return json.dumps(
+                    {
+                        "success": False,
+                        "error": f"Path is not a directory: {local_path}",
+                    },
+                    indent=2,
+                )
+
+            # Check if it's a Git repository
+            git_dir = os.path.join(local_path, ".git")
+            if not os.path.exists(git_dir):
+                return json.dumps(
+                    {
+                        "success": False,
+                        "error": f"Not a Git repository (no .git directory found): {local_path}",
+                    },
+                    indent=2,
+                )
+
+            # Extract repository name from path
+            repo_name = os.path.basename(os.path.abspath(local_path))
+
+            logger.info(f"Parsing local repository: {repo_name} at {local_path}")
+
+            # Use a custom method to analyze local repository
+            await repo_extractor.analyze_local_repository(local_path, repo_name)
+
+            # Query Neo4j to get statistics about what was stored
+            stats_query = """
+            MATCH (r:Repository {name: $repo_name})
+            OPTIONAL MATCH (r)-[:CONTAINS]->(f:File)
+            OPTIONAL MATCH (f)-[:DEFINES]->(c:Class)
+            OPTIONAL MATCH (c)-[:HAS_METHOD]->(m:Method)
+            OPTIONAL MATCH (f)-[:DEFINES]->(func:Function)
+            WITH r,
+                 COLLECT(DISTINCT f) as files,
+                 COLLECT(DISTINCT c) as classes,
+                 COLLECT(DISTINCT m) as methods,
+                 COLLECT(DISTINCT func) as functions
+            RETURN
+                SIZE([f IN files WHERE f IS NOT NULL]) as file_count,
+                SIZE([c IN classes WHERE c IS NOT NULL]) as class_count,
+                SIZE([m IN methods WHERE m IS NOT NULL]) as method_count,
+                SIZE([func IN functions WHERE func IS NOT NULL]) as function_count
+            """
+
+            async with repo_extractor.driver.session() as session:
+                stats_result = await session.run(stats_query, repo_name=repo_name)
+                stats = await stats_result.single()
+
+            return json.dumps(
+                {
+                    "success": True,
+                    "local_path": local_path,
+                    "repository_name": repo_name,
+                    "statistics": {
+                        "files_processed": stats["file_count"] if stats else 0,
+                        "classes_created": stats["class_count"] if stats else 0,
+                        "methods_created": stats["method_count"] if stats else 0,
+                        "functions_created": stats["function_count"] if stats else 0,
+                    },
+                    "message": f"Successfully parsed local repository '{repo_name}' into the knowledge graph",
+                    "next_steps": [
+                        "Use 'query_knowledge_graph' tool with 'explore <repo_name>' to see detailed statistics",
+                        "Use 'check_ai_script_hallucinations' tool to validate AI-generated code against this repository",
+                    ],
+                },
+                indent=2,
+            )
+
+        except Exception as e:
+            logger.exception(f"Error parsing local repository {local_path}: {e}")
+            return json.dumps(
+                {
+                    "success": False,
+                    "local_path": local_path,
+                    "error": f"Local repository parsing failed: {e!s}",
+                },
+                indent=2,
+            )
+
+    @mcp.tool()  # type: ignore[misc]
+    @track_request("analyze_code_cross_language")
+    async def analyze_code_cross_language(
+        ctx: Context,
+        query: str,
+        languages: list[str] | None = None,
+        match_count: int = 10,
+        source_filter: str | None = None,
+        include_file_context: bool = True,
+    ) -> str:
+        """
+        Cross-language code analysis using semantic search across multiple programming languages.
+
+        This tool performs advanced code analysis by searching across multiple programming languages
+        simultaneously, enabling developers to:
+        - Find similar patterns across different languages (e.g., authentication logic in Python, JS, Go)
+        - Compare implementation approaches between languages
+        - Discover code reuse opportunities
+        - Understand how concepts are implemented across your stack
+
+        Supported languages include Python, JavaScript, TypeScript, Go, and more based on
+        the parsed repositories in your knowledge graph.
+
+        Args:
+            query: Search query for finding code patterns across languages
+            languages: Optional list of languages to search (e.g., ['python', 'javascript', 'go']). If None, searches all languages
+            match_count: Maximum number of results to return per language (default: 10)
+            source_filter: Optional repository filter (e.g., 'repo-name')
+            include_file_context: Whether to include file path and language context (default: True)
+
+        Returns:
+            JSON string with cross-language search results, organized by language and confidence scores
+        """
+        import json
+
+        try:
+            # Get the app context
+            app_ctx = get_app_context()
+
+            if not app_ctx:
+                return json.dumps(
+                    {
+                        "success": False,
+                        "error": "Application context not available",
+                    },
+                    indent=2,
+                )
+
+            # Check database client availability
+            database_client = getattr(app_ctx, "database_client", None)
+            if not database_client:
+                return json.dumps(
+                    {
+                        "success": False,
+                        "error": "Database client not available",
+                    },
+                    indent=2,
+                )
+
+            # Handle languages parameter (from JSON if needed)
+            parsed_languages = None
+            if languages is not None:
+                if isinstance(languages, str):
+                    if languages.strip().startswith("[") and languages.strip().endswith("]"):
+                        try:
+                            parsed_languages = json.loads(languages)
+                        except json.JSONDecodeError:
+                            parsed_languages = [languages]
+                    else:
+                        parsed_languages = [languages]
+                else:
+                    parsed_languages = languages
+
+            logger.info(f"Performing cross-language code analysis for query: {query}")
+            if parsed_languages:
+                logger.info(f"Filtering by languages: {parsed_languages}")
+
+            # Get all available sources first to understand what repositories we have
+            sources_result = await get_available_sources(database_client)
+            sources_data = json.loads(sources_result)
+
+            if not sources_data.get("success", False):
+                return json.dumps(
+                    {
+                        "success": False,
+                        "error": "Could not retrieve available sources for analysis",
+                        "details": sources_data,
+                    },
+                    indent=2,
+                )
+
+            # Perform semantic search
+            rag_result = await perform_rag_query(
+                database_client,
+                query=query,
+                source=source_filter,
+                match_count=match_count * 3,  # Get more results to filter by language
+            )
+
+            rag_data = json.loads(rag_result)
+
+            if not rag_data.get("success", False):
+                return json.dumps(
+                    {
+                        "success": False,
+                        "error": "Semantic search failed",
+                        "details": rag_data,
+                    },
+                    indent=2,
+                )
+
+            # Organize results by language
+            results_by_language = {}
+
+            for result in rag_data.get("results", []):
+                # Extract language information from metadata or URL
+                language = "unknown"
+                metadata = result.get("metadata", {})
+                url = result.get("url", "")
+
+                # Try to determine language from metadata
+                if "language" in metadata:
+                    language = metadata["language"].lower()
+                elif "file_extension" in metadata:
+                    ext = metadata["file_extension"].lower()
+                    language_map = {
+                        "py": "python",
+                        "js": "javascript",
+                        "ts": "typescript",
+                        "jsx": "javascript",
+                        "tsx": "typescript",
+                        "go": "go",
+                        "java": "java",
+                        "cpp": "c++",
+                        "c": "c",
+                        "rs": "rust",
+                        "php": "php",
+                        "rb": "ruby",
+                        "swift": "swift",
+                        "kt": "kotlin",
+                        "cs": "csharp",
+                    }
+                    language = language_map.get(ext, ext)
+                elif url:
+                    # Try to extract from URL/filename
+                    for ext, lang in {
+                        ".py": "python",
+                        ".js": "javascript",
+                        ".ts": "typescript",
+                        ".jsx": "javascript",
+                        ".tsx": "typescript",
+                        ".go": "go",
+                        ".java": "java",
+                        ".cpp": "c++",
+                        ".c": "c",
+                        ".rs": "rust",
+                        ".php": "php",
+                        ".rb": "ruby",
+                        ".swift": "swift",
+                        ".kt": "kotlin",
+                        ".cs": "csharp",
+                    }.items():
+                        if ext in url.lower():
+                            language = lang
+                            break
+
+                # Filter by languages if specified
+                if parsed_languages and language not in [lang.lower() for lang in parsed_languages]:
+                    continue
+
+                # Initialize language group if needed
+                if language not in results_by_language:
+                    results_by_language[language] = []
+
+                # Add file context if requested
+                result_item = {
+                    "content": result.get("content", ""),
+                    "similarity_score": result.get("similarity_score", 0),
+                    "source": result.get("source", "unknown"),
+                }
+
+                if include_file_context:
+                    result_item["file_context"] = {
+                        "url": url,
+                        "metadata": metadata,
+                        "language": language,
+                    }
+
+                results_by_language[language].append(result_item)
+
+            # Limit results per language and sort by similarity
+            for language in results_by_language:
+                results_by_language[language] = sorted(
+                    results_by_language[language],
+                    key=lambda x: x.get("similarity_score", 0),
+                    reverse=True,
+                )[:match_count]
+
+            # Calculate summary statistics
+            total_results = sum(len(results) for results in results_by_language.values())
+            languages_found = list(results_by_language.keys())
+
+            return json.dumps(
+                {
+                    "success": True,
+                    "query": query,
+                    "languages_requested": parsed_languages or "all",
+                    "languages_found": languages_found,
+                    "total_results": total_results,
+                    "results_by_language": results_by_language,
+                    "analysis_summary": {
+                        "most_relevant_language": max(results_by_language.keys(), key=lambda k: len(results_by_language[k])) if results_by_language else None,
+                        "coverage": f"{len(languages_found)} languages analyzed",
+                        "avg_similarity_per_language": {
+                            lang: round(
+                                sum(r.get("similarity_score", 0) for r in results) / len(results), 3,
+                            ) if results else 0
+                            for lang, results in results_by_language.items()
+                        },
+                    },
+                    "message": f"Found {total_results} code examples across {len(languages_found)} languages",
+                },
+                indent=2,
+            )
+
+        except Exception as e:
+            logger.exception(f"Error in cross-language code analysis: {e}")
+            return json.dumps(
+                {
+                    "success": False,
+                    "query": query,
+                    "error": f"Cross-language analysis failed: {e!s}",
+                },
+                indent=2,
+            )
+
+    @mcp.tool()  # type: ignore[misc]
+    @track_request("agentic_search")
+    async def agentic_search(
+        ctx: Context,
+        query: str,
+        completeness_threshold: float | None = None,
+        max_iterations: int | None = None,
+        max_urls_per_iteration: int | None = None,
+        url_score_threshold: float | None = None,
+        use_search_hints: bool | None = None,
+    ) -> str:
+        """
+        Search tool that automatically finds comprehensive answers from local knowledge base or web sources.
+
+        FAST MODE: If knowledge exists in local database, returns answer immediately from Qdrant vector storage.
+        SMART MODE: If local knowledge is missing or incomplete, automatically searches web (SearXNG),
+        intelligently selects and crawls relevant URLs, indexes new content, and returns comprehensive answer.
+
+        Uses LLM to evaluate answer completeness (0.0-1.0 score, default threshold: 0.95) and automatically
+        decides whether to return local results or search web. Performs iterative search-crawl-evaluate cycles
+        until answer quality meets threshold or max iterations reached (default: 3).
+
+        Best for: comprehensive research questions, technical documentation queries, finding up-to-date information,
+        discovering content not yet in local database.
+
+        Args:
+            query: Search question (required)
+            completeness_threshold: Minimum answer quality score 0.0-1.0 (default: 0.95, higher = stricter)
+            max_iterations: Maximum search-crawl cycles (default: 3, range: 1-10)
+            max_urls_per_iteration: Maximum URLs to crawl per cycle (default: 3, range: 1-20)
+            url_score_threshold: Minimum URL relevance score to crawl 0.0-1.0 (default: 0.7, higher = more selective)
+            use_search_hints: Enable experimental smart query refinement from metadata (default: false)
+
+        Returns:
+            JSON with search results, completeness score, iterations performed, and detailed search history
+
+        Raises:
+            MCPToolError: If agentic search is disabled in configuration or search fails critically
+        """
+        try:
+            return await agentic_search_impl(
+                ctx=ctx,
+                query=query,
+                completeness_threshold=completeness_threshold,
+                max_iterations=max_iterations,
+                max_urls_per_iteration=max_urls_per_iteration,
+                url_score_threshold=url_score_threshold,
+                use_search_hints=use_search_hints,
+            )
+        except Exception as e:
+            logger.exception(f"Error in agentic_search tool: {e}")
+            msg = f"Agentic search failed: {e!s}"
+            raise MCPToolError(msg)

@@ -1,26 +1,145 @@
-FROM python:3.12-slim
+# syntax=docker/dockerfile:1.5
+# Enable BuildKit features for better caching and performance
 
-ARG PORT=8051
+# ============================================
+# Build Stage: Compile dependencies
+# ============================================
+FROM python:3.12-slim AS builder
+
+WORKDIR /build
+
+# Set UV to use copy mode instead of hardlinking to avoid warnings
+ENV UV_LINK_MODE=copy
+
+# Configure dpkg to exclude documentation to prevent update-alternatives warnings
+RUN mkdir -p /etc/dpkg/dpkg.cfg.d && \
+    echo 'path-exclude=/usr/share/doc/*' > /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/man/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/groff/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/info/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/lintian/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/linda/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc
+
+# Install build dependencies with cache mount
+# Filter out harmless update-alternatives warnings about missing man pages
+RUN --mount=type=cache,target=/var/cache/apt \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    git \
+    curl 2>&1 | grep -v "update-alternatives: warning" || true && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Python package manager
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip uv
+
+# Copy dependency files first for better caching
+COPY pyproject.toml .
+COPY README.md .
+
+# Create minimal src structure for installation
+RUN mkdir src
+COPY src/__init__.py src/
+COPY src/main.py src/
+
+# Install dependencies with cache mount
+# UV will use the pytorch-cpu index configured in pyproject.toml
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system -e .
+
+# Copy the rest of the source code (includes knowledge_graph module)
+COPY src/ ./src/
+
+# Run crawl4ai-setup if available
+RUN crawl4ai-setup || echo "crawl4ai-setup not required"
+
+# ============================================
+# Security Scanning Stage (optional in dev)
+# ============================================
+FROM aquasec/trivy:latest AS scanner
+COPY --from=builder /build /scan
+RUN trivy fs --exit-code 0 --severity HIGH,CRITICAL --no-progress /scan || true
+
+# ============================================
+# Production Stage: Minimal runtime
+# ============================================
+FROM python:3.12-slim AS production
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Configure dpkg to exclude documentation to prevent update-alternatives warnings
+RUN mkdir -p /etc/dpkg/dpkg.cfg.d && \
+    echo 'path-exclude=/usr/share/doc/*' > /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/man/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/groff/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/info/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/lintian/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc && \
+    echo 'path-exclude=/usr/share/linda/*' >> /etc/dpkg/dpkg.cfg.d/01_nodoc
+
+# Install runtime dependencies including Chromium dependencies
+# Filter out harmless update-alternatives warnings about missing man pages
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
     git \
-    && rm -rf /var/lib/apt/lists/*
+    # Dependencies for Chromium/Playwright
+    libglib2.0-0 \
+    libnss3 \
+    libnspr4 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    libatspi2.0-0 \
+    libgtk-3-0 \
+    libpango-1.0-0 \
+    libcairo2 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 2>&1 | grep -v "update-alternatives: warning" || true && \
+    rm -rf /var/lib/apt/lists/* && \
+    useradd -m -u 1000 -s /bin/bash appuser
 
-# Install uv
-RUN pip install uv
+# Copy Python packages from builder
+COPY --from=builder --chown=appuser:appuser /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder --chown=appuser:appuser /usr/local/bin /usr/local/bin
 
-# Copy the MCP server files
-COPY . .
+# Copy application code (includes knowledge_graph module)
+COPY --from=builder --chown=appuser:appuser /build/src ./src
 
-# Install packages directly to the system (no virtual environment)
-# Combining commands to reduce Docker layers
-RUN uv pip install --system -e . && \
-    crawl4ai-setup
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/data /app/logs /app/analysis_scripts /app/repos \
+    && chown -R appuser:appuser /app
 
+# Add metadata labels
+LABEL org.opencontainers.image.source="https://github.com/krashnicov/crawl4ai-mcp"
+LABEL org.opencontainers.image.description="Web Crawling, Search and RAG MCP Server"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.version="0.1.0"
+
+# Environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8051
+
+# Switch to non-root user
+USER appuser
+
+# Install Playwright browsers as appuser
+RUN playwright install chromium
+
+# Health check for container orchestration
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD python -c "import socket; s = socket.socket(); s.settimeout(1); s.connect(('localhost', ${PORT})); s.close()"
+
+# Expose the port
 EXPOSE ${PORT}
 
-# Command to run the MCP server
-CMD ["python", "src/main.py"]
+# Set the entrypoint
+ENTRYPOINT ["python", "src/main.py"]

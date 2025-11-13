@@ -13,7 +13,10 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Any
 
+from config import get_settings
+
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 
 class PerformanceCache:
@@ -37,8 +40,8 @@ class PerformanceCache:
         """
         self.max_size = max_size
         self.default_ttl = default_ttl
-        self._cache = {}
-        self._access_times = {}
+        self._cache: dict[str, tuple[Any, float]] = {}
+        self._access_times: dict[str, float] = {}
         self._lock = asyncio.Lock()
 
         # Performance metrics
@@ -118,26 +121,25 @@ class PerformanceCache:
 class BatchProcessor:
     """
     Utility for batching and parallelizing validation operations.
+    Uses global MAX_CONCURRENT_SESSIONS limit.
     """
 
-    def __init__(self, max_concurrent: int = 10, batch_size: int = 20):
+    def __init__(self, batch_size: int = 20):
         """
         Initialize the batch processor.
 
         Args:
-            max_concurrent: Maximum number of concurrent operations
             batch_size: Size of each processing batch
         """
-        self.max_concurrent = max_concurrent
         self.batch_size = batch_size
-        self._semaphore = asyncio.Semaphore(max_concurrent)
+        self._semaphore = asyncio.Semaphore(settings.max_concurrent_sessions)
 
     async def process_batch(
         self,
         items: list[Any],
-        processor_func: Callable,
-        *args,
-        **kwargs,
+        processor_func: Callable[..., Any],
+        *args: Any,
+        **kwargs: Any,
     ) -> list[Any]:
         """
         Process items in batches with concurrency control.
@@ -169,8 +171,8 @@ class BatchProcessor:
         return results
 
     async def _process_with_semaphore(
-        self, processor_func: Callable, item: Any, *args, **kwargs,
-    ):
+        self, processor_func: Callable[..., Any], item: Any, *args: Any, **kwargs: Any,
+    ) -> Any:
         """Process an item with semaphore control."""
         async with self._semaphore:
             try:
@@ -189,7 +191,7 @@ class CircuitBreaker:
         self,
         failure_threshold: int = 5,
         timeout: int = 60,
-        expected_exception: type = Exception,
+        expected_exception: type[BaseException] = Exception,
     ):
         """
         Initialize circuit breaker.
@@ -204,10 +206,10 @@ class CircuitBreaker:
         self.expected_exception = expected_exception
 
         self.failure_count = 0
-        self.last_failure_time = None
+        self.last_failure_time: float | None = None
         self.state = "closed"  # closed, open, half-open
 
-    async def call(self, func: Callable, *args, **kwargs):
+    async def call(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         """Call a function through the circuit breaker."""
         # Check if circuit should be half-open
         if self.state == "open" and self._should_attempt_reset():
@@ -230,7 +232,7 @@ class CircuitBreaker:
             self._record_failure()
             raise
 
-    def _record_failure(self):
+    def _record_failure(self) -> None:
         """Record a failure and potentially open the circuit."""
         self.failure_count += 1
         self.last_failure_time = time.time()
@@ -255,7 +257,7 @@ class CircuitBreaker:
         }
 
 
-def create_cache_key(*args, **kwargs) -> str:
+def create_cache_key(*args: Any, **kwargs: Any) -> str:
     """
     Create a deterministic cache key from arguments.
 
@@ -288,7 +290,7 @@ def create_cache_key(*args, **kwargs) -> str:
     return hashlib.md5(key_string.encode()).hexdigest()
 
 
-def performance_monitor(func):
+def performance_monitor(func: Callable[..., Any]) -> Callable[..., Any]:
     """
     Decorator to monitor function performance.
 
@@ -296,7 +298,7 @@ def performance_monitor(func):
     """
 
     @wraps(func)
-    async def wrapper(*args, **kwargs):
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
         start_time = time.time()
         function_name = func.__name__
 
@@ -320,11 +322,11 @@ class IntegrationHealthMonitor:
     Monitor the health of Neo4j-Qdrant integration components.
     """
 
-    def __init__(self):
-        self.health_checks = {}
-        self.last_check_time = {}
+    def __init__(self) -> None:
+        self.health_checks: dict[str, Any] = {}
+        self.last_check_time: dict[str, float] = {}
 
-    async def check_neo4j_health(self, neo4j_driver) -> dict[str, Any]:
+    async def check_neo4j_health(self, neo4j_driver: Any) -> dict[str, Any]:
         """Check Neo4j connection health."""
         try:
             if not neo4j_driver:
@@ -349,7 +351,7 @@ class IntegrationHealthMonitor:
         except Exception as e:
             return {"status": "error", "reason": str(e)}
 
-    async def check_qdrant_health(self, qdrant_client) -> dict[str, Any]:
+    async def check_qdrant_health(self, qdrant_client: Any) -> dict[str, Any]:
         """Check Qdrant connection health."""
         try:
             if not qdrant_client:
@@ -372,11 +374,11 @@ class IntegrationHealthMonitor:
 
     async def get_integration_health(
         self,
-        database_client=None,
-        neo4j_driver=None,
+        database_client: Any = None,
+        neo4j_driver: Any = None,
     ) -> dict[str, Any]:
         """Get overall integration health status."""
-        health_status = {
+        health_status: dict[str, Any] = {
             "overall_status": "unknown",
             "timestamp": time.time(),
             "components": {},
@@ -419,7 +421,7 @@ class PerformanceOptimizer:
     Performance optimization utilities for the integration layer.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.cache = PerformanceCache()
         self.batch_processor = BatchProcessor()
         self.circuit_breaker = CircuitBreaker()
@@ -443,7 +445,7 @@ class PerformanceOptimizer:
         # Check cache first
         cached_result = await self.cache.get(cache_key)
         if cached_result:
-            return cached_result
+            return cached_result  # type: ignore[no-any-return]
 
         # Perform optimization
         optimized_query = self._apply_query_optimizations(query, context)
@@ -496,12 +498,11 @@ class PerformanceOptimizer:
             "cache_stats": self.cache.get_stats(),
             "circuit_breaker_state": self.circuit_breaker.get_state(),
             "batch_processor": {
-                "max_concurrent": self.batch_processor.max_concurrent,
                 "batch_size": self.batch_processor.batch_size,
             },
         }
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         """Cleanup resources."""
         await self.cache.clear()
 
@@ -519,7 +520,7 @@ def get_performance_optimizer() -> PerformanceOptimizer:
 
 
 async def validate_integration_health(
-    database_client=None, neo4j_driver=None,
+    database_client: Any = None, neo4j_driver: Any = None,
 ) -> dict[str, Any]:
     """
     Quick health check for the integration layer.

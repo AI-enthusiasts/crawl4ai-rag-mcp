@@ -10,15 +10,18 @@ import sys
 import traceback
 
 from fastmcp import FastMCP
+from fastmcp.server.auth import OAuthProvider, StaticTokenVerifier
+from mcp.server.auth.settings import ClientRegistrationOptions, RevocationOptions
 
 from config import get_settings
-from core import crawl4ai_lifespan, logger
+from core import logger
+from core.context import cleanup_global_context, initialize_global_context
 from tools import register_tools
 
 # Get settings instance
 settings = get_settings()
 
-# Initialize FastMCP server with lifespan management
+# Initialize FastMCP server with flexible authentication
 try:
     logger.info("Initializing FastMCP server...")
     # Get host and port from settings
@@ -29,8 +32,64 @@ try:
         port = "8051"
     logger.info(f"Host: {host}, Port: {port}")
 
-    mcp = FastMCP("Crawl4AI MCP Server", lifespan=crawl4ai_lifespan)
-    logger.info("FastMCP server initialized successfully")
+    # Determine authentication mode based on settings
+    auth = None
+    auth_mode = "none"
+
+    if settings.use_oauth2:
+        # Mode 1: OAuth Provider with DCR (for Claude Web custom connectors)
+        logger.info("Configuring OAuth Provider with Dynamic Client Registration...")
+
+        auth = OAuthProvider(
+            base_url=settings.oauth2_issuer,
+            issuer_url=settings.oauth2_issuer,
+            service_documentation_url=f"{settings.oauth2_issuer}/docs",
+            client_registration_options=ClientRegistrationOptions(
+                enabled=True,  # Enable DCR for Claude Web
+                valid_scopes=settings.oauth2_scopes,
+            ),
+            revocation_options=RevocationOptions(enabled=True),
+            required_scopes=settings.oauth2_required_scopes,
+        )
+        auth_mode = "oauth2"
+        logger.info("✓ OAuth Provider enabled")
+        logger.info(f"  - Issuer: {settings.oauth2_issuer}")
+        logger.info(f"  - Valid scopes: {', '.join(settings.oauth2_scopes)}")
+        logger.info(f"  - Required scopes: {', '.join(settings.oauth2_required_scopes)}")
+        logger.info("  - DCR enabled: Yes")
+        logger.info("  - Endpoints:")
+        logger.info("    - /.well-known/oauth-authorization-server")
+        logger.info("    - /register (DCR)")
+        logger.info("    - /authorize")
+        logger.info("    - /token")
+        logger.info("    - /revoke")
+
+    elif settings.mcp_api_key:
+        # Mode 2: Static Token Verifier (simple API key)
+        logger.info("Configuring Static Token Verifier...")
+
+        auth = StaticTokenVerifier(
+            tokens={
+                settings.mcp_api_key: {
+                    "client_id": "mcp-client",
+                    "scopes": ["read", "write"],
+                    "expires_at": None,  # No expiration
+                },
+            },
+        )
+        auth_mode = "api_key"
+        logger.info("✓ StaticTokenVerifier enabled with API key")
+
+    else:
+        # Mode 3: No authentication
+        logger.warning("⚠ No authentication configured - server is open to all!")
+        logger.warning("  Set USE_OAUTH2=true for OAuth or MCP_API_KEY for API key auth")
+        auth_mode = "none"
+
+    # Create FastMCP server with appropriate auth
+    mcp = FastMCP("Crawl4AI MCP Server", auth=auth)
+    logger.info(f"FastMCP server initialized successfully (auth mode: {auth_mode})")
+
 except Exception as e:
     logger.error(f"Failed to initialize FastMCP server: {e}")
     logger.error(f"Traceback: {traceback.format_exc()}")
@@ -41,19 +100,25 @@ except Exception as e:
 register_tools(mcp)
 
 
-def create_mcp_server():
+def create_mcp_server() -> FastMCP:
     """
     Create and return an MCP server instance for testing purposes.
     """
     return FastMCP("Crawl4AI MCP Server Test")
 
 
-async def main():
+async def main() -> None:
     """
     Main async function to run the MCP server.
     """
     try:
         logger.info("Main function started")
+
+        # Initialize global context ONCE at startup (not per-request)
+        logger.info("Initializing global application context...")
+        await initialize_global_context()
+        logger.info("✓ Global context initialized")
+
         transport = settings.transport.lower()
         logger.info(f"Transport mode: {transport}")
 
@@ -63,25 +128,13 @@ async def main():
 
         # Run server with appropriate transport
         if transport == "http":
-            # For HTTP transport, manually initialize the lifespan context
-            # because HTTP mode doesn't automatically call lifespan managers
-            logger.info("Initializing application context for HTTP transport...")
-            async with crawl4ai_lifespan(mcp) as context:
-                logger.info("✓ Application context initialized successfully")
-                logger.info(f"  - Crawler: {type(context.crawler).__name__}")
-                logger.info(f"  - Database: {type(context.database_client).__name__}")
-                logger.info(
-                    f"  - Reranking model: {'✓' if context.reranking_model else '✗'}",
-                )
-                logger.info(
-                    f"  - Knowledge validator: {'✓' if context.knowledge_validator else '✗'}",
-                )
-                logger.info(
-                    f"  - Repository extractor: {'✓' if context.repo_extractor else '✗'}",
-                )
+            logger.info("Setting up Streamable HTTP server...")
 
-                # Run the HTTP server with the context active
-                await mcp.run_async(transport="http", host=host, port=int(port))
+            # Run Streamable HTTP server - authentication is handled by FastMCP's built-in auth
+            # Streamable HTTP is the recommended transport for production
+            await mcp.run_http_async(
+                transport="streamable-http", host=host, port=int(port),
+            )
         elif transport == "sse":
             await mcp.run_sse_async()
         else:  # Default to stdio for Claude Desktop compatibility
@@ -91,6 +144,10 @@ async def main():
         logger.error(f"Error in main function: {e}")
         logger.error(f"Traceback: {traceback.format_exc()}")
         raise
+    finally:
+        # Cleanup global context on shutdown
+        logger.info("Shutting down - cleaning up global context...")
+        await cleanup_global_context()
 
 
 if __name__ == "__main__":

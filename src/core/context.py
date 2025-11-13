@@ -1,12 +1,11 @@
 """Application context and lifecycle management for the Crawl4AI MCP server."""
 
-import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from crawl4ai import AsyncWebCrawler, BrowserConfig
+from crawl4ai import BrowserConfig, MemoryAdaptiveDispatcher
 from fastmcp import FastMCP
 from sentence_transformers import CrossEncoder
 
@@ -21,6 +20,7 @@ settings = get_settings()
 
 # Global context storage
 _app_context: Optional["Crawl4AIContext"] = None
+_context_lock = None  # Will be initialized in async context
 
 
 def set_app_context(context: "Crawl4AIContext") -> None:
@@ -34,28 +34,184 @@ def get_app_context() -> Optional["Crawl4AIContext"]:
     return _app_context
 
 
-# These imports are conditional based on Neo4j availability
-try:
-    # Add knowledge_graphs directory to path for imports
-    import sys
+async def initialize_global_context() -> "Crawl4AIContext":
+    """
+    Initialize the global application context once.
+    This should be called at application startup, not per-request.
 
-    sys.path.append("/app/knowledge_graphs")
-    from knowledge_graph_validator import KnowledgeGraphValidator
-    from parse_repo_into_neo4j import DirectNeo4jExtractor
+    Returns:
+        Crawl4AIContext: The initialized context
+    """
+    global _app_context, _context_lock
 
-    KNOWLEDGE_GRAPH_AVAILABLE = True
-except ImportError:
-    KNOWLEDGE_GRAPH_AVAILABLE = False
-    KnowledgeGraphValidator = None
-    DirectNeo4jExtractor = None
+    # Initialize lock if needed
+    if _context_lock is None:
+        import asyncio
+        _context_lock = asyncio.Lock()
+
+    async with _context_lock:
+        # Return existing context if already initialized
+        if _app_context is not None:
+            logger.info("Using existing application context (singleton)")
+            return _app_context
+
+        logger.info("Initializing global application context (first time)...")
+
+        # Create browser configuration with resource optimization
+        browser_config = BrowserConfig(
+            headless=True,
+            verbose=False,
+            # Resource optimization flags to prevent memory leaks
+            extra_args=[
+                "--disable-extensions",
+                "--disable-sync",
+                "--disable-background-timer-throttling",
+                "--disable-backgrounding-occluded-windows",
+                "--disable-renderer-backgrounding",
+            ],
+        )
+        logger.info(
+            f"✓ BrowserConfig created for per-request crawler instances "
+            f"(headless={browser_config.headless}, browser_type={browser_config.browser_type})",
+        )
+
+        # Initialize database client
+        database_client = await create_and_initialize_database()
+
+        # Initialize cross-encoder model for reranking if enabled
+        reranking_model = None
+        if settings.use_reranking:
+            try:
+                reranking_model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+            except Exception as e:
+                logger.error(f"Failed to load reranking model: {e}")
+                reranking_model = None
+
+        # Initialize Neo4j components if configured and enabled
+        knowledge_validator = None
+        repo_extractor = None
+
+        if settings.use_knowledge_graph:
+            try:
+                from knowledge_graph.knowledge_graph_validator import (
+                    KnowledgeGraphValidator,
+                )
+                from knowledge_graph.parse_repo_into_neo4j import DirectNeo4jExtractor
+
+                neo4j_uri = settings.neo4j_uri
+                neo4j_user = settings.neo4j_username
+                neo4j_password = settings.neo4j_password
+
+                if neo4j_uri and neo4j_user and neo4j_password:
+                    try:
+                        logger.info("Initializing knowledge graph components...")
+
+                        knowledge_validator = KnowledgeGraphValidator(
+                            neo4j_uri,
+                            neo4j_user,
+                            neo4j_password,
+                        )
+                        await knowledge_validator.initialize()
+                        logger.info("✓ Knowledge graph validator initialized")
+
+                        repo_extractor = DirectNeo4jExtractor(
+                            neo4j_uri,
+                            neo4j_user,
+                            neo4j_password,
+                        )
+                        await repo_extractor.initialize()
+                        logger.info("✓ Repository extractor initialized")
+
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to initialize Neo4j components: {format_neo4j_error(e)}",
+                        )
+                        knowledge_validator = None
+                        repo_extractor = None
+                else:
+                    logger.warning(
+                        "Neo4j credentials not configured - knowledge graph tools will be unavailable",
+                    )
+            except ImportError as e:
+                logger.warning(f"Knowledge graph dependencies not available: {e}")
+        else:
+            logger.info(
+                "Knowledge graph functionality disabled - set USE_KNOWLEDGE_GRAPH=true to enable",
+            )
+
+        # Initialize shared dispatcher for global concurrency control
+        # This ensures max_session_permit applies across ALL tool calls, not per-call
+        from crawl4ai import RateLimiter
+
+        rate_limiter = RateLimiter(
+            base_delay=(0.5, 1.5),
+            max_delay=30.0,
+            max_retries=3,
+            rate_limit_codes=[429, 503],
+        )
+
+        dispatcher = MemoryAdaptiveDispatcher(
+            memory_threshold_percent=70.0,
+            check_interval=1.0,
+            max_session_permit=settings.max_concurrent_sessions,
+            rate_limiter=rate_limiter,
+        )
+        logger.info(f"✓ Shared dispatcher initialized (max_session_permit={settings.max_concurrent_sessions})")
+
+        context = Crawl4AIContext(
+            browser_config=browser_config,
+            database_client=database_client,
+            dispatcher=dispatcher,
+            reranking_model=reranking_model,
+            knowledge_validator=knowledge_validator,
+            repo_extractor=repo_extractor,
+        )
+
+        _app_context = context
+        logger.info("✓ Global application context initialized successfully")
+        return context
+
+
+async def cleanup_global_context() -> None:
+    """
+    Clean up the global application context.
+    This should be called at application shutdown.
+    """
+    global _app_context
+
+    if _app_context is None:
+        logger.info("No global context to clean up")
+        return
+
+    logger.info("Starting cleanup of global application context...")
+
+    # No crawler to close - crawlers are created per-request with context managers
+
+    if _app_context.knowledge_validator:
+        try:
+            await _app_context.knowledge_validator.close()
+            logger.info("✓ Knowledge graph validator closed")
+        except Exception as e:
+            logger.error(f"Error closing knowledge validator: {e}", exc_info=True)
+
+    if _app_context.repo_extractor:
+        try:
+            await _app_context.repo_extractor.close()
+            logger.info("✓ Repository extractor closed")
+        except Exception as e:
+            logger.error(f"Error closing repository extractor: {e}", exc_info=True)
+
+    _app_context = None
+    logger.info("✓ Global application context cleanup completed")
 
 
 @dataclass
 class Crawl4AIContext:
     """Context for the Crawl4AI MCP server."""
 
-    crawler: AsyncWebCrawler
+    browser_config: BrowserConfig  # Shared config for creating crawlers per-request
     database_client: VectorDatabase
+    dispatcher: MemoryAdaptiveDispatcher  # Shared dispatcher for global concurrency control
     reranking_model: CrossEncoder | None = None
     knowledge_validator: Any | None = None  # KnowledgeGraphValidator when available
     repo_extractor: Any | None = None  # DirectNeo4jExtractor when available
@@ -80,111 +236,23 @@ def format_neo4j_error(error: Exception) -> str:
 @asynccontextmanager
 async def crawl4ai_lifespan(server: FastMCP) -> AsyncIterator[Crawl4AIContext]:
     """
-    Manages the Crawl4AI client lifecycle.
+    Lifespan context manager for FastMCP.
+
+    NOTE: FastMCP HTTP mode calls this on EVERY request, not once at startup.
+    Therefore, we use a singleton pattern to ensure only one crawler instance exists.
 
     Args:
         server: The FastMCP server instance
 
     Yields:
-        Crawl4AIContext: The context containing the Crawl4AI crawler and database client
+        Crawl4AIContext: The singleton context containing the Crawl4AI crawler
     """
-    # Create browser configuration
-    browser_config = BrowserConfig(headless=True, verbose=False)
-
-    # Initialize the crawler
-    crawler = AsyncWebCrawler(config=browser_config)
-    await crawler.__aenter__()
-
-    # Initialize database client (Supabase or Qdrant based on config)
-    database_client = await create_and_initialize_database()
-
-    # Initialize cross-encoder model for reranking if enabled
-    reranking_model = None
-    if settings.use_reranking:
-        try:
-            reranking_model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
-        except Exception as e:
-            logger.error(f"Failed to load reranking model: {e}")
-            reranking_model = None
-
-    # Initialize Neo4j components if configured and enabled
-    knowledge_validator = None
-    repo_extractor = None
-
-    # Check if knowledge graph functionality is enabled
-    knowledge_graph_enabled = settings.use_knowledge_graph
-
-    if knowledge_graph_enabled and KNOWLEDGE_GRAPH_AVAILABLE:
-        neo4j_uri = settings.neo4j_uri
-        neo4j_user = settings.neo4j_username
-        neo4j_password = settings.neo4j_password
-
-        if neo4j_uri and neo4j_user and neo4j_password:
-            try:
-                logger.info("Initializing knowledge graph components...")
-
-                # Initialize knowledge graph validator
-                knowledge_validator = KnowledgeGraphValidator(
-                    neo4j_uri,
-                    neo4j_user,
-                    neo4j_password,
-                )
-                await knowledge_validator.initialize()
-                logger.info("✓ Knowledge graph validator initialized")
-
-                # Initialize repository extractor
-                repo_extractor = DirectNeo4jExtractor(
-                    neo4j_uri,
-                    neo4j_user,
-                    neo4j_password,
-                )
-                await repo_extractor.initialize()
-                logger.info("✓ Repository extractor initialized")
-
-            except Exception as e:
-                logger.error(
-                    f"Failed to initialize Neo4j components: {format_neo4j_error(e)}",
-                )
-                knowledge_validator = None
-                repo_extractor = None
-        else:
-            logger.warning(
-                "Neo4j credentials not configured - knowledge graph tools will be unavailable",
-            )
-    elif not knowledge_graph_enabled:
-        logger.info(
-            "Knowledge graph functionality disabled - set USE_KNOWLEDGE_GRAPH=true to enable",
-        )
-    else:
-        logger.warning(
-            "Knowledge graph dependencies not available - install neo4j dependencies",
-        )
+    # Get or create the singleton context
+    context = await initialize_global_context()
 
     try:
-        context = Crawl4AIContext(
-            crawler=crawler,
-            database_client=database_client,
-            reranking_model=reranking_model,
-            knowledge_validator=knowledge_validator,
-            repo_extractor=repo_extractor,
-        )
-
-        # Store the context globally for tool access
-        set_app_context(context)
-
         yield context
     finally:
-        # Clean up all components
-        await crawler.__aexit__(None, None, None)
-        if knowledge_validator:
-            try:
-                await knowledge_validator.close()
-                logger.info("✓ Knowledge graph validator closed")
-            except Exception as e:
-                logger.error(f"Error closing knowledge validator: {e}")
-        if repo_extractor:
-            try:
-                await repo_extractor.close()
-                logger.info("✓ Repository extractor closed")
-            except Exception as e:
-                logger.error(f"Error closing repository extractor: {e}")
+        # Don't cleanup here - FastMCP calls this per-request!
+        # Cleanup will happen at application shutdown via cleanup_global_context()
+        pass

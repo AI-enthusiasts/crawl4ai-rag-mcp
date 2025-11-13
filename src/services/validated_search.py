@@ -28,12 +28,12 @@ logger = logging.getLogger(__name__)
 class ValidationResult:
     """Container for validation results with confidence scoring."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.is_valid = False
         self.confidence_score = 0.0
-        self.validation_details = {}
-        self.suggestions = []
-        self.metadata = {}
+        self.validation_details: dict[str, Any] = {}
+        self.suggestions: list[str] = []
+        self.metadata: dict[str, Any] = {}
 
 
 class ValidatedCodeSearchService:
@@ -55,7 +55,7 @@ class ValidatedCodeSearchService:
 
         # Performance optimization
         self.performance_optimizer = get_performance_optimizer()
-        self._validation_cache = {}  # Deprecated in favor of performance cache
+        self._validation_cache: dict[str, Any] = {}  # Deprecated in favor of performance cache
 
         # Confidence thresholds
         self.MIN_CONFIDENCE_THRESHOLD = 0.6
@@ -67,7 +67,7 @@ class ValidatedCodeSearchService:
         self.neo4j_password = os.getenv("NEO4J_PASSWORD")
         self.neo4j_enabled = bool(self.neo4j_uri and self.neo4j_password)
 
-    async def _get_neo4j_session(self):
+    async def _get_neo4j_session(self) -> Any | None:
         """Get or create Neo4j session."""
         if not self.neo4j_enabled:
             return None
@@ -226,7 +226,7 @@ class ValidatedCodeSearchService:
 
             # Search code examples
             # Note: Using query parameter instead of query_embedding for newer interface
-            return await self.database_client.search_code_examples(
+            return await self.database_client.search_code_examples(  # type: ignore[no-any-return]
                 query=query,  # Pass the query string, the adapter will create embeddings
                 match_count=match_count,
                 filter_metadata=filter_metadata,
@@ -267,7 +267,7 @@ class ValidatedCodeSearchService:
                     # Add the original result with empty validation
                     final_results.append(self._add_empty_validation(results[i]))
                 else:
-                    final_results.append(result)
+                    final_results.append(result)  # type: ignore[arg-type]
 
             return final_results
 
@@ -350,7 +350,7 @@ class ValidatedCodeSearchService:
 
             # Validation 1: Check if the repository exists
             repo_exists = await self._check_repository_exists(
-                session, result.get("source_id"),
+                session, result.get("source_id") or "",
             )
             validation_checks.append(
                 {
@@ -363,7 +363,7 @@ class ValidatedCodeSearchService:
             if code_type == "class" and class_name:
                 # Validation 2: Check if class exists
                 class_exists = await self._check_class_exists(
-                    session, class_name, result.get("source_id"),
+                    session, class_name, result.get("source_id") or "",
                 )
                 validation_checks.append(
                     {
@@ -379,7 +379,7 @@ class ValidatedCodeSearchService:
                         session,
                         class_name,
                         metadata,
-                        result.get("source_id"),
+                        result.get("source_id") or "",
                     )
                     validation_checks.append(
                         {
@@ -394,8 +394,8 @@ class ValidatedCodeSearchService:
                 method_exists = await self._check_method_exists(
                     session,
                     method_name,
-                    class_name,
-                    result.get("source_id"),
+                    class_name or "",
+                    result.get("source_id") or "",
                 )
                 validation_checks.append(
                     {
@@ -410,9 +410,9 @@ class ValidatedCodeSearchService:
                     signature_valid = await self._validate_method_signature(
                         session,
                         method_name,
-                        class_name,
+                        class_name or "",
                         metadata,
-                        result.get("source_id"),
+                        result.get("source_id") or "",
                     )
                     validation_checks.append(
                         {
@@ -427,7 +427,7 @@ class ValidatedCodeSearchService:
                 function_exists = await self._check_function_exists(
                     session,
                     method_name,
-                    result.get("source_id"),
+                    result.get("source_id") or "",
                 )
                 validation_checks.append(
                     {
@@ -494,7 +494,7 @@ class ValidatedCodeSearchService:
         metadata = result.get("metadata", {})
         return f"{result.get('source_id', '')}__{metadata.get('code_type', '')}__{metadata.get('full_name', '')}"
 
-    async def _check_repository_exists(self, session, source_id: str) -> bool:
+    async def _check_repository_exists(self, session: Any, source_id: str) -> bool:
         """Check if repository exists in Neo4j."""
         if not source_id:
             return False
@@ -512,7 +512,7 @@ class ValidatedCodeSearchService:
             return False
 
     async def _check_class_exists(
-        self, session, class_name: str, source_id: str,
+        self, session: Any, class_name: str, source_id: str,
     ) -> bool:
         """Check if class exists in the repository."""
         if not class_name:
@@ -535,7 +535,7 @@ class ValidatedCodeSearchService:
 
     async def _check_method_exists(
         self,
-        session,
+        session: Any,
         method_name: str,
         class_name: str,
         source_id: str,
@@ -575,7 +575,7 @@ class ValidatedCodeSearchService:
             return False
 
     async def _check_function_exists(
-        self, session, function_name: str, source_id: str,
+        self, session: Any, function_name: str, source_id: str,
     ) -> bool:
         """Check if standalone function exists in the repository."""
         if not function_name:
@@ -598,9 +598,9 @@ class ValidatedCodeSearchService:
 
     async def _validate_class_structure(
         self,
-        session,
+        session: Any,
         class_name: str,
-        metadata: dict,
+        metadata: dict[str, Any],
         source_id: str,
     ) -> bool:
         """Validate class structure against metadata."""
@@ -614,10 +614,10 @@ class ValidatedCodeSearchService:
 
     async def _validate_method_signature(
         self,
-        session,
+        session: Any,
         method_name: str,
         class_name: str,
-        metadata: dict,
+        metadata: dict[str, Any],
         source_id: str,
     ) -> bool:
         """Validate method signature against metadata."""
@@ -631,9 +631,9 @@ class ValidatedCodeSearchService:
 
     async def _generate_suggestions(
         self,
-        session,
+        session: Any,
         result: dict[str, Any],
-        validation_checks: list[dict],
+        validation_checks: list[dict[str, Any]],
     ) -> list[str]:
         """Generate suggestions for improving low-confidence results."""
         suggestions = []
@@ -665,7 +665,7 @@ class ValidatedCodeSearchService:
 
         return suggestions
 
-    def _calculate_confidence_score(self, validation_checks: list[dict]) -> float:
+    def _calculate_confidence_score(self, validation_checks: list[dict[str, Any]]) -> float:
         """Calculate weighted confidence score from validation checks."""
         if not validation_checks:
             return 0.5  # Neutral when no checks available
@@ -683,9 +683,9 @@ class ValidatedCodeSearchService:
 
     def _calculate_combined_score(self, result: dict[str, Any]) -> float:
         """Calculate combined score from semantic similarity and validation confidence."""
-        semantic_score = result.get("similarity", 0.0)
+        semantic_score = float(result.get("similarity", 0.0))
         validation = result.get("validation", {})
-        confidence_score = validation.get("confidence_score", 0.0)
+        confidence_score = float(validation.get("confidence_score", 0.0))
 
         # Weight semantic similarity and validation confidence
         # Higher weight on validation for more reliable results
@@ -694,9 +694,9 @@ class ValidatedCodeSearchService:
 
     def _generate_validation_summary(
         self,
-        semantic_results: list[dict],
-        validated_results: list[dict],
-        final_results: list[dict],
+        semantic_results: list[dict[str, Any]],
+        validated_results: list[dict[str, Any]],
+        final_results: list[dict[str, Any]],
     ) -> dict[str, Any]:
         """Generate summary statistics for the validation process."""
         high_confidence_count = sum(
@@ -725,7 +725,7 @@ class ValidatedCodeSearchService:
             },
         }
 
-    async def clear_validation_cache(self):
+    async def clear_validation_cache(self) -> None:
         """Clear the validation cache."""
         await self.performance_optimizer.cache.clear()
         logger.info("Validation cache cleared")

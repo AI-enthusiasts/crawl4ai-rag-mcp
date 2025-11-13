@@ -3,7 +3,7 @@
 from urllib.parse import urldefrag, urlparse
 from xml.etree import ElementTree as ET
 
-import requests
+import httpx
 
 from core.logging import logger
 
@@ -34,9 +34,35 @@ def is_txt(url: str) -> bool:
     return url.endswith(".txt")
 
 
+def parse_sitemap_content(xml_content: str) -> list[str]:
+    """
+    Parse sitemap XML content and extract URLs.
+
+    This function parses XML content directly without making HTTP requests,
+    making it suitable for use in async contexts where the content has
+    already been fetched.
+
+    Args:
+        xml_content: XML content string
+
+    Returns:
+        List of URLs found in the sitemap
+    """
+    try:
+        tree = ET.fromstring(xml_content)
+        urls = [loc.text for loc in tree.findall(".//{*}loc")]
+        return [url for url in urls if url]  # Filter None values
+    except Exception as e:
+        logger.error(f"Error parsing sitemap XML: {e}")
+        return []
+
+
 def parse_sitemap(sitemap_url: str) -> list[str]:
     """
-    Parse a sitemap and extract URLs.
+    Parse a sitemap from URL and extract URLs (synchronous, blocking).
+
+    Note: This function blocks the event loop. For async code, fetch the
+    sitemap content with httpx.AsyncClient and use parse_sitemap_content().
 
     Args:
         sitemap_url: URL of the sitemap
@@ -44,17 +70,15 @@ def parse_sitemap(sitemap_url: str) -> list[str]:
     Returns:
         List of URLs found in the sitemap
     """
-    resp = requests.get(sitemap_url)
-    urls = []
-
-    if resp.status_code == 200:
-        try:
-            tree = ET.fromstring(resp.content)
-            urls = [loc.text for loc in tree.findall(".//{*}loc")]
-        except Exception as e:
-            logger.error(f"Error parsing sitemap XML: {e}")
-
-    return urls
+    try:
+        # Using httpx sync client (still blocks, but consistent with async version)
+        with httpx.Client() as client:
+            resp = client.get(sitemap_url)
+            if resp.status_code == 200:
+                return parse_sitemap_content(resp.text)
+    except Exception as e:
+        logger.error(f"Error fetching sitemap: {e}")
+    return []
 
 
 def normalize_url(url: str) -> str:
@@ -146,35 +170,35 @@ def clean_url(url: str) -> str:
 def extract_domain_from_url(url: str) -> str | None:
     """
     Extract domain from URL for use as source identifier.
-    
+
     Examples:
         - "https://example.com/path" -> "example.com"
         - "https://www.example.com/path" -> "example.com"
         - "https://subdomain.example.com/path" -> "subdomain.example.com"
         - Invalid URL -> None
-    
+
     Args:
         url: URL to extract domain from
-        
+
     Returns:
         Domain string or None if extraction fails
     """
     if not url:
         return None
-        
+
     try:
         from urllib.parse import urlparse
-        
+
         parsed = urlparse(url)
         if not parsed.netloc:
             return None
-            
+
         domain = parsed.netloc.lower()
-        
+
         # Remove 'www.' prefix if present
-        if domain.startswith('www.'):
+        if domain.startswith("www."):
             domain = domain[4:]
-            
+
         return domain
     except Exception:
         return None

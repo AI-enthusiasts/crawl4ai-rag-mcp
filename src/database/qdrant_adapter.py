@@ -5,14 +5,13 @@ Uses Qdrant vector database for similarity search.
 Fixed version with proper async/sync handling.
 """
 
-import asyncio
 import os
 import sys
 import uuid
 from datetime import UTC
 from typing import Any
 
-from qdrant_client import QdrantClient, models
+from qdrant_client import AsyncQdrantClient, models
 from qdrant_client.models import (
     Distance,
     FieldCondition,
@@ -28,17 +27,14 @@ class QdrantAdapter:
     """
     Qdrant implementation of the VectorDatabase protocol.
 
-    Uses Qdrant's native vector search capabilities.
-
-    Note: QdrantClient is synchronous, so we use asyncio.run_in_executor
-    to make it work with async methods.
+    Uses AsyncQdrantClient for native async vector search operations.
     """
 
     def __init__(self, url: str | None = None, api_key: str | None = None):
         """Initialize Qdrant adapter with connection parameters"""
         self.url = url or os.getenv("QDRANT_URL", "http://localhost:6333")
         self.api_key = api_key or os.getenv("QDRANT_API_KEY")
-        self.client: QdrantClient | None = None
+        self.client: AsyncQdrantClient = AsyncQdrantClient(url=self.url, api_key=self.api_key)
         self.batch_size = 100  # Qdrant can handle larger batches
 
         # Collection names
@@ -48,9 +44,6 @@ class QdrantAdapter:
 
     async def initialize(self) -> None:
         """Initialize Qdrant client and create collections if needed"""
-        if self.client is None:
-            self.client = QdrantClient(url=self.url, api_key=self.api_key)
-
         # Create collections if they don't exist
         await self._ensure_collections()
 
@@ -62,23 +55,15 @@ class QdrantAdapter:
             (self.SOURCES, 1536),  # OpenAI embedding size for consistency
         ]
 
-        loop = asyncio.get_event_loop()
-
         for collection_name, vector_size in collections:
             try:
-                await loop.run_in_executor(
-                    None,
-                    self.client.get_collection,
-                    collection_name,
-                )
+                await self.client.get_collection(collection_name)
             except Exception:
                 # Collection doesn't exist, create it
                 try:
-                    await loop.run_in_executor(
-                        None,
-                        self.client.create_collection,
-                        collection_name,
-                        VectorParams(size=vector_size, distance=Distance.COSINE),
+                    await self.client.create_collection(
+                        collection_name=collection_name,
+                        vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
                     )
                 except Exception as create_error:
                     # Log error but continue - collection might already exist
@@ -104,13 +89,13 @@ class QdrantAdapter:
     ) -> None:
         """Add documents to Qdrant"""
         if source_ids is None:
-            source_ids = [None] * len(urls)
+            source_ids = [""] * len(urls)
 
         # First, delete any existing documents with the same URLs
         unique_urls = list(set(urls))
         for url in unique_urls:
             try:
-                await self.delete_documents_by_url(url)
+                await self.delete_documents_by_url([url])
             except Exception as e:
                 print(f"Error deleting documents from Qdrant: {e}")
 
@@ -152,7 +137,7 @@ class QdrantAdapter:
                     parsed_url = urlparse(url)
                     source_id = parsed_url.netloc or parsed_url.path
                     # Remove 'www.' prefix if present for consistency
-                    if source_id and source_id.startswith('www.'):
+                    if source_id and source_id.startswith("www."):
                         source_id = source_id[4:]
 
                 # Prepare payload - always include source_id
@@ -173,15 +158,12 @@ class QdrantAdapter:
 
             # Upsert batch to Qdrant
             try:
-                loop = asyncio.get_event_loop()
-                await loop.run_in_executor(
-                    None,
-                    self.client.upsert,
-                    self.CRAWLED_PAGES,
-                    points,
+                await self.client.upsert(
+                    collection_name=self.CODE_EXAMPLES,
+                    points=points,
                 )
             except Exception as e:
-                print(f"Error upserting documents to Qdrant: {e}")
+                print(f"Error upserting code examples to Qdrant: {e}")
                 raise
 
     async def search_documents(
@@ -218,15 +200,11 @@ class QdrantAdapter:
             search_filter = Filter(must=filter_conditions)
 
         # Perform search
-        loop = asyncio.get_event_loop()
-        results = await loop.run_in_executor(
-            None,
-            lambda: self.client.search(
-                collection_name=self.CRAWLED_PAGES,
-                query_vector=query_embedding,
-                query_filter=search_filter,
-                limit=match_count,
-            ),
+        results = await self.client.search(
+            collection_name=self.CRAWLED_PAGES,
+            query_vector=query_embedding,
+            query_filter=search_filter,
+            limit=match_count,
         )
 
         # Format results
@@ -267,18 +245,11 @@ class QdrantAdapter:
         search_filter = Filter(must=filter_conditions)
 
         # Use scroll to find matching documents
-        loop = asyncio.get_event_loop()
-
-        def scroll_keyword_search():
-            return self.client.scroll(
-                collection_name=self.CRAWLED_PAGES,
-                scroll_filter=search_filter,
-                limit=match_count,
-            )
-
-        scroll_result = await loop.run_in_executor(None, scroll_keyword_search)
-
-        points, _ = scroll_result
+        points, _ = await self.client.scroll(
+            collection_name=self.CRAWLED_PAGES,
+            scroll_filter=search_filter,
+            limit=match_count,
+        )
 
         # Format results
         formatted_results = []
@@ -399,6 +370,36 @@ class QdrantAdapter:
 
         return final_results[:match_count]
 
+    async def url_exists(self, url: str) -> bool:
+        """Check if URL exists in database (efficient existence check).
+
+        Uses count() instead of scroll() for performance.
+        Per Qdrant docs: count() only returns number, not point data.
+
+        Args:
+            url: URL to check
+
+        Returns:
+            True if URL exists, False otherwise
+        """
+        filter_condition = Filter(
+            must=[
+                FieldCondition(
+                    key="url",
+                    match=MatchValue(value=url),
+                ),
+            ],
+        )
+
+        # Use count for efficient existence check
+        count_result = await self.client.count(
+            collection_name=self.CRAWLED_PAGES,
+            count_filter=filter_condition,
+            exact=False,  # Approximate count is fine for existence check
+        )
+
+        return count_result.count > 0
+
     async def get_documents_by_url(self, url: str) -> list[dict[str, Any]]:
         """Get all document chunks for a specific URL"""
         filter_condition = Filter(
@@ -411,18 +412,11 @@ class QdrantAdapter:
         )
 
         # Use scroll to get all chunks
-        loop = asyncio.get_event_loop()
-
-        def scroll_for_url():
-            return self.client.scroll(
-                collection_name=self.CRAWLED_PAGES,
-                scroll_filter=filter_condition,
-                limit=1000,  # Large limit to get all chunks
-            )
-
-        scroll_result = await loop.run_in_executor(None, scroll_for_url)
-
-        points, _ = scroll_result
+        points, _ = await self.client.scroll(
+            collection_name=self.CRAWLED_PAGES,
+            scroll_filter=filter_condition,
+            limit=1000,  # Large limit to get all chunks
+        )
 
         # Format and sort by chunk number
         results = []
@@ -438,8 +432,6 @@ class QdrantAdapter:
 
     async def delete_documents_by_url(self, urls: list[str]) -> None:
         """Delete all document chunks for the given URLs"""
-        loop = asyncio.get_event_loop()
-
         for url in urls:
             # First, find all points with this URL
             filter_condition = Filter(
@@ -451,27 +443,18 @@ class QdrantAdapter:
                 ],
             )
 
-            def scroll_with_filter():
-                return self.client.scroll(
-                    collection_name=self.CRAWLED_PAGES,
-                    scroll_filter=filter_condition,
-                    limit=1000,
-                )
-
-            scroll_result = await loop.run_in_executor(None, scroll_with_filter)
-
-            points, _ = scroll_result
+            points, _ = await self.client.scroll(
+                collection_name=self.CRAWLED_PAGES,
+                scroll_filter=filter_condition,
+                limit=1000,
+            )
 
             if points:
-                # Extract point IDs
+                # Delete all points for this URL
                 point_ids = [point.id for point in points]
-
-                # Delete the points
-                await loop.run_in_executor(
-                    None,
-                    self.client.delete,
-                    self.CRAWLED_PAGES,
-                    PointIdsList(points=point_ids),
+                await self.client.delete(
+                    collection_name=self.CRAWLED_PAGES,
+                    points_selector=PointIdsList(points=point_ids),
                 )
 
     async def add_code_examples(
@@ -486,7 +469,7 @@ class QdrantAdapter:
     ) -> None:
         """Add code examples to Qdrant"""
         if source_ids is None:
-            source_ids = [None] * len(urls)
+            source_ids = [""] * len(urls)
 
         # Process in batches
         for i in range(0, len(urls), self.batch_size):
@@ -541,12 +524,9 @@ class QdrantAdapter:
                 points.append(point)
 
             # Upsert to Qdrant
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(
-                None,
-                self.client.upsert,
-                self.CODE_EXAMPLES,
-                points,
+            await self.client.upsert(
+                collection_name=self.CODE_EXAMPLES,
+                points=points,
             )
 
     async def search_code_examples(
@@ -600,15 +580,11 @@ class QdrantAdapter:
             search_filter = Filter(must=filter_conditions)
 
         # Perform search
-        loop = asyncio.get_event_loop()
-        results = await loop.run_in_executor(
-            None,
-            lambda: self.client.search(
-                collection_name=self.CODE_EXAMPLES,
-                query_vector=final_embedding,
-                query_filter=search_filter,
-                limit=match_count,
-            ),
+        results = await self.client.search(
+            collection_name=self.CODE_EXAMPLES,
+            query_vector=final_embedding,
+            query_filter=search_filter,
+            limit=match_count,
         )
 
         # Format results
@@ -623,40 +599,24 @@ class QdrantAdapter:
 
     async def delete_code_examples_by_url(self, urls: list[str]) -> None:
         """Delete all code examples with the given URLs"""
-        loop = asyncio.get_event_loop()
-
         for url in urls:
             # First, find all points with this URL
             filter_condition = Filter(
-                must=[
-                    FieldCondition(
-                        key="url",
-                        match=MatchValue(value=url),
-                    ),
-                ],
+                must=[FieldCondition(key="url", match=MatchValue(value=url))],
             )
 
-            def scroll_code_for_deletion():
-                return self.client.scroll(
-                    collection_name=self.CODE_EXAMPLES,
-                    scroll_filter=filter_condition,
-                    limit=1000,
-                )
-
-            scroll_result = await loop.run_in_executor(None, scroll_code_for_deletion)
-
-            points, _ = scroll_result
+            points, _ = await self.client.scroll(
+                collection_name=self.CODE_EXAMPLES,
+                scroll_filter=filter_condition,
+                limit=1000,
+            )
 
             if points:
-                # Extract point IDs
+                # Delete all points for this URL
                 point_ids = [point.id for point in points]
-
-                # Delete the points
-                await loop.run_in_executor(
-                    None,
-                    self.client.delete,
-                    self.CODE_EXAMPLES,
-                    PointIdsList(points=point_ids),
+                await self.client.delete(
+                    collection_name=self.CODE_EXAMPLES,
+                    points_selector=PointIdsList(points=point_ids),
                 )
 
     async def search_code_examples_by_keyword(
@@ -687,18 +647,11 @@ class QdrantAdapter:
         search_filter = Filter(must=filter_conditions)
 
         # Use scroll to find matching code examples
-        loop = asyncio.get_event_loop()
-
-        def scroll_code_keyword_search():
-            return self.client.scroll(
-                collection_name=self.CODE_EXAMPLES,
-                scroll_filter=search_filter,
-                limit=match_count,
-            )
-
-        scroll_result = await loop.run_in_executor(None, scroll_code_keyword_search)
-
-        points, _ = scroll_result
+        points, _ = await self.client.scroll(
+            collection_name=self.CODE_EXAMPLES,
+            scroll_filter=search_filter,
+            limit=match_count,
+        )
 
         # Format results
         formatted_results = []
@@ -743,17 +696,11 @@ class QdrantAdapter:
 
         search_filter = Filter(must=filter_conditions)
 
-        loop = asyncio.get_event_loop()
-
-        def scroll_repository_code():
-            return self.client.scroll(
-                collection_name=self.CODE_EXAMPLES,
-                scroll_filter=search_filter,
-                limit=match_count,
-            )
-
-        scroll_result = await loop.run_in_executor(None, scroll_repository_code)
-        points, _ = scroll_result
+        points, _ = await self.client.scroll(
+            collection_name=self.CODE_EXAMPLES,
+            scroll_filter=search_filter,
+            limit=match_count,
+        )
 
         # Format results
         formatted_results = []
@@ -780,28 +727,20 @@ class QdrantAdapter:
             ],
         )
 
-        loop = asyncio.get_event_loop()
-
-        def scroll_for_deletion():
-            return self.client.scroll(
-                collection_name=self.CODE_EXAMPLES,
-                scroll_filter=filter_condition,
-                limit=1000,
-            )
-
-        scroll_result = await loop.run_in_executor(None, scroll_for_deletion)
-        points, _ = scroll_result
+        points, _ = await self.client.scroll(
+            collection_name=self.CODE_EXAMPLES,
+            scroll_filter=filter_condition,
+            limit=1000,
+        )
 
         if points:
             # Extract point IDs
             point_ids = [point.id for point in points]
 
             # Delete the points
-            await loop.run_in_executor(
-                None,
-                self.client.delete,
-                self.CODE_EXAMPLES,
-                PointIdsList(points=point_ids),
+            await self.client.delete(
+                collection_name=self.CODE_EXAMPLES,
+                points_selector=PointIdsList(points=point_ids),
             )
 
     async def search_code_by_signature(
@@ -848,17 +787,11 @@ class QdrantAdapter:
 
         search_filter = Filter(must=filter_conditions)
 
-        loop = asyncio.get_event_loop()
-
-        def scroll_signature_search():
-            return self.client.scroll(
-                collection_name=self.CODE_EXAMPLES,
-                scroll_filter=search_filter,
-                limit=match_count,
-            )
-
-        scroll_result = await loop.run_in_executor(None, scroll_signature_search)
-        points, _ = scroll_result
+        points, _ = await self.client.scroll(
+            collection_name=self.CODE_EXAMPLES,
+            scroll_filter=search_filter,
+            limit=match_count,
+        )
 
         # Format results
         formatted_results = []
@@ -894,12 +827,9 @@ class QdrantAdapter:
             },
         )
 
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(
-            None,
-            self.client.upsert,
-            self.SOURCES,
-            [point],
+        await self.client.upsert(
+            collection_name=self.SOURCES,
+            points=[point],
         )
 
     async def search_sources(
@@ -908,15 +838,11 @@ class QdrantAdapter:
         match_count: int = 10,
     ) -> list[dict[str, Any]]:
         """Search for similar sources"""
-        loop = asyncio.get_event_loop()
-        results = await loop.run_in_executor(
-            None,
-            lambda: self.client.search(
-                collection_name=self.SOURCES,
-                query_vector=query_embedding,
-                query_filter=None,
-                limit=match_count,
-            ),
+        results = await self.client.search(
+            collection_name=self.SOURCES,
+            query_vector=query_embedding,
+            query_filter=None,
+            limit=match_count,
         )
 
         # Format results
@@ -939,14 +865,10 @@ class QdrantAdapter:
         point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, source_id))
 
         # Get existing source
-        loop = asyncio.get_event_loop()
-
         try:
-            existing_points = await loop.run_in_executor(
-                None,
-                self.client.retrieve,
-                self.SOURCES,
-                [point_id],
+            existing_points = await self.client.retrieve(
+                collection_name=self.SOURCES,
+                ids=[point_id],
             )
 
             if not existing_points:
@@ -959,11 +881,10 @@ class QdrantAdapter:
             updated_payload.update(updates)
 
             # Update the point
-            await loop.run_in_executor(
-                None,
-                self.client.set_payload,
-                self.SOURCES,
-                {point_id: updated_payload},
+            await self.client.set_payload(
+                collection_name=self.SOURCES,
+                payload=updated_payload,
+                points=[point_id],
             )
         except Exception as e:
             print(f"Error updating source: {e}", file=sys.stderr)
@@ -981,8 +902,6 @@ class QdrantAdapter:
             - created_at: Creation timestamp
             - updated_at: Update timestamp
         """
-        loop = asyncio.get_event_loop()
-
         try:
             # Scroll through all points in the sources collection
             all_sources = []
@@ -991,17 +910,12 @@ class QdrantAdapter:
 
             while True:
                 # Get a batch of sources
-                def scroll_sources():
-                    return self.client.scroll(
-                        collection_name=self.SOURCES,
-                        offset=offset,
-                        limit=limit,
-                        with_payload=True,
-                    )
-
-                result = await loop.run_in_executor(None, scroll_sources)
-
-                points, next_offset = result
+                points, next_offset = await self.client.scroll(
+                    collection_name=self.SOURCES,
+                    offset=offset,
+                    limit=limit,
+                    with_payload=True,
+                )
 
                 # Format each source
                 for point in points:
@@ -1050,7 +964,6 @@ class QdrantAdapter:
         """
         from datetime import datetime
 
-        loop = asyncio.get_event_loop()
         timestamp = datetime.now(UTC).isoformat()
 
         try:
@@ -1059,11 +972,9 @@ class QdrantAdapter:
 
             # Try to get existing source
             try:
-                existing_points = await loop.run_in_executor(
-                    None,
-                    self.client.retrieve,
-                    self.SOURCES,
-                    [point_id],
+                existing_points = await self.client.retrieve(
+                    collection_name=self.SOURCES,
+                    ids=[point_id],
                 )
 
                 if existing_points:
@@ -1078,11 +989,10 @@ class QdrantAdapter:
                         },
                     )
 
-                    await loop.run_in_executor(
-                        None,
-                        self.client.set_payload,
-                        self.SOURCES,
-                        {point_id: updated_payload},
+                    await self.client.set_payload(
+                        collection_name=self.SOURCES,
+                        payload=updated_payload,
+                        points=[point_id],
                     )
                 else:
                     # Create new source
@@ -1117,7 +1027,6 @@ class QdrantAdapter:
     ) -> None:
         """Helper method to create a new source"""
         try:
-            loop = asyncio.get_event_loop()
             # Create new source with a deterministic embedding
             # IMPORTANT: This embedding must be 1536 dimensions to match OpenAI's text-embedding-3-small model
             # Previously this was creating 384-dimensional embeddings which caused vector dimension errors
@@ -1134,7 +1043,7 @@ class QdrantAdapter:
 
             # OpenAI embeddings are 1536 dimensions, but SHA256 only gives us 32 values
             # We repeat the pattern to fill all 1536 dimensions deterministically
-            embedding = []
+            embedding: list[float] = []
             while len(embedding) < 1536:
                 embedding.extend(base_embedding)
 
@@ -1157,11 +1066,9 @@ class QdrantAdapter:
                 ),
             ]
 
-            await loop.run_in_executor(
-                None,
-                self.client.upsert,
-                self.SOURCES,
-                points,
+            await self.client.upsert(
+                collection_name=self.SOURCES,
+                points=points,
             )
         except Exception as e:
             print(f"Error creating new source: {e}", file=sys.stderr)
