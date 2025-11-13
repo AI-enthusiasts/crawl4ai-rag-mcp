@@ -182,10 +182,17 @@ class Settings(BaseSettings):
     )
 
     agentic_search_max_urls_per_iteration: int = Field(
-        default=3,
+        default=5,
         ge=1,
         le=20,
-        description="Maximum URLs to crawl per iteration",
+        description="Maximum starting URLs to crawl per iteration",
+    )
+
+    agentic_search_max_pages_per_iteration: int = Field(
+        default=50,
+        ge=1,
+        le=200,
+        description="Maximum total pages to crawl recursively across all URLs in iteration",
     )
 
     agentic_search_url_score_threshold: float = Field(
@@ -198,6 +205,11 @@ class Settings(BaseSettings):
     agentic_search_use_search_hints: bool = Field(
         default=False,
         description="Generate search hints from crawled content",
+    )
+
+    agentic_search_enable_url_filtering: bool = Field(
+        default=True,
+        description="Enable smart URL filtering to avoid GitHub commits, pagination, etc.",
     )
 
     agentic_search_llm_temperature: float = Field(
