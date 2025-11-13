@@ -55,12 +55,9 @@ NEO4J_BATCH_SIZE_DEFAULT = 50  # Default Neo4j batch size
 # Repository Limits
 # ========================================
 
-# Size limits
+# Size limits (defined in Settings, referenced here for code usage)
 REPO_MAX_SIZE_MB_DEFAULT = 500  # Default maximum repository size
-REPO_MAX_SIZE_MB_LARGE = 1000  # Large repository limit
 REPO_MAX_FILE_COUNT_DEFAULT = 10000  # Default maximum file count
-REPO_MAX_FILE_COUNT_LARGE = 50000  # Large repository file count
-REPO_MIN_FREE_SPACE_GB_DEFAULT = 1.0  # Minimum free disk space required
 
 # ========================================
 # Network & Timeout Constants
@@ -85,20 +82,6 @@ MAX_INPUT_SIZE = 50000  # 50KB max input for safety
 MAX_URL_LENGTH = 2048  # Maximum URL length
 MAX_QUERY_LENGTH = 1000  # Maximum search query length
 
-# Rate limiting
-MAX_CONCURRENT_SESSIONS_DEFAULT = 50  # Maximum concurrent browser sessions
-MAX_CONCURRENT_SESSIONS_HIGH = 100  # High concurrency limit
-
-# ========================================
-# Logging Constants
-# ========================================
-
-# Log levels
-LOG_LEVEL_DEBUG = 10
-LOG_LEVEL_INFO = 20
-LOG_LEVEL_WARNING = 30
-LOG_LEVEL_ERROR = 40
-
 # ========================================
 # Test Constants
 # ========================================
@@ -109,12 +92,11 @@ TEST_MODEL_FALLBACK = "gpt-4o-mini"  # Fallback if nano not available
 
 # Test cost estimates (USD)
 TEST_COST_PER_1K_TOKENS_NANO = 0.00015  # gpt-4.1-nano cost
-TEST_COST_PER_1K_TOKENS_MINI = 0.00015  # gpt-4o-mini cost
 TEST_COST_PER_RUN_BASIC = 0.001  # Basic test run cost
 TEST_COST_PER_RUN_COMPREHENSIVE = 0.005  # Comprehensive test run cost
 
 # ========================================
-# HTTP Status Codes (for reference)
+# HTTP Status Codes
 # ========================================
 
 HTTP_OK = 200
