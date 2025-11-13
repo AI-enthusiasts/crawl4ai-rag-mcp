@@ -25,7 +25,7 @@ from config import get_settings
 from core import MCPToolError
 from core.context import get_app_context
 from database import perform_rag_query
-from services.crawling import process_urls_for_mcp
+from services.crawling import crawl_urls_for_agentic_search
 from services.search import _search_searxng
 
 from .agentic_models import (
@@ -59,8 +59,10 @@ class AgenticSearchService:
         self.completeness_threshold = settings.agentic_search_completeness_threshold
         self.max_iterations = settings.agentic_search_max_iterations
         self.max_urls_per_iteration = settings.agentic_search_max_urls_per_iteration
+        self.max_pages_per_iteration = settings.agentic_search_max_pages_per_iteration
         self.url_score_threshold = settings.agentic_search_url_score_threshold
         self.use_search_hints = settings.agentic_search_use_search_hints
+        self.enable_url_filtering = settings.agentic_search_enable_url_filtering
         self.max_qdrant_results = settings.agentic_search_max_qdrant_results
 
     async def execute_search(
@@ -533,32 +535,36 @@ Return a list of rankings with url, title, snippet, score, and reasoning for eac
         iteration: int,
         search_history: list[SearchIteration],
     ) -> None:
-        """STAGE 3: Crawl promising URLs and index in Qdrant.
+        """STAGE 3: Crawl promising URLs recursively with smart filtering and limits.
 
         Args:
             ctx: FastMCP context
-            urls: URLs to crawl
+            urls: URLs to crawl (starting points)
             query: Original query
             use_hints: Whether to use search hints
             iteration: Current iteration number
             search_history: History to append to
         """
-        logger.info(f"STAGE 3: Crawling {len(urls)} promising URLs")
+        logger.info(f"STAGE 3: Recursively crawling {len(urls)} promising URLs")
 
-        # Crawl and index URLs (process_urls_for_mcp handles full indexing)
-        crawl_result = await process_urls_for_mcp(
+        # Crawl recursively with smart limits and filtering
+        crawl_result = await crawl_urls_for_agentic_search(
             ctx=ctx,
             urls=urls,
-            batch_size=20,
-            return_raw_markdown=False,  # Store in database
+            max_pages=self.max_pages_per_iteration,
+            enable_url_filtering=self.enable_url_filtering,
         )
 
-        # Parse crawl results
-        crawl_data = json.loads(crawl_result)
-        urls_stored = sum(1 for r in crawl_data.get("results", []) if r.get("success"))
-        chunks_stored = sum(r.get("chunks_stored", 0) for r in crawl_data.get("results", []))
+        # Extract results
+        urls_crawled = crawl_result.get("urls_crawled", 0)
+        urls_stored = crawl_result.get("urls_stored", 0)
+        chunks_stored = crawl_result.get("chunks_stored", 0)
+        urls_filtered = crawl_result.get("urls_filtered", 0)
 
-        logger.info(f"Stored {urls_stored}/{len(urls)} URLs, {chunks_stored} chunks total")
+        logger.info(
+            f"Crawled {urls_crawled} pages, stored {urls_stored} URLs, "
+            f"{chunks_stored} chunks, filtered {urls_filtered} URLs",
+        )
 
         search_history.append(
             SearchIteration(
