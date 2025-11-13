@@ -1,6 +1,5 @@
 """Crawling services for the Crawl4AI MCP server."""
 
-import asyncio
 import json
 import logging
 from contextlib import asynccontextmanager
@@ -39,7 +38,7 @@ async def track_memory(operation_name: str):
     start_memory_percent, start_available_gb, total_gb = get_memory_stats()
     logger.info(
         f"[{operation_name}] Memory before: {start_memory_percent:.1f}% used, "
-        f"{start_available_gb:.2f}/{total_gb:.2f} GB available"
+        f"{start_available_gb:.2f}/{total_gb:.2f} GB available",
     )
 
     # Yield a dict to collect results
@@ -53,7 +52,7 @@ async def track_memory(operation_name: str):
 
         logger.info(
             f"[{operation_name}] Memory after: {end_memory_percent:.1f}% used "
-            f"(Δ {memory_delta:+.1f}%), {end_available_gb:.2f} GB available"
+            f"(Δ {memory_delta:+.1f}%), {end_available_gb:.2f} GB available",
         )
 
         # Log dispatch stats if results are available
@@ -65,17 +64,17 @@ async def track_memory(operation_name: str):
                         {
                             "memory_usage": r.dispatch_result.memory_usage,
                             "peak_memory": r.dispatch_result.peak_memory,
-                        }
+                        },
                     )
 
             if dispatch_stats:
                 avg_memory = sum(s["memory_usage"] for s in dispatch_stats) / len(
-                    dispatch_stats
+                    dispatch_stats,
                 )
                 peak_memory = max(s["peak_memory"] for s in dispatch_stats)
                 logger.info(
                     f"[{operation_name}] Dispatch stats: "
-                    f"avg {avg_memory:.1f} MB, peak {peak_memory:.1f} MB"
+                    f"avg {avg_memory:.1f} MB, peak {peak_memory:.1f} MB",
                 )
 
 
@@ -214,7 +213,7 @@ async def crawl_batch(
         page_timeout=45000,  # 45 seconds in milliseconds
         # session_id=None - explicitly no session for automatic page cleanup
     )
-    
+
     # Use shared dispatcher from context for global concurrency control
     # This ensures max_session_permit applies across ALL tool calls, not per-call
 
@@ -225,9 +224,9 @@ async def crawl_batch(
             async with track_memory(f"crawl_batch({len(validated_urls)} URLs)") as mem_ctx:
                 logger.info(
                     f"Starting arun_many for {len(validated_urls)} URLs "
-                    f"(page_timeout={crawl_config.page_timeout}ms)"
+                    f"(page_timeout={crawl_config.page_timeout}ms)",
                 )
-                
+
                 # Crawler will automatically close all pages when exiting context manager
                 with SuppressStdout():
                     results = await crawler.arun_many(
@@ -238,9 +237,9 @@ async def crawl_batch(
 
                 # Store results for memory tracking
                 mem_ctx["results"] = results
-                
+
                 logger.info(
-                    f"arun_many completed: {len(results)} results returned"
+                    f"arun_many completed: {len(results)} results returned",
                 )
             # Crawler automatically closed here - all pages cleaned up
 
@@ -256,7 +255,7 @@ async def crawl_batch(
         logger.info(
             f"Crawling complete: {len(successful_results)} successful, "
             f"{len(failed_results)} failed, "
-            f"total_processed={len(results)}"
+            f"total_processed={len(results)}",
         )
 
         if successful_results:
@@ -275,21 +274,21 @@ async def crawl_batch(
     except Exception as e:
         logger.error(
             f"Crawl4AI error during batch crawl: {type(e).__name__}: {e}",
-            exc_info=True
+            exc_info=True,
         )
         logger.error(
-            f"Failed URLs: {validated_urls}"
+            f"Failed URLs: {validated_urls}",
         )
         logger.error(
             f"Crawler config: cache_mode={crawl_config.cache_mode}, "
             f"stream={crawl_config.stream}, "
             f"page_timeout={crawl_config.page_timeout}ms, "
-            f"session_id={crawl_config.session_id}"
+            f"session_id={crawl_config.session_id}",
         )
         logger.error(
             f"Dispatcher config: memory_threshold={dispatcher.memory_threshold_percent}%, "
             f"max_sessions={dispatcher.max_session_permit}, "
-            f"check_interval={dispatcher.check_interval}s"
+            f"check_interval={dispatcher.check_interval}s",
         )
 
         # Re-raise with more context
@@ -334,7 +333,7 @@ async def crawl_recursive_internal_links(
                 break
 
             async with track_memory(
-                f"recursive_crawl(depth={depth}, urls={len(urls_to_crawl)})"
+                f"recursive_crawl(depth={depth}, urls={len(urls_to_crawl)})",
             ) as mem_ctx:
                 # Run in executor to avoid blocking event loop
                 with SuppressStdout():

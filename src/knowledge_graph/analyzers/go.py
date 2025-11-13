@@ -7,7 +7,7 @@ Analyzes Go files to extract structs, functions, interfaces, and imports.
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base import CodeAnalyzer
 
@@ -36,29 +36,29 @@ class GoAnalyzer(CodeAnalyzer):
             "type_alias": re.compile(r"type\s+(\w+)\s+(?!struct|interface)(\w+)"),
             # Functions and methods
             "function": re.compile(
-                r"func\s+(?:\((?:[^)]*)\)\s+)?(\w+)\s*\([^)]*\)(?:\s*(?:\([^)]*\)|[\w\[\]\*]+))?"
+                r"func\s+(?:\((?:[^)]*)\)\s+)?(\w+)\s*\([^)]*\)(?:\s*(?:\([^)]*\)|[\w\[\]\*]+))?",
             ),
             # Method receivers
             "method": re.compile(
-                r"func\s+\((\w+)\s+([\*]?\w+(?:\[.*?\])?)\)\s+(\w+)\s*\([^)]*\)"
+                r"func\s+\((\w+)\s+([\*]?\w+(?:\[.*?\])?)\)\s+(\w+)\s*\([^)]*\)",
             ),
             # Constants
             "const": re.compile(
-                r"const\s+(?:\(\s*((?:[^)]+))\s*\)|(\w+)(?:\s+[\w\[\]\*]+)?\s*=)"
+                r"const\s+(?:\(\s*((?:[^)]+))\s*\)|(\w+)(?:\s+[\w\[\]\*]+)?\s*=)",
             ),
             # Variables
             "var": re.compile(
-                r"var\s+(?:\(\s*((?:[^)]+)\s*\)|(\w+)(?:\s+[\w\[\]\*]+)?(?:\s*=)?))"
+                r"var\s+(?:\(\s*((?:[^)]+)\s*\)|(\w+)(?:\s+[\w\[\]\*]+)?(?:\s*=)?))",
             ),
             # Go doc comments
             "godoc": re.compile(r"^//\s*(\w+)\s+(.*)$", re.MULTILINE),
             # Struct fields
             "field": re.compile(
-                r"^\s*(\w+)\s+((?:[\*\[\]]*\w+)+)(?:\s+`[^`]+`)?", re.MULTILINE
+                r"^\s*(\w+)\s+((?:[\*\[\]]*\w+)+)(?:\s+`[^`]+`)?", re.MULTILINE,
             ),
             # Interface methods
             "interface_method": re.compile(
-                r"^\s*(\w+)\s*\([^)]*\)(?:\s*(?:\([^)]*\)|[\w\[\]\*]+))?", re.MULTILINE
+                r"^\s*(\w+)\s*\([^)]*\)(?:\s*(?:\([^)]*\)|[\w\[\]\*]+))?", re.MULTILINE,
             ),
         }
 
@@ -71,8 +71,8 @@ class GoAnalyzer(CodeAnalyzer):
         self,
         file_path: str,
         repo_path: str,
-        content: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        content: str | None = None,
+    ) -> dict[str, Any]:
         """
         Analyze a Go file.
 
@@ -123,10 +123,10 @@ class GoAnalyzer(CodeAnalyzer):
             }
 
         except Exception as e:
-            logger.error(f"Error analyzing {file_path}: {e}")
+            logger.exception(f"Error analyzing {file_path}: {e}")
             return self._empty_result(file_path, repo_path)
 
-    def _empty_result(self, file_path: str, repo_path: str) -> Dict[str, Any]:
+    def _empty_result(self, file_path: str, repo_path: str) -> dict[str, Any]:
         """Return empty analysis result."""
         return {
             "file_path": file_path,
@@ -149,7 +149,7 @@ class GoAnalyzer(CodeAnalyzer):
         match = self.patterns["package"].search(content)
         return match.group(1) if match else ""
 
-    def _extract_imports(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_imports(self, content: str) -> list[dict[str, Any]]:
         """Extract import statements."""
         imports = []
 
@@ -169,7 +169,7 @@ class GoAnalyzer(CodeAnalyzer):
                                     "path": path,
                                     "alias": alias,
                                     "line": content[: match.start()].count("\n") + 1,
-                                }
+                                },
                             )
                         else:
                             path = line.strip('"')
@@ -178,7 +178,7 @@ class GoAnalyzer(CodeAnalyzer):
                                     "path": path,
                                     "alias": None,
                                     "line": content[: match.start()].count("\n") + 1,
-                                }
+                                },
                             )
             else:  # Single import
                 path = match.group(2)
@@ -187,12 +187,12 @@ class GoAnalyzer(CodeAnalyzer):
                         "path": path,
                         "alias": None,
                         "line": content[: match.start()].count("\n") + 1,
-                    }
+                    },
                 )
 
         return imports
 
-    def _extract_structs(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_structs(self, content: str) -> list[dict[str, Any]]:
         """Extract struct definitions."""
         structs = []
 
@@ -217,14 +217,14 @@ class GoAnalyzer(CodeAnalyzer):
                     "exported": exported,
                     "line": line_num,
                     "type": "struct",
-                }
+                },
             )
 
         return structs
 
-    def _extract_struct_fields(self, struct_body: str) -> List[Dict[str, Any]]:
+    def _extract_struct_fields(self, struct_body: str) -> list[dict[str, Any]]:
         """Extract fields from a struct body."""
-        fields: List[Dict[str, Any]] = []
+        fields: list[dict[str, Any]] = []
 
         for match in self.patterns["field"].finditer(struct_body):
             field_name = match.group(1)
@@ -239,12 +239,12 @@ class GoAnalyzer(CodeAnalyzer):
                     "name": field_name,
                     "type": field_type,
                     "exported": field_name[0].isupper() if field_name else False,
-                }
+                },
             )
 
         return fields
 
-    def _extract_interfaces(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_interfaces(self, content: str) -> list[dict[str, Any]]:
         """Extract interface definitions."""
         interfaces = []
 
@@ -269,12 +269,12 @@ class GoAnalyzer(CodeAnalyzer):
                     "exported": exported,
                     "line": line_num,
                     "type": "interface",
-                }
+                },
             )
 
         return interfaces
 
-    def _extract_interface_methods(self, interface_body: str) -> List[Dict[str, str]]:
+    def _extract_interface_methods(self, interface_body: str) -> list[dict[str, str]]:
         """Extract methods from an interface body."""
         methods = []
 
@@ -287,12 +287,12 @@ class GoAnalyzer(CodeAnalyzer):
                     {
                         "name": method_name,
                         "type": "method",
-                    }
+                    },
                 )
 
         return methods
 
-    def _extract_functions(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_functions(self, content: str) -> list[dict[str, Any]]:
         """Extract function and method definitions."""
         functions = []
         seen = set()
@@ -314,7 +314,7 @@ class GoAnalyzer(CodeAnalyzer):
                         "type": "method",
                         "exported": method_name[0].isupper() if method_name else False,
                         "line": content[: match.start()].count("\n") + 1,
-                    }
+                    },
                 )
 
         # Extract regular functions
@@ -329,12 +329,12 @@ class GoAnalyzer(CodeAnalyzer):
                         "type": "function",
                         "exported": func_name[0].isupper() if func_name else False,
                         "line": content[: match.start()].count("\n") + 1,
-                    }
+                    },
                 )
 
         return functions
 
-    def _extract_types(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_types(self, content: str) -> list[dict[str, Any]]:
         """Extract type definitions."""
         types = []
 
@@ -348,12 +348,12 @@ class GoAnalyzer(CodeAnalyzer):
                     "base": base_type,
                     "exported": type_name[0].isupper() if type_name else False,
                     "line": content[: match.start()].count("\n") + 1,
-                }
+                },
             )
 
         return types
 
-    def _extract_constants(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_constants(self, content: str) -> list[dict[str, Any]]:
         """Extract constant definitions."""
         constants = []
 
@@ -372,7 +372,7 @@ class GoAnalyzer(CodeAnalyzer):
                                     "name": const_name,
                                     "exported": const_name[0].isupper(),
                                     "line": content[: match.start()].count("\n") + 1,
-                                }
+                                },
                             )
             elif match.group(2):  # Single const
                 const_name = match.group(2)
@@ -381,12 +381,12 @@ class GoAnalyzer(CodeAnalyzer):
                         "name": const_name,
                         "exported": const_name[0].isupper(),
                         "line": content[: match.start()].count("\n") + 1,
-                    }
+                    },
                 )
 
         return constants
 
-    def _extract_variables(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_variables(self, content: str) -> list[dict[str, Any]]:
         """Extract variable definitions."""
         variables = []
 
@@ -405,7 +405,7 @@ class GoAnalyzer(CodeAnalyzer):
                                     "name": var_name,
                                     "exported": var_name[0].isupper(),
                                     "line": content[: match.start()].count("\n") + 1,
-                                }
+                                },
                             )
             elif match.group(2):  # Single var
                 var_name = match.group(2)
@@ -414,18 +414,18 @@ class GoAnalyzer(CodeAnalyzer):
                         "name": var_name,
                         "exported": var_name[0].isupper(),
                         "line": content[: match.start()].count("\n") + 1,
-                    }
+                    },
                 )
 
         return variables
 
     def _extract_exports(
         self,
-        structs: List[Dict],
-        interfaces: List[Dict],
-        functions: List[Dict],
-        types: List[Dict],
-    ) -> List[str]:
+        structs: list[dict],
+        interfaces: list[dict],
+        functions: list[dict],
+        types: list[dict],
+    ) -> list[str]:
         """
         Extract exported symbols (capitalized names in Go).
 
@@ -455,7 +455,7 @@ class GoAnalyzer(CodeAnalyzer):
 
         return exports
 
-    def _extract_dependencies(self, imports: List[Dict[str, Any]]) -> List[str]:
+    def _extract_dependencies(self, imports: list[dict[str, Any]]) -> list[str]:
         """Extract unique dependencies from imports."""
         deps = set()
 
@@ -473,7 +473,7 @@ class GoAnalyzer(CodeAnalyzer):
                         # Other external packages
                         deps.add(parts[0])
 
-        return sorted(list(deps))
+        return sorted(deps)
 
     def _extract_block(self, content: str) -> str:
         """Extract a code block starting with { and ending with matching }."""

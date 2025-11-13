@@ -89,8 +89,21 @@ class URLRanking(BaseModel):
         """Ensure URL is non-empty and stripped."""
         url = v.strip()
         if not url:
-            raise ValueError("URL cannot be empty")
+            msg = "URL cannot be empty"
+            raise ValueError(msg)
         return url
+
+
+class URLRankingList(BaseModel):
+    """List of URL rankings from LLM structured output.
+
+    This is used as the response format for OpenAI's structured outputs API.
+    """
+
+    rankings: list[URLRanking] = Field(
+        default_factory=list,
+        description="List of ranked URLs with scores and reasoning",
+    )
 
 
 class SearchIteration(BaseModel):
@@ -262,7 +275,8 @@ class QueryRefinement(BaseModel):
         """Ensure refined queries are non-empty and unique."""
         queries = [q.strip() for q in v if q and q.strip()]
         if not queries:
-            raise ValueError("At least one refined query is required")
+            msg = "At least one refined query is required"
+            raise ValueError(msg)
         # Remove duplicates while preserving order
         seen = set()
         unique_queries = []
@@ -339,7 +353,8 @@ class SearchHints(BaseModel):
         """Ensure hints are non-empty and unique."""
         hints = [h.strip() for h in v if h and h.strip()]
         if not hints:
-            raise ValueError("At least one search hint is required")
+            msg = "At least one search hint is required"
+            raise ValueError(msg)
         # Remove duplicates while preserving order
         seen = set()
         unique_hints = []

@@ -91,21 +91,21 @@ class CodeExample:
 # Constants for validation
 SUPPORTED_LANGUAGES = {"Python", "JavaScript", "TypeScript", "Go"}
 SUPPORTED_CODE_TYPES = {
-    "class", "function", "method", "interface", "struct", 
-    "type", "variable", "constant"
+    "class", "function", "method", "interface", "struct",
+    "type", "variable", "constant",
 }
 VALIDATION_STATUSES = {"extracted", "validated", "verified"}
 
 
-@dataclass  
+@dataclass
 class UniversalCodeExample:
     """
     Enhanced code example supporting multiple programming languages.
-    
+
     Supports Python, JavaScript, TypeScript, and Go with language-specific
     metadata and multi-context embedding generation.
     """
-    
+
     # Core fields (required)
     repository_name: str
     file_path: str
@@ -114,7 +114,7 @@ class UniversalCodeExample:
     code_type: str  # class, function, method, interface, struct, type, variable, constant
     name: str
     full_name: str
-    
+
     # Language-agnostic properties
     signature: str | None = None
     documentation: str | None = None
@@ -122,39 +122,43 @@ class UniversalCodeExample:
     visibility: str | None = None  # public, private, protected
     is_async: bool = False
     is_static: bool = False
-    
+
     # Relationship fields
     parent_name: str | None = None  # For methods in classes, nested types
     child_elements: list[str] = field(default_factory=list)  # Methods in class, fields in struct
-    
+
     # Language-specific metadata as JSON
     language_specific: dict[str, Any] = field(default_factory=dict)
-    
+
     # Enhanced embedding context support
     embedding_context: dict[str, str] = field(default_factory=dict)
-    
+
     # Validation metadata
     validation_status: str = "extracted"  # extracted, validated, verified
     confidence_score: float | None = None
-    
+
     def __post_init__(self):
         """Initialize default values and validate inputs."""
         self.validate()
-    
+
     def validate(self) -> None:
         """Validate the code example data."""
         if self.language not in SUPPORTED_LANGUAGES:
-            raise ValueError(f"Unsupported language: {self.language}. Supported: {SUPPORTED_LANGUAGES}")
-        
+            msg = f"Unsupported language: {self.language}. Supported: {SUPPORTED_LANGUAGES}"
+            raise ValueError(msg)
+
         if self.code_type not in SUPPORTED_CODE_TYPES:
-            raise ValueError(f"Unsupported code_type: {self.code_type}. Supported: {SUPPORTED_CODE_TYPES}")
-        
+            msg = f"Unsupported code_type: {self.code_type}. Supported: {SUPPORTED_CODE_TYPES}"
+            raise ValueError(msg)
+
         if self.validation_status not in VALIDATION_STATUSES:
-            raise ValueError(f"Invalid validation_status: {self.validation_status}. Supported: {VALIDATION_STATUSES}")
-        
+            msg = f"Invalid validation_status: {self.validation_status}. Supported: {VALIDATION_STATUSES}"
+            raise ValueError(msg)
+
         if self.confidence_score is not None and not (0.0 <= self.confidence_score <= 1.0):
-            raise ValueError(f"confidence_score must be between 0.0 and 1.0, got: {self.confidence_score}")
-    
+            msg = f"confidence_score must be between 0.0 and 1.0, got: {self.confidence_score}"
+            raise ValueError(msg)
+
     def to_metadata(self) -> dict[str, Any]:
         """Convert to comprehensive metadata dictionary for Qdrant storage."""
         metadata = {
@@ -167,119 +171,117 @@ class UniversalCodeExample:
             "full_name": self.full_name,
             "validation_status": self.validation_status,
         }
-        
+
         # Add optional fields
         optional_fields = [
             "signature", "documentation", "line_number", "visibility",
-            "is_async", "is_static", "parent_name", "confidence_score"
+            "is_async", "is_static", "parent_name", "confidence_score",
         ]
         for field in optional_fields:
             value = getattr(self, field)
             if value is not None:
                 metadata[field] = value
-        
+
         if self.child_elements:
             metadata["child_elements"] = self.child_elements
-        
+
         if self.language_specific:
             metadata["language_specific"] = self.language_specific
-            
+
         return metadata
-    
+
     def generate_embedding_contexts(self) -> dict[str, str]:
         """Generate multiple embedding contexts for different use cases."""
         contexts = {}
-        
+
         # Signature context - just the declaration/signature
         contexts["signature"] = self._generate_signature_context()
-        
+
         # Semantic context - natural language description
         contexts["semantic"] = self._generate_semantic_context()
-        
+
         # Usage context - how it's typically used
         contexts["usage"] = self._generate_usage_context()
-        
+
         # Full context - complete representation with documentation
         contexts["full"] = self._generate_full_context()
-        
+
         # Store contexts for future use
         self.embedding_context = contexts
         return contexts
-    
+
     def generate_embedding_text(self, context_type: str = "full") -> str:
         """
         Generate text representation for embedding generation.
-        
+
         Args:
             context_type: Type of context to generate ("signature", "semantic", "usage", "full")
         """
         if not self.embedding_context:
             self.generate_embedding_contexts()
-        
+
         return self.embedding_context.get(context_type, self.embedding_context.get("full", ""))
-    
+
     def _generate_signature_context(self) -> str:
         """Generate signature-only context."""
         if self.signature:
             return f"{self.language} {self.code_type} {self.name}: {self.signature}"
-        
+
         # Generate basic signature based on language and type
         if self.language == "Python":
             return self._generate_python_signature()
-        elif self.language in ["JavaScript", "TypeScript"]:
+        if self.language in ["JavaScript", "TypeScript"]:
             return self._generate_js_ts_signature()
-        elif self.language == "Go":
+        if self.language == "Go":
             return self._generate_go_signature()
-        else:
-            return f"{self.language} {self.code_type} {self.name}"
-    
+        return f"{self.language} {self.code_type} {self.name}"
+
     def _generate_semantic_context(self) -> str:
         """Generate semantic description context."""
         base = f"{self.language} {self.code_type} '{self.name}'"
-        
+
         if self.parent_name:
             base += f" in {self.parent_name}"
-        
+
         base += f" from {self.module_name or 'module'}"
-        
+
         if self.documentation:
             base += f"\nDescription: {self.documentation}"
-        
+
         if self.child_elements:
             base += f"\nContains: {', '.join(self.child_elements[:5])}"  # Limit to first 5
-        
+
         return base
-    
+
     def _generate_usage_context(self) -> str:
         """Generate usage example context."""
         if self.language == "Python":
             return self._generate_python_usage()
-        elif self.language in ["JavaScript", "TypeScript"]:
+        if self.language in ["JavaScript", "TypeScript"]:
             return self._generate_js_ts_usage()
-        elif self.language == "Go":
+        if self.language == "Go":
             return self._generate_go_usage()
-        else:
-            return f"Usage example for {self.language} {self.code_type} {self.name}"
-    
+        return f"Usage example for {self.language} {self.code_type} {self.name}"
+
     def _generate_full_context(self) -> str:
         """Generate complete context with all information."""
         parts = []
-        
+
         # Header
         header = f"{self.language} {self.code_type} {self.name}"
         if self.parent_name:
             header += f" in {self.parent_name}"
         header += f" from {self.module_name}"
         parts.append(header)
-        
+
         # Signature
         if self.signature:
             parts.append(f"Signature: {self.signature}")
-        
+
         # Documentation
         if self.documentation:
             parts.append(f"Documentation: {self.documentation}")
-        
+
         # Properties
         properties = []
         if self.visibility:
@@ -290,11 +292,11 @@ class UniversalCodeExample:
             properties.append("static")
         if properties:
             parts.append(f"Properties: {', '.join(properties)}")
-        
+
         # Child elements
         if self.child_elements:
             parts.append(f"Contains: {', '.join(self.child_elements)}")
-        
+
         # Language-specific information
         if self.language_specific:
             lang_info = []
@@ -305,53 +307,51 @@ class UniversalCodeExample:
                     lang_info.append(f"{key}: {value}")
             if lang_info:
                 parts.append(f"Language-specific: {'; '.join(lang_info)}")
-        
+
         return "\n".join(parts)
-    
+
     def _generate_python_signature(self) -> str:
         """Generate Python-style signature."""
         if self.code_type == "class":
             return f"class {self.name}:"
-        elif self.code_type in ["function", "method"]:
+        if self.code_type in ["function", "method"]:
             params = self.language_specific.get("parameters", [])
             return_type = self.language_specific.get("return_type", "")
             param_str = ", ".join(params) if params else ""
             return_str = f" -> {return_type}" if return_type else ""
             return f"def {self.name}({param_str}){return_str}:"
-        else:
-            return f"{self.name}: {self.language_specific.get('type_hint', 'Any')}"
-    
+        return f"{self.name}: {self.language_specific.get('type_hint', 'Any')}"
+
     def _generate_js_ts_signature(self) -> str:
         """Generate JavaScript/TypeScript-style signature."""
         if self.code_type == "class":
             return f"class {self.name} {{"
-        elif self.code_type == "interface" and self.language == "TypeScript":
+        if self.code_type == "interface" and self.language == "TypeScript":
             return f"interface {self.name} {{"
-        elif self.code_type == "type" and self.language == "TypeScript":
+        if self.code_type == "type" and self.language == "TypeScript":
             return f"type {self.name} = {self.language_specific.get('type_definition', 'any')}"
-        elif self.code_type in ["function", "method"]:
+        if self.code_type in ["function", "method"]:
             params = self.language_specific.get("parameters", [])
             return_type = self.language_specific.get("return_type", "")
             param_str = ", ".join(params) if params else ""
             return_str = f": {return_type}" if return_type and self.language == "TypeScript" else ""
             prefix = "async " if self.is_async else ""
             return f"{prefix}function {self.name}({param_str}){return_str} {{"
-        else:
-            return f"const {self.name} = {self.language_specific.get('value', 'undefined')}"
-    
+        return f"const {self.name} = {self.language_specific.get('value', 'undefined')}"
+
     def _generate_go_signature(self) -> str:
         """Generate Go-style signature."""
         if self.code_type == "struct":
             return f"type {self.name} struct {{"
-        elif self.code_type == "interface":
+        if self.code_type == "interface":
             return f"type {self.name} interface {{"
-        elif self.code_type == "function":
+        if self.code_type == "function":
             params = self.language_specific.get("parameters", [])
             return_type = self.language_specific.get("return_type", "")
             param_str = ", ".join(params) if params else ""
             return_str = f" {return_type}" if return_type else ""
             return f"func {self.name}({param_str}){return_str} {{"
-        elif self.code_type == "method":
+        if self.code_type == "method":
             receiver = self.language_specific.get("receiver", "")
             params = self.language_specific.get("parameters", [])
             return_type = self.language_specific.get("return_type", "")
@@ -359,50 +359,46 @@ class UniversalCodeExample:
             param_str = ", ".join(params) if params else ""
             return_str = f" {return_type}" if return_type else ""
             return f"func {receiver_str}{self.name}({param_str}){return_str} {{"
-        else:
-            return f"var {self.name} {self.language_specific.get('type', 'interface{}')}"
-    
+        return f"var {self.name} {self.language_specific.get('type', 'interface{}')}"
+
     def _generate_python_usage(self) -> str:
         """Generate Python usage example."""
         if self.code_type == "class":
             return f"# Usage:\ninstance = {self.name}()\n# Access methods: instance.method_name()"
-        elif self.code_type == "function":
+        if self.code_type == "function":
             params = self.language_specific.get("parameters", [])
             if params:
                 example_params = ", ".join(["arg" + str(i) for i in range(len(params))])
                 return f"# Usage:\nresult = {self.name}({example_params})"
             return f"# Usage:\nresult = {self.name}()"
-        elif self.code_type == "method":
+        if self.code_type == "method":
             return f"# Usage:\ninstance.{self.name}(args)"
-        else:
-            return f"# Usage: {self.name}"
-    
+        return f"# Usage: {self.name}"
+
     def _generate_js_ts_usage(self) -> str:
         """Generate JavaScript/TypeScript usage example."""
         if self.code_type == "class":
             return f"// Usage:\nconst instance = new {self.name}();\n// Access methods: instance.methodName()"
-        elif self.code_type == "interface" and self.language == "TypeScript":
+        if self.code_type == "interface" and self.language == "TypeScript":
             return f"// Usage:\nconst obj: {self.name} = {{ /* implement interface */ }};"
-        elif self.code_type == "function":
+        if self.code_type == "function":
             return f"// Usage:\nconst result = {self.name}(args);"
-        else:
-            return f"// Usage: {self.name}"
-    
+        return f"// Usage: {self.name}"
+
     def _generate_go_usage(self) -> str:
         """Generate Go usage example."""
         if self.code_type == "struct":
             return f"// Usage:\ninstance := {self.name}{{}}\n// Access fields: instance.FieldName"
-        elif self.code_type == "function":
+        if self.code_type == "function":
             return f"// Usage:\nresult := {self.name}(args)"
-        elif self.code_type == "method":
+        if self.code_type == "method":
             return f"// Usage:\ninstance.{self.name}(args)"
-        else:
-            return f"// Usage: {self.name}"
-    
-    def to_code_example(self) -> 'CodeExample':
+        return f"// Usage: {self.name}"
+
+    def to_code_example(self) -> "CodeExample":
         """
         Convert to legacy CodeExample for backward compatibility.
-        
+
         Returns:
             CodeExample instance with compatible fields
         """
@@ -411,16 +407,16 @@ class UniversalCodeExample:
         return_type = None
         class_name = None
         method_count = None
-        
+
         if self.language == "Python" and self.language_specific:
             parameters = self.language_specific.get("parameters")
             return_type = self.language_specific.get("return_type")
             class_name = self.parent_name
             method_count = len(self.child_elements) if self.child_elements else None
-        
+
         # Generate code text from signature if available
         code_text = self.signature or self.generate_embedding_text("signature")
-        
+
         return CodeExample(
             repository_name=self.repository_name,
             file_path=self.file_path,
@@ -444,7 +440,7 @@ class Neo4jCodeExtractor:
     def __init__(self, neo4j_session: Any, use_universal: bool = False, language: str = "Python"):
         """
         Initialize with Neo4j session.
-        
+
         Args:
             neo4j_session: Neo4j database session
             use_universal: If True, returns UniversalCodeExample instances
@@ -487,18 +483,17 @@ class Neo4jCodeExtractor:
     async def extract_repository_code_universal(self, repo_name: str) -> list[UniversalCodeExample]:
         """
         Extract repository code using UniversalCodeExample format.
-        
+
         Args:
             repo_name: Name of the repository to extract from
-            
+
         Returns:
             List of UniversalCodeExample objects
         """
         original_setting = self.use_universal
         self.use_universal = True
         try:
-            result = await self.extract_repository_code(repo_name)
-            return result
+            return await self.extract_repository_code(repo_name)
         finally:
             self.use_universal = original_setting
 
@@ -548,8 +543,8 @@ class Neo4jCodeExtractor:
             # Create class example
             if self.use_universal:
                 class_example = self._create_universal_class_example(
-                    repo_name, file_path, module_name, class_name, 
-                    class_full_name, methods, method_count
+                    repo_name, file_path, module_name, class_name,
+                    class_full_name, methods, method_count,
                 )
             else:
                 # Generate class code representation (legacy)
@@ -565,7 +560,7 @@ class Neo4jCodeExtractor:
                     method_count=method_count,
                     language=self.language,
                 )
-            
+
             classes.append(class_example)
 
             # Create individual method examples for important methods
@@ -573,8 +568,8 @@ class Neo4jCodeExtractor:
                 if method["name"] and not method["name"].startswith("_"):  # Public methods
                     if self.use_universal:
                         method_example = self._create_universal_method_example(
-                            repo_name, file_path, module_name, method, 
-                            class_name, class_full_name
+                            repo_name, file_path, module_name, method,
+                            class_name, class_full_name,
                         )
                     else:
                         method_code = self._generate_method_code(method)
@@ -628,7 +623,7 @@ class Neo4jCodeExtractor:
             if self.use_universal:
                 function_example = self._create_universal_function_example(
                     repo_name, file_path, module_name, function_name,
-                    full_name, params_list, return_type, record
+                    full_name, params_list, return_type, record,
                 )
             else:
                 # Generate function code representation (legacy)
@@ -659,16 +654,16 @@ class Neo4jCodeExtractor:
 
     def _create_universal_class_example(
         self, repo_name: str, file_path: str, module_name: str,
-        class_name: str, class_full_name: str, methods: list[dict], 
-        method_count: int
+        class_name: str, class_full_name: str, methods: list[dict],
+        method_count: int,
     ) -> UniversalCodeExample:
         """Create UniversalCodeExample for a class."""
         # Extract method names for child_elements
         public_methods = [
-            m["name"] for m in methods 
+            m["name"] for m in methods
             if m["name"] and not m["name"].startswith("_")
         ]
-        
+
         # Generate signature
         if self.language == "Python":
             signature = f"class {class_name}:"
@@ -707,7 +702,7 @@ class Neo4jCodeExtractor:
 
     def _create_universal_method_example(
         self, repo_name: str, file_path: str, module_name: str,
-        method: dict, class_name: str, class_full_name: str
+        method: dict, class_name: str, class_full_name: str,
     ) -> UniversalCodeExample:
         """Create UniversalCodeExample for a method."""
         method_name = method["name"]
@@ -760,7 +755,7 @@ class Neo4jCodeExtractor:
     def _create_universal_function_example(
         self, repo_name: str, file_path: str, module_name: str,
         function_name: str, full_name: str, params_list: list[str],
-        return_type: str, record: dict
+        return_type: str, record: dict,
     ) -> UniversalCodeExample:
         """Create UniversalCodeExample for a function."""
         # Generate signature
@@ -847,7 +842,7 @@ class Neo4jCodeExtractor:
 
 
 async def extract_repository_code(
-    repo_extractor: Any, repo_name: str, use_universal: bool = False
+    repo_extractor: Any, repo_name: str, use_universal: bool = False,
 ) -> dict[str, Any]:
     """
     Main function to extract code from a repository using the repository extractor.
@@ -914,7 +909,7 @@ async def extract_repository_code(
                     "types": len([e for e in code_examples if e.code_type == "type"]),
                     "variables": len([e for e in code_examples if e.code_type == "variable"]),
                     "constants": len([e for e in code_examples if e.code_type == "constant"]),
-                    "languages": list(set(e.language for e in code_examples if hasattr(e, 'language'))),
+                    "languages": list({e.language for e in code_examples if hasattr(e, "language")}),
                 }
             else:
                 summary = {
@@ -949,13 +944,13 @@ async def extract_repository_code(
 # examples = await extractor.extract_repository_code("my-repo")
 #
 # # Universal mode with multi-language support
-# extractor = Neo4jCodeExtractor(session, use_universal=True, language="TypeScript")  
+# extractor = Neo4jCodeExtractor(session, use_universal=True, language="TypeScript")
 # examples = await extractor.extract_repository_code("my-ts-repo")
 #
 # # Generate different embedding contexts for enhanced search
 # for example in examples:
 #     if isinstance(example, UniversalCodeExample):
 #         signature_text = example.generate_embedding_text("signature")
-#         semantic_text = example.generate_embedding_text("semantic") 
+#         semantic_text = example.generate_embedding_text("semantic")
 #         usage_text = example.generate_embedding_text("usage")
 #         full_text = example.generate_embedding_text("full")

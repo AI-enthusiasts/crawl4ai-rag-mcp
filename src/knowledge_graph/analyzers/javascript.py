@@ -7,7 +7,7 @@ Analyzes JS/TS files to extract classes, functions, imports, and exports.
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base import CodeAnalyzer
 
@@ -26,51 +26,51 @@ class JavaScriptAnalyzer(CodeAnalyzer):
         self.patterns = {
             # ES6 Classes
             "class": re.compile(
-                r"(?:export\s+)?(?:default\s+)?(?:abstract\s+)?class\s+(\w+)(?:\s+extends\s+(\w+))?"
+                r"(?:export\s+)?(?:default\s+)?(?:abstract\s+)?class\s+(\w+)(?:\s+extends\s+(\w+))?",
             ),
             # Methods inside classes
             "method": re.compile(
-                r"(?:(?:public|private|protected|static|async|get|set)\s+)*(\w+)\s*\([^)]*\)\s*(?::\s*[\w<>\[\]|]+)?\s*\{"
+                r"(?:(?:public|private|protected|static|async|get|set)\s+)*(\w+)\s*\([^)]*\)\s*(?::\s*[\w<>\[\]|]+)?\s*\{",
             ),
             # Functions (regular, async, generator)
             "function": re.compile(
-                r"(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s*\*?\s+(\w+)\s*\([^)]*\)"
+                r"(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s*\*?\s+(\w+)\s*\([^)]*\)",
             ),
             # Arrow functions assigned to variables
             "arrow_function": re.compile(
-                r"(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[\w]+)\s*=>"
+                r"(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[\w]+)\s*=>",
             ),
             # ES6 imports - improved to handle mixed imports
             "import": re.compile(
-                r"import\s+(?:type\s+)?(?:(\*\s+as\s+\w+)|(\w+)|(\{[^}]+\}))\s+from\s+['\"]([^'\"]+)['\"]"
+                r"import\s+(?:type\s+)?(?:(\*\s+as\s+\w+)|(\w+)|(\{[^}]+\}))\s+from\s+['\"]([^'\"]+)['\"]",
             ),
             # Mixed imports: import Default, { named } from 'module'
             "mixed_import": re.compile(
-                r"import\s+(?:type\s+)?(\w+)\s*,\s*(\{[^}]+\})\s+from\s+['\"]([^'\"]+)['\"]"
+                r"import\s+(?:type\s+)?(\w+)\s*,\s*(\{[^}]+\})\s+from\s+['\"]([^'\"]+)['\"]",
             ),
             # Dynamic imports
             "dynamic_import": re.compile(
-                r"(?:await\s+)?import\s*\(\s*['\"]([^'\"]+)['\"]\s*\)"
+                r"(?:await\s+)?import\s*\(\s*['\"]([^'\"]+)['\"]\s*\)",
             ),
             # CommonJS require
             "require": re.compile(
-                r"(?:const|let|var)\s+(?:(\w+)|\{([^}]+)\})\s*=\s*require\s*\(\s*['\"]([^'\"]+)['\"]\s*\)"
+                r"(?:const|let|var)\s+(?:(\w+)|\{([^}]+)\})\s*=\s*require\s*\(\s*['\"]([^'\"]+)['\"]\s*\)",
             ),
             # ES6 exports
             "export": re.compile(
-                r"export\s+(?:default\s+)?(?:(class|function|const|let|var|interface|type|enum)\s+)?(\w+)?"
+                r"export\s+(?:default\s+)?(?:(class|function|const|let|var|interface|type|enum)\s+)?(\w+)?",
             ),
             # Export from
             "export_from": re.compile(
-                r"export\s+(?:(\*)|(\{[^}]+\}))\s+from\s+['\"]([^'\"]+)['\"]"
+                r"export\s+(?:(\*)|(\{[^}]+\}))\s+from\s+['\"]([^'\"]+)['\"]",
             ),
             # module.exports
             "module_exports": re.compile(
-                r"module\.exports\s*=\s*(?:(\w+)|\{([^}]+)\})"
+                r"module\.exports\s*=\s*(?:(\w+)|\{([^}]+)\})",
             ),
             # TypeScript interfaces
             "interface": re.compile(
-                r"(?:export\s+)?interface\s+(\w+)(?:\s+extends\s+([^{]+))?\s*\{"
+                r"(?:export\s+)?interface\s+(\w+)(?:\s+extends\s+([^{]+))?\s*\{",
             ),
             # TypeScript types
             "type": re.compile(r"(?:export\s+)?type\s+(\w+)\s*=\s*"),
@@ -78,11 +78,11 @@ class JavaScriptAnalyzer(CodeAnalyzer):
             "enum": re.compile(r"(?:export\s+)?enum\s+(\w+)\s*\{"),
             # Variables and constants
             "variable": re.compile(
-                r"(?:export\s+)?(?:const|let|var)\s+(?:(\w+)|\{([^}]+)\}|\[([^\]]+)\])\s*(?::\s*[\w<>\[\]|]+)?\s*="
+                r"(?:export\s+)?(?:const|let|var)\s+(?:(\w+)|\{([^}]+)\}|\[([^\]]+)\])\s*(?::\s*[\w<>\[\]|]+)?\s*=",
             ),
             # React functional components
             "react_component": re.compile(
-                r"(?:export\s+)?(?:default\s+)?(?:const|function)\s+(\w+)\s*(?::\s*(?:React\.)?FC)?\s*=?\s*(?:\([^)]*\))?\s*(?:=>\s*)?(?:\(|\{)"
+                r"(?:export\s+)?(?:default\s+)?(?:const|function)\s+(\w+)\s*(?::\s*(?:React\.)?FC)?\s*=?\s*(?:\([^)]*\))?\s*(?:=>\s*)?(?:\(|\{)",
             ),
             # JSDoc comments
             "jsdoc": re.compile(r"/\*\*((?:[^*]|\*(?!/))*)\*/"),
@@ -97,8 +97,8 @@ class JavaScriptAnalyzer(CodeAnalyzer):
         self,
         file_path: str,
         repo_path: str,
-        content: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        content: str | None = None,
+    ) -> dict[str, Any]:
         """
         Analyze a JavaScript/TypeScript file.
 
@@ -152,10 +152,10 @@ class JavaScriptAnalyzer(CodeAnalyzer):
             }
 
         except Exception as e:
-            logger.error(f"Error analyzing {file_path}: {e}")
+            logger.exception(f"Error analyzing {file_path}: {e}")
             return self._empty_result(file_path, repo_path)
 
-    def _empty_result(self, file_path: str, repo_path: str) -> Dict[str, Any]:
+    def _empty_result(self, file_path: str, repo_path: str) -> dict[str, Any]:
         """Return empty analysis result."""
         return {
             "file_path": file_path,
@@ -184,11 +184,10 @@ class JavaScriptAnalyzer(CodeAnalyzer):
         content = re.sub(r"//.*$", "", content, flags=re.MULTILINE)
 
         # Remove multi-line comments (but not JSDoc)
-        content = re.sub(r"/\*(?!\*)[^*]*\*+(?:[^/*][^*]*\*+)*/", "", content)
+        return re.sub(r"/\*(?!\*)[^*]*\*+(?:[^/*][^*]*\*+)*/", "", content)
 
-        return content
 
-    def _extract_jsdoc(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_jsdoc(self, content: str) -> list[dict[str, Any]]:
         """Extract JSDoc comments."""
         jsdocs = []
         for match in self.patterns["jsdoc"].finditer(content):
@@ -196,14 +195,14 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                 {
                     "content": match.group(1).strip(),
                     "position": match.start(),
-                }
+                },
             )
         return jsdocs
 
-    def _extract_classes(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_classes(self, content: str) -> list[dict[str, Any]]:
         """Extract class definitions."""
         classes = []
-        lines = content.split("\n")
+        content.split("\n")
 
         for match in self.patterns["class"].finditer(content):
             class_name = match.group(1)
@@ -222,19 +221,19 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                     "methods": methods,
                     "line": line_num,
                     "type": "class",
-                }
+                },
             )
 
         return classes
 
-    def _extract_class_methods(self, class_body: str) -> List[Dict[str, str]]:
+    def _extract_class_methods(self, class_body: str) -> list[dict[str, str]]:
         """Extract methods from a class body."""
         methods = []
 
         # Match methods including constructor
         method_pattern = re.compile(
             r"(?:(?:public|private|protected|static|async|get|set)\s+)*"
-            r"(?:constructor|(\w+))\s*\([^)]*\)"
+            r"(?:constructor|(\w+))\s*\([^)]*\)",
         )
 
         for match in method_pattern.finditer(class_body):
@@ -243,12 +242,12 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                 {
                     "name": method_name,
                     "type": "method",
-                }
+                },
             )
 
         return methods
 
-    def _extract_functions(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_functions(self, content: str) -> list[dict[str, Any]]:
         """Extract function definitions."""
         functions = []
 
@@ -261,7 +260,7 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                     "async": "async" in match.group(0),
                     "generator": "*" in match.group(0),
                     "line": content[: match.start()].count("\n") + 1,
-                }
+                },
             )
 
         # Arrow functions
@@ -272,7 +271,7 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                     "type": "arrow_function",
                     "async": "async" in match.group(0),
                     "line": content[: match.start()].count("\n") + 1,
-                }
+                },
             )
 
         # React components (that look like functions)
@@ -285,12 +284,12 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                         "name": name,
                         "type": "react_component",
                         "line": content[: match.start()].count("\n") + 1,
-                    }
+                    },
                 )
 
         return functions
 
-    def _extract_imports(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_imports(self, content: str) -> list[dict[str, Any]]:
         """Extract import statements."""
         imports = []
 
@@ -312,7 +311,7 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                     "source": source,
                     "imported": imported,
                     "line": content[: match.start()].count("\n") + 1,
-                }
+                },
             )
 
         # Mixed imports: import Default, { named } from 'module'
@@ -332,7 +331,7 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                     "source": source,
                     "imported": imported,
                     "line": content[: match.start()].count("\n") + 1,
-                }
+                },
             )
 
         # CommonJS require
@@ -352,7 +351,7 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                     "source": source,
                     "imported": imported,
                     "line": content[: match.start()].count("\n") + 1,
-                }
+                },
             )
 
         # Dynamic imports
@@ -363,12 +362,12 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                     "source": match.group(1),
                     "imported": [],
                     "line": content[: match.start()].count("\n") + 1,
-                }
+                },
             )
 
         return imports
 
-    def _extract_exports(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_exports(self, content: str) -> list[dict[str, Any]]:
         """Extract export statements."""
         exports = []
 
@@ -384,7 +383,7 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                         "name": name,
                         "kind": export_type or "value",
                         "line": content[: match.start()].count("\n") + 1,
-                    }
+                    },
                 )
             elif "default" in match.group(0):
                 exports.append(
@@ -393,7 +392,7 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                         "name": "default",
                         "kind": export_type or "value",
                         "line": content[: match.start()].count("\n") + 1,
-                    }
+                    },
                 )
 
         # Export from
@@ -405,7 +404,7 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                         "type": "all",
                         "source": source,
                         "line": content[: match.start()].count("\n") + 1,
-                    }
+                    },
                 )
             elif match.group(2):  # export { named }
                 names = match.group(2).strip("{}").split(",")
@@ -416,7 +415,7 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                             "name": name.strip().split()[-1],
                             "source": source,
                             "line": content[: match.start()].count("\n") + 1,
-                        }
+                        },
                     )
 
         # module.exports
@@ -427,7 +426,7 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                         "type": "commonjs",
                         "name": match.group(1),
                         "line": content[: match.start()].count("\n") + 1,
-                    }
+                    },
                 )
             elif match.group(2):  # module.exports = { names }
                 names = match.group(2).split(",")
@@ -437,12 +436,12 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                             "type": "commonjs",
                             "name": name.strip(),
                             "line": content[: match.start()].count("\n") + 1,
-                        }
+                        },
                     )
 
         return exports
 
-    def _extract_interfaces(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_interfaces(self, content: str) -> list[dict[str, Any]]:
         """Extract TypeScript interfaces."""
         interfaces = []
 
@@ -452,12 +451,12 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                     "name": match.group(1),
                     "extends": match.group(2).strip() if match.group(2) else None,
                     "line": content[: match.start()].count("\n") + 1,
-                }
+                },
             )
 
         return interfaces
 
-    def _extract_types(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_types(self, content: str) -> list[dict[str, Any]]:
         """Extract TypeScript type definitions."""
         types = []
 
@@ -466,7 +465,7 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                 {
                     "name": match.group(1),
                     "line": content[: match.start()].count("\n") + 1,
-                }
+                },
             )
 
         for match in self.patterns["enum"].finditer(content):
@@ -475,12 +474,12 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                     "name": match.group(1),
                     "kind": "enum",
                     "line": content[: match.start()].count("\n") + 1,
-                }
+                },
             )
 
         return types
 
-    def _extract_variables(self, content: str) -> List[Dict[str, Any]]:
+    def _extract_variables(self, content: str) -> list[dict[str, Any]]:
         """Extract variable declarations."""
         variables = []
         seen = set()
@@ -510,12 +509,12 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                         if "let" in match.group(0)
                         else "var",
                         "line": content[: match.start()].count("\n") + 1,
-                    }
+                    },
                 )
 
         return variables
 
-    def _extract_dependencies(self, imports: List[Dict[str, Any]]) -> List[str]:
+    def _extract_dependencies(self, imports: list[dict[str, Any]]) -> list[str]:
         """Extract unique dependencies from imports."""
         deps = set()
 
@@ -530,7 +529,7 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                 else:
                     deps.add(source.split("/")[0])
 
-        return sorted(list(deps))
+        return sorted(deps)
 
     def _extract_block(self, content: str) -> str:
         """Extract a code block starting with { and ending with matching }."""
@@ -555,7 +554,7 @@ class JavaScriptAnalyzer(CodeAnalyzer):
 
         return content[start:pos]
 
-    def _parse_named_imports(self, import_string: str) -> List[str]:
+    def _parse_named_imports(self, import_string: str) -> list[str]:
         """
         Parse named imports handling 'as' aliases properly.
 
@@ -595,7 +594,7 @@ class JavaScriptAnalyzer(CodeAnalyzer):
         return imports
 
     def _attach_jsdoc(
-        self, items: List[Dict[str, Any]], jsdocs: List[Dict[str, Any]]
+        self, items: list[dict[str, Any]], jsdocs: list[dict[str, Any]],
     ) -> None:
         """Attach JSDoc comments to code items."""
         for item in items:

@@ -8,8 +8,8 @@ from .go import GoAnalyzer
 from .javascript import JavaScriptAnalyzer
 
 __all__ = [
-    "CodeAnalyzer",
     "AnalyzerFactory",
+    "CodeAnalyzer",
     "GoAnalyzer",
     "JavaScriptAnalyzer",
 ]

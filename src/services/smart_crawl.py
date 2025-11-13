@@ -219,7 +219,7 @@ async def _crawl_text_file(
                     "type": "text_file",
                     "error": "Browser config not available in application context",
                     "url": url,
-                }
+                },
             )
 
         # Call low-level crawl_markdown_file with correct parameters
@@ -235,7 +235,7 @@ async def _crawl_text_file(
                     "type": "text_file",
                     "error": "Failed to crawl file",
                     "url": url,
-                }
+                },
             )
 
         if return_raw_markdown:
@@ -246,7 +246,7 @@ async def _crawl_text_file(
                     "type": "text_file",
                     "url": url,
                     "markdown": crawl_results[0]["markdown"],
-                }
+                },
             )
 
         # Store in database
@@ -257,7 +257,7 @@ async def _crawl_text_file(
                     "type": "text_file",
                     "error": "Database client not available",
                     "url": url,
-                }
+                },
             )
 
         from utils import add_documents_to_database
@@ -274,7 +274,7 @@ async def _crawl_text_file(
                     "type": "text_file",
                     "error": "No content to store after chunking",
                     "url": url,
-                }
+                },
             )
 
         source_id = extract_domain_from_url(result["url"])
@@ -303,7 +303,7 @@ async def _crawl_text_file(
                 "url": url,
                 "chunks_stored": len(chunks),
                 "source_id": source_id,
-            }
+            },
         )
 
     except Exception as e:

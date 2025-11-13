@@ -1,321 +1,337 @@
-"""Configuration settings for Crawl4AI MCP Server."""
+"""Configuration settings for Crawl4AI MCP Server using Pydantic Settings.
+
+This module provides type-safe configuration management with automatic validation,
+environment variable loading, and documentation generation.
+"""
 
 import logging
-import os
-from functools import lru_cache
-from pathlib import Path
 from typing import Any
 
-from dotenv import load_dotenv
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
 
-class Settings:
-    """Central configuration management for the application."""
+class Settings(BaseSettings):
+    """Central configuration management with Pydantic validation.
 
-    def __init__(self) -> None:
-        """Initialize settings by loading environment variables."""
-        self._load_environment()
-        self._validate_configuration()
+    All settings are loaded from environment variables with automatic type conversion
+    and validation. Default values are provided for non-critical settings.
+    """
 
-    def _load_environment(self) -> None:
-        """Load environment variables from .env file."""
-        # Determine which .env file to load
-        base_path = Path(__file__).parent.parent.parent
-        dotenv_path = base_path / ".env"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",  # Ignore extra env vars
+        validate_default=True,
+    )
 
-        # Priority order: .env.dev > .env.test > .env
-        dev_env_path = base_path / ".env.dev"
-        test_env_path = base_path / ".env.test"
+    # ========================================
+    # Debug Settings
+    # ========================================
+    debug: bool = Field(
+        default=False,
+        alias="MCP_DEBUG",
+        description="Enable debug mode with verbose logging",
+    )
 
-        # Check for development environment first
-        if dev_env_path.exists() and os.getenv("ENVIRONMENT") != "production":
-            dotenv_path = dev_env_path
-            logger.info(f"Using development environment: {dotenv_path}")
-        elif os.getenv("USE_TEST_ENV", "").lower() in ("true", "1", "yes"):
-            if test_env_path.exists():
-                dotenv_path = test_env_path
-                logger.info(f"Using test environment: {dotenv_path}")
-
-        # Load environment variables
-        if dotenv_path.exists():
-            # Always override to ensure the selected env file takes precedence
-            load_dotenv(dotenv_path, override=True)
-            logger.debug(f"Loaded environment from: {dotenv_path}")
-
-    def _validate_configuration(self) -> None:
-        """Validate critical configuration values."""
-        # Validate OpenAI API key
-        if not self.openai_api_key:
-            logger.error(
-                "OPENAI_API_KEY is missing or empty. Please check your .env file.",
-            )
-
-        # Log current database configuration
-        logger.info(f"VECTOR_DATABASE: {self.vector_database}")
-        logger.debug(f"QDRANT_URL: {self.qdrant_url}")
-
-    # Debug settings
-    @property
-    def debug(self) -> bool:
-        """Check if debug mode is enabled."""
-        return os.getenv("MCP_DEBUG", "").lower() in ("true", "1", "yes")
-
+    # ========================================
     # API Keys
-    @property
-    def openai_api_key(self) -> str | None:
-        """Get OpenAI API key."""
-        return os.getenv("OPENAI_API_KEY")
+    # ========================================
+    openai_api_key: str | None = Field(
+        default=None,
+        description="OpenAI API key for LLM operations",
+    )
 
-    # Server settings
-    @property
-    def host(self) -> str:
-        """Get server host."""
-        return os.getenv("HOST", "0.0.0.0")
+    # ========================================
+    # Server Settings
+    # ========================================
+    host: str = Field(
+        default="0.0.0.0",
+        description="Server host address",
+    )
 
-    @property
-    def port(self) -> str:
-        """Get server port."""
-        return os.getenv("PORT", "8051")
+    port: int = Field(
+        default=8051,
+        ge=1024,
+        le=65535,
+        description="Server port number",
+    )
 
-    # Database settings
-    @property
-    def vector_database(self) -> str:
-        """Get vector database type."""
-        return os.getenv("VECTOR_DATABASE", "qdrant")
+    # ========================================
+    # Database Settings
+    # ========================================
+    vector_database: str = Field(
+        default="qdrant",
+        description="Vector database type (qdrant or supabase)",
+    )
 
-    @property
-    def qdrant_url(self) -> str | None:
-        """Get Qdrant URL."""
-        return os.getenv("QDRANT_URL")
+    qdrant_url: str | None = Field(
+        default=None,
+        description="Qdrant server URL",
+    )
 
-    @property
-    def qdrant_api_key(self) -> str | None:
-        """Get Qdrant API key."""
-        return os.getenv("QDRANT_API_KEY")
+    qdrant_api_key: str | None = Field(
+        default=None,
+        description="Qdrant API key for authentication",
+    )
 
-    # Neo4j settings
-    @property
-    def neo4j_uri(self) -> str | None:
-        """Get Neo4j URI."""
-        return os.getenv("NEO4J_URI")
+    # ========================================
+    # Neo4j Settings
+    # ========================================
+    neo4j_uri: str | None = Field(
+        default=None,
+        description="Neo4j database URI",
+    )
 
-    @property
-    def neo4j_username(self) -> str | None:
-        """Get Neo4j username."""
-        return os.getenv("NEO4J_USERNAME")
+    neo4j_username: str | None = Field(
+        default=None,
+        description="Neo4j username",
+    )
 
-    @property
-    def neo4j_password(self) -> str | None:
-        """Get Neo4j password."""
-        return os.getenv("NEO4J_PASSWORD")
+    neo4j_password: str | None = Field(
+        default=None,
+        description="Neo4j password",
+    )
 
-    @property
-    def use_knowledge_graph(self) -> bool:
-        """Check if knowledge graph is enabled."""
-        return os.getenv("USE_KNOWLEDGE_GRAPH", "false").lower() == "true"
+    use_knowledge_graph: bool = Field(
+        default=False,
+        description="Enable knowledge graph features",
+    )
 
-    # Neo4j batch processing settings
-    @property
-    def neo4j_batch_size(self) -> int:
-        """Get Neo4j batch size for transaction processing."""
-        return int(os.getenv("NEO4J_BATCH_SIZE", "50"))
+    neo4j_batch_size: int = Field(
+        default=50,
+        ge=1,
+        le=1000,
+        description="Batch size for Neo4j transaction processing",
+    )
 
-    @property
-    def neo4j_batch_timeout(self) -> int:
-        """Get Neo4j batch timeout in seconds."""
-        return int(os.getenv("NEO4J_BATCH_TIMEOUT", "120"))
+    neo4j_batch_timeout: int = Field(
+        default=120,
+        ge=10,
+        le=600,
+        description="Timeout in seconds for Neo4j batch operations",
+    )
 
-    # SearXNG settings
-    @property
-    def searxng_url(self) -> str | None:
-        """Get SearXNG URL."""
-        return os.getenv("SEARXNG_URL")
+    # ========================================
+    # SearXNG Settings
+    # ========================================
+    searxng_url: str | None = Field(
+        default=None,
+        description="SearXNG instance URL for web search",
+    )
 
-    @property
-    def searxng_user_agent(self) -> str:
-        """Get SearXNG user agent."""
-        return os.getenv("SEARXNG_USER_AGENT", "MCP-Crawl4AI-RAG-Server/1.0")
+    searxng_user_agent: str = Field(
+        default="MCP-Crawl4AI-RAG-Server/1.0",
+        description="User agent for SearXNG requests",
+    )
 
-    @property
-    def searxng_timeout(self) -> int:
-        """Get SearXNG timeout."""
-        return int(os.getenv("SEARXNG_TIMEOUT", "30"))
+    searxng_timeout: int = Field(
+        default=30,
+        ge=5,
+        le=120,
+        description="Timeout in seconds for SearXNG requests",
+    )
 
-    @property
-    def searxng_default_engines(self) -> str:
-        """Get SearXNG default engines."""
-        return os.getenv("SEARXNG_DEFAULT_ENGINES", "")
+    searxng_default_engines: str = Field(
+        default="",
+        description="Comma-separated list of default search engines",
+    )
 
-    # Feature flags
-    @property
-    def use_reranking(self) -> bool:
-        """Check if reranking is enabled."""
-        return os.getenv("USE_RERANKING", "false").lower() == "true"
+    # ========================================
+    # Feature Flags
+    # ========================================
+    use_reranking: bool = Field(
+        default=False,
+        description="Enable result reranking for improved relevance",
+    )
 
-    @property
-    def use_test_env(self) -> bool:
-        """Check if test environment is enabled."""
-        return os.getenv("USE_TEST_ENV", "").lower() in ("true", "1", "yes")
+    use_test_env: bool = Field(
+        default=False,
+        alias="USE_TEST_ENV",
+        description="Use test environment configuration",
+    )
 
-    @property
-    def use_agentic_rag(self) -> bool:
-        """Check if agentic RAG is enabled."""
-        return os.getenv("USE_AGENTIC_RAG", "false").lower() == "true"
+    use_agentic_rag: bool = Field(
+        default=False,
+        description="Enable agentic RAG features",
+    )
 
-    # Agentic Search settings
-    @property
-    def agentic_search_enabled(self) -> bool:
-        """Check if agentic search is enabled."""
-        return os.getenv("AGENTIC_SEARCH_ENABLED", "false").lower() == "true"
+    # ========================================
+    # Agentic Search Settings
+    # ========================================
+    agentic_search_enabled: bool = Field(
+        default=False,
+        description="Enable agentic search with iterative refinement",
+    )
 
-    @property
-    def agentic_search_completeness_threshold(self) -> float:
-        """Get completeness threshold for agentic search (0.0-1.0)."""
-        try:
-            value = float(os.getenv("AGENTIC_SEARCH_COMPLETENESS_THRESHOLD", "0.95"))
-            return max(0.0, min(1.0, value))  # Clamp between 0 and 1
-        except (ValueError, TypeError):
-            logger.warning("Invalid AGENTIC_SEARCH_COMPLETENESS_THRESHOLD, using default 0.95")
-            return 0.95
+    agentic_search_completeness_threshold: float = Field(
+        default=0.95,
+        ge=0.0,
+        le=1.0,
+        description="Completeness threshold (0.0-1.0) for determining when answer is sufficient",
+    )
 
-    @property
-    def agentic_search_max_iterations(self) -> int:
-        """Get maximum iterations for agentic search."""
-        try:
-            value = int(os.getenv("AGENTIC_SEARCH_MAX_ITERATIONS", "3"))
-            return max(1, min(10, value))  # Clamp between 1 and 10
-        except (ValueError, TypeError):
-            logger.warning("Invalid AGENTIC_SEARCH_MAX_ITERATIONS, using default 3")
-            return 3
+    agentic_search_max_iterations: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        description="Maximum number of search iterations",
+    )
 
-    @property
-    def agentic_search_max_urls_per_iteration(self) -> int:
-        """Get maximum URLs to crawl per iteration."""
-        try:
-            value = int(os.getenv("AGENTIC_SEARCH_MAX_URLS_PER_ITERATION", "3"))
-            return max(1, min(20, value))  # Clamp between 1 and 20
-        except (ValueError, TypeError):
-            logger.warning("Invalid AGENTIC_SEARCH_MAX_URLS_PER_ITERATION, using default 3")
-            return 3
+    agentic_search_max_urls_per_iteration: int = Field(
+        default=3,
+        ge=1,
+        le=20,
+        description="Maximum URLs to crawl per iteration",
+    )
 
-    @property
-    def agentic_search_url_score_threshold(self) -> float:
-        """Get URL relevance score threshold (0.0-1.0)."""
-        try:
-            value = float(os.getenv("AGENTIC_SEARCH_URL_SCORE_THRESHOLD", "0.7"))
-            return max(0.0, min(1.0, value))  # Clamp between 0 and 1
-        except (ValueError, TypeError):
-            logger.warning("Invalid AGENTIC_SEARCH_URL_SCORE_THRESHOLD, using default 0.7")
-            return 0.7
+    agentic_search_url_score_threshold: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Minimum relevance score (0.0-1.0) for URLs to be crawled",
+    )
 
-    @property
-    def agentic_search_use_search_hints(self) -> bool:
-        """Check if search hints generation is enabled."""
-        return os.getenv("AGENTIC_SEARCH_USE_SEARCH_HINTS", "false").lower() == "true"
+    agentic_search_use_search_hints: bool = Field(
+        default=False,
+        description="Generate search hints from crawled content",
+    )
 
-    @property
-    def agentic_search_llm_temperature(self) -> float:
-        """Get LLM temperature for agentic search evaluations."""
-        try:
-            value = float(os.getenv("AGENTIC_SEARCH_LLM_TEMPERATURE", "0.3"))
-            return max(0.0, min(2.0, value))  # Clamp between 0 and 2
-        except (ValueError, TypeError):
-            logger.warning("Invalid AGENTIC_SEARCH_LLM_TEMPERATURE, using default 0.3")
-            return 0.3
+    agentic_search_llm_temperature: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=2.0,
+        description="LLM temperature for agentic search evaluations",
+    )
 
-    @property
-    def agentic_search_max_qdrant_results(self) -> int:
-        """Get maximum results from Qdrant for agentic search."""
-        try:
-            value = int(os.getenv("AGENTIC_SEARCH_MAX_QDRANT_RESULTS", "10"))
-            return max(1, min(50, value))  # Clamp between 1 and 50
-        except (ValueError, TypeError):
-            logger.warning("Invalid AGENTIC_SEARCH_MAX_QDRANT_RESULTS, using default 10")
-            return 10
+    agentic_search_max_qdrant_results: int = Field(
+        default=10,
+        ge=1,
+        le=50,
+        description="Maximum results to retrieve from Qdrant per query",
+    )
 
-    @property
-    def model_choice(self) -> str:
-        """Get LLM model for evaluations and completeness checks."""
-        return os.getenv("MODEL_CHOICE", "gpt-4o-mini")
+    model_choice: str = Field(
+        default="gpt-4o-mini",
+        description="LLM model for evaluations and completeness checks",
+    )
 
-    # Crawler settings
-    @property
-    def max_concurrent_sessions(self) -> int:
-        """Get maximum concurrent browser sessions (global limit)."""
-        return int(os.getenv("MAX_CONCURRENT_SESSIONS", "50"))
+    # ========================================
+    # Crawler Settings
+    # ========================================
+    max_concurrent_sessions: int = Field(
+        default=50,
+        ge=1,
+        le=500,
+        description="Maximum concurrent browser sessions (global limit)",
+    )
 
-    # Transport settings
-    @property
-    def transport(self) -> str:
-        """Get transport mode."""
-        return os.getenv("TRANSPORT", "http")
+    # ========================================
+    # Transport Settings
+    # ========================================
+    transport: str = Field(
+        default="http",
+        description="Transport mode (http or stdio)",
+    )
 
-    @property
-    def mcp_api_key(self) -> str | None:
-        """Get MCP API key for authentication."""
-        return os.getenv("MCP_API_KEY")
+    mcp_api_key: str | None = Field(
+        default=None,
+        description="MCP API key for authentication",
+    )
 
-    # OAuth2 settings
-    @property
-    def use_oauth2(self) -> bool:
-        """Check if OAuth2 is enabled."""
-        return os.getenv("USE_OAUTH2", "false").lower() == "true"
+    # ========================================
+    # OAuth2 Settings
+    # ========================================
+    use_oauth2: bool = Field(
+        default=False,
+        description="Enable OAuth2 authentication",
+    )
 
-    @property
-    def oauth2_issuer(self) -> str:
-        """Get OAuth2 issuer URL."""
-        return os.getenv("OAUTH2_ISSUER", f"https://{self.host}:{self.port}")
+    oauth2_issuer: str | None = Field(
+        default=None,
+        description="OAuth2 issuer URL",
+    )
 
-    @property
-    def oauth2_secret_key(self) -> str:
-        """Get OAuth2 JWT secret key."""
-        return os.getenv("OAUTH2_SECRET_KEY", "change-me-in-production")
+    oauth2_secret_key: str = Field(
+        default="change-me-in-production",
+        description="OAuth2 JWT secret key",
+    )
 
-    @property
-    def oauth2_scopes(self) -> list[str]:
-        """Get OAuth2 valid scopes."""
-        scopes_str = os.getenv("OAUTH2_SCOPES", "read:data,write:data")
-        return [s.strip() for s in scopes_str.split(",") if s.strip()]
+    oauth2_scopes: str = Field(
+        default="read:data,write:data",
+        description="Comma-separated list of valid OAuth2 scopes",
+    )
 
-    @property
-    def oauth2_required_scopes(self) -> list[str]:
-        """Get OAuth2 required scopes."""
-        scopes_str = os.getenv("OAUTH2_REQUIRED_SCOPES", "read:data")
-        return [s.strip() for s in scopes_str.split(",") if s.strip()]
+    oauth2_required_scopes: str = Field(
+        default="read:data",
+        description="Comma-separated list of required OAuth2 scopes",
+    )
 
-    # Repository size limits
-    @property
-    def repo_max_size_mb(self) -> int:
-        """Get maximum repository size in MB (default 500MB)."""
-        return int(os.getenv("REPO_MAX_SIZE_MB", "500"))
+    # ========================================
+    # Repository Size Limits
+    # ========================================
+    repo_max_size_mb: int = Field(
+        default=500,
+        ge=1,
+        le=10000,
+        description="Maximum repository size in MB",
+    )
 
-    @property
-    def repo_max_file_count(self) -> int:
-        """Get maximum file count for repository (default 10,000)."""
-        return int(os.getenv("REPO_MAX_FILE_COUNT", "10000"))
+    repo_max_file_count: int = Field(
+        default=10000,
+        ge=1,
+        le=1000000,
+        description="Maximum file count for repository",
+    )
 
-    @property
-    def repo_min_free_space_gb(self) -> float:
-        """Get minimum free disk space required in GB (default 1GB)."""
-        return float(os.getenv("REPO_MIN_FREE_SPACE_GB", "1.0"))
+    repo_min_free_space_gb: float = Field(
+        default=1.0,
+        ge=0.1,
+        le=1000.0,
+        description="Minimum free disk space required in GB",
+    )
 
-    @property
-    def repo_allow_size_override(self) -> bool:
-        """Check if size limits can be overridden (default False)."""
-        return os.getenv("REPO_ALLOW_SIZE_OVERRIDE", "false").lower() == "true"
+    repo_allow_size_override: bool = Field(
+        default=False,
+        description="Allow overriding size limits",
+    )
 
-    # Knowledge graph validation
+    # ========================================
+    # Test Settings
+    # ========================================
+    test_openai_api_key: str | None = Field(
+        default=None,
+        description="OpenAI API key for tests (falls back to openai_api_key)",
+    )
+
+    test_model_choice: str = Field(
+        default="gpt-4.1-nano",
+        description="LLM model for integration tests (cheap and fast)",
+    )
+
+    # ========================================
+    # Validators
+    # ========================================
+    @field_validator("oauth2_issuer", mode="before")
+    @classmethod
+    def set_oauth2_issuer(cls, v: str | None, info: Any) -> str:
+        """Set OAuth2 issuer default from host and port if not provided."""
+        if v:
+            return v
+        # Access other field values during validation
+        host = info.data.get("host", "0.0.0.0")
+        port = info.data.get("port", 8051)
+        return f"https://{host}:{port}"
+
+    # ========================================
+    # Helper Methods
+    # ========================================
     def has_neo4j_config(self) -> bool:
         """Check if Neo4j environment variables are configured."""
-        return all(
-            [
-                self.neo4j_uri,
-                self.neo4j_username,
-                self.neo4j_password,
-            ],
-        )
+        return all([self.neo4j_uri, self.neo4j_username, self.neo4j_password])
 
     def get_neo4j_config(self) -> dict[str, Any]:
         """Get Neo4j configuration as a dictionary."""
@@ -324,8 +340,18 @@ class Settings:
             "auth": (self.neo4j_username or "", self.neo4j_password or ""),
         }
 
+    def get_oauth2_scopes_list(self) -> list[str]:
+        """Get OAuth2 scopes as a list."""
+        return [s.strip() for s in self.oauth2_scopes.split(",") if s.strip()]
+
+    def get_oauth2_required_scopes_list(self) -> list[str]:
+        """Get required OAuth2 scopes as a list."""
+        return [
+            s.strip() for s in self.oauth2_required_scopes.split(",") if s.strip()
+        ]
+
     def to_dict(self) -> dict[str, Any]:
-        """Export settings as a dictionary."""
+        """Export settings as a dictionary (safe version without secrets)."""
         return {
             "debug": self.debug,
             "host": self.host,
@@ -343,10 +369,32 @@ class Settings:
             "repo_max_file_count": self.repo_max_file_count,
             "repo_min_free_space_gb": self.repo_min_free_space_gb,
             "repo_allow_size_override": self.repo_allow_size_override,
+            "agentic_search_enabled": self.agentic_search_enabled,
+            "agentic_search_completeness_threshold": self.agentic_search_completeness_threshold,
+            "model_choice": self.model_choice,
+            "test_model_choice": self.test_model_choice,
         }
 
 
-@lru_cache(maxsize=1)
+# Singleton pattern with proper typing
+_settings_instance: Settings | None = None
+
+
 def get_settings() -> Settings:
-    """Get cached settings instance."""
-    return Settings()
+    """Get cached settings instance (singleton pattern)."""
+    global _settings_instance
+    if _settings_instance is None:
+        _settings_instance = Settings()
+        logger.info("Settings initialized from environment")
+        logger.debug("Vector database: %s", _settings_instance.vector_database)
+        if not _settings_instance.openai_api_key:
+            logger.warning(
+                "OPENAI_API_KEY is missing. OpenAI features will be unavailable.",
+            )
+    return _settings_instance
+
+
+def reset_settings() -> None:
+    """Reset settings instance (useful for testing)."""
+    global _settings_instance
+    _settings_instance = None

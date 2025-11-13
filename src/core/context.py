@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from crawl4ai import AsyncWebCrawler, BrowserConfig, MemoryAdaptiveDispatcher
+from crawl4ai import BrowserConfig, MemoryAdaptiveDispatcher
 from fastmcp import FastMCP
 from sentence_transformers import CrossEncoder
 
@@ -38,25 +38,25 @@ async def initialize_global_context() -> "Crawl4AIContext":
     """
     Initialize the global application context once.
     This should be called at application startup, not per-request.
-    
+
     Returns:
         Crawl4AIContext: The initialized context
     """
     global _app_context, _context_lock
-    
+
     # Initialize lock if needed
     if _context_lock is None:
         import asyncio
         _context_lock = asyncio.Lock()
-    
+
     async with _context_lock:
         # Return existing context if already initialized
         if _app_context is not None:
             logger.info("Using existing application context (singleton)")
             return _app_context
-        
+
         logger.info("Initializing global application context (first time)...")
-        
+
         # Create browser configuration with resource optimization
         browser_config = BrowserConfig(
             headless=True,
@@ -72,7 +72,7 @@ async def initialize_global_context() -> "Crawl4AIContext":
         )
         logger.info(
             f"✓ BrowserConfig created for per-request crawler instances "
-            f"(headless={browser_config.headless}, browser_type={browser_config.browser_type})"
+            f"(headless={browser_config.headless}, browser_type={browser_config.browser_type})",
         )
 
         # Initialize database client
@@ -142,14 +142,14 @@ async def initialize_global_context() -> "Crawl4AIContext":
         # Initialize shared dispatcher for global concurrency control
         # This ensures max_session_permit applies across ALL tool calls, not per-call
         from crawl4ai import RateLimiter
-        
+
         rate_limiter = RateLimiter(
             base_delay=(0.5, 1.5),
             max_delay=30.0,
             max_retries=3,
-            rate_limit_codes=[429, 503]
+            rate_limit_codes=[429, 503],
         )
-        
+
         dispatcher = MemoryAdaptiveDispatcher(
             memory_threshold_percent=70.0,
             check_interval=1.0,
@@ -178,29 +178,29 @@ async def cleanup_global_context() -> None:
     This should be called at application shutdown.
     """
     global _app_context
-    
+
     if _app_context is None:
         logger.info("No global context to clean up")
         return
-    
+
     logger.info("Starting cleanup of global application context...")
-    
+
     # No crawler to close - crawlers are created per-request with context managers
-    
+
     if _app_context.knowledge_validator:
         try:
             await _app_context.knowledge_validator.close()
             logger.info("✓ Knowledge graph validator closed")
         except Exception as e:
             logger.error(f"Error closing knowledge validator: {e}", exc_info=True)
-            
+
     if _app_context.repo_extractor:
         try:
             await _app_context.repo_extractor.close()
             logger.info("✓ Repository extractor closed")
         except Exception as e:
             logger.error(f"Error closing repository extractor: {e}", exc_info=True)
-    
+
     _app_context = None
     logger.info("✓ Global application context cleanup completed")
 
@@ -237,7 +237,7 @@ def format_neo4j_error(error: Exception) -> str:
 async def crawl4ai_lifespan(server: FastMCP) -> AsyncIterator[Crawl4AIContext]:
     """
     Lifespan context manager for FastMCP.
-    
+
     NOTE: FastMCP HTTP mode calls this on EVERY request, not once at startup.
     Therefore, we use a singleton pattern to ensure only one crawler instance exists.
 
@@ -249,7 +249,7 @@ async def crawl4ai_lifespan(server: FastMCP) -> AsyncIterator[Crawl4AIContext]:
     """
     # Get or create the singleton context
     context = await initialize_global_context()
-    
+
     try:
         yield context
     finally:

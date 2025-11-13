@@ -121,7 +121,7 @@ def is_document_chunk(data: Any) -> TypeGuard[dict[str, Any]]:
 
 
 def has_neo4j_config(
-    uri: str | None, username: str | None, password: str | None
+    uri: str | None, username: str | None, password: str | None,
 ) -> TypeGuard[tuple[str, str, str]]:
     """Type guard for complete Neo4j configuration.
 

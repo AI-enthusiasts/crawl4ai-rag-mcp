@@ -11,7 +11,6 @@ import os
 import shutil
 import tempfile
 from datetime import datetime
-from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -82,16 +81,16 @@ class GitRepositoryManager:
         max_size_mb: int = 500,
         max_file_count: int = 10000,
         min_free_space_gb: float = 1.0,
-    ) -> Tuple[bool, dict]:
+    ) -> tuple[bool, dict]:
         """
         Validate repository size before cloning to prevent resource exhaustion.
-        
+
         Args:
             url: Repository URL
             max_size_mb: Maximum allowed repository size in MB
             max_file_count: Maximum allowed number of files
             min_free_space_gb: Minimum required free disk space in GB
-            
+
         Returns:
             Tuple of (is_valid, info_dict) where info_dict contains:
                 - estimated_size_mb: Estimated repository size
@@ -103,25 +102,25 @@ class GitRepositoryManager:
             "estimated_size_mb": 0,
             "file_count": 0,
             "free_space_gb": 0,
-            "errors": []
+            "errors": [],
         }
-        
+
         try:
             # Check available disk space first
             import shutil
             disk_usage = shutil.disk_usage("/")
             info["free_space_gb"] = disk_usage.free / (1024**3)
-            
+
             if info["free_space_gb"] < min_free_space_gb:
                 info["errors"].append(
                     f"Insufficient disk space: {info['free_space_gb']:.2f}GB available, "
-                    f"{min_free_space_gb:.2f}GB required"
+                    f"{min_free_space_gb:.2f}GB required",
                 )
                 return False, info
-            
+
             # Try to get repository size using git ls-remote
             self.logger.info(f"Validating repository size for {url}")
-            
+
             # Method 1: Try to get size estimate using shallow clone with depth 1
             with tempfile.TemporaryDirectory() as temp_dir:
                 try:
@@ -129,14 +128,14 @@ class GitRepositoryManager:
                     # Using --bare for more accurate size estimation
                     cmd = [
                         "git", "clone", "--bare", "--depth", "1",
-                        url, temp_dir + "/test.git"
+                        url, temp_dir + "/test.git",
                     ]
-                    
-                    result = await self._run_git_command(cmd)
-                    
+
+                    await self._run_git_command(cmd)
+
                     # Get repository info from the shallow clone
-                    repo_info = await self.get_repository_info(temp_dir + '/test.git')
-                    
+                    repo_info = await self.get_repository_info(temp_dir + "/test.git")
+
                     # Parse size from repo info
                     if repo_info.get("size"):
                         size_str = repo_info["size"]
@@ -146,58 +145,58 @@ class GitRepositoryManager:
                             info["estimated_size_mb"] = float(size_str.replace(" KiB", "")) / 1024
                         elif "GiB" in size_str:
                             info["estimated_size_mb"] = float(size_str.replace(" GiB", "")) * 1024
-                    
+
                     info["file_count"] = repo_info.get("file_count", 0)
-                    
+
                 except Exception as e:
                     self.logger.warning(f"Could not get exact size, trying alternative method: {e}")
-                    
+
                     # Method 2: Use GitHub API if it's a GitHub repository
                     if "github.com" in url:
                         info = await self._check_github_api_size(url, info)
-            
+
             # Validate against limits
             if info["estimated_size_mb"] > max_size_mb:
                 info["errors"].append(
                     f"Repository too large: {info['estimated_size_mb']:.2f}MB exceeds "
-                    f"limit of {max_size_mb}MB"
+                    f"limit of {max_size_mb}MB",
                 )
                 return False, info
-            
+
             if info["file_count"] > max_file_count:
                 info["errors"].append(
-                    f"Too many files: {info['file_count']} exceeds limit of {max_file_count}"
+                    f"Too many files: {info['file_count']} exceeds limit of {max_file_count}",
                 )
                 return False, info
-            
+
             # Check if we have enough space for the repository (with 2x safety margin)
             required_space_gb = (info["estimated_size_mb"] * 2) / 1024
             if info["free_space_gb"] < required_space_gb:
                 info["errors"].append(
                     f"Insufficient space for repository: {required_space_gb:.2f}GB needed, "
-                    f"{info['free_space_gb']:.2f}GB available"
+                    f"{info['free_space_gb']:.2f}GB available",
                 )
                 return False, info
-            
+
             self.logger.info(
                 f"Repository validation passed: {info['estimated_size_mb']:.2f}MB, "
-                f"{info['file_count']} files"
+                f"{info['file_count']} files",
             )
             return True, info
-            
+
         except Exception as e:
-            self.logger.error(f"Error validating repository: {e}")
-            info["errors"].append(f"Validation error: {str(e)}")
+            self.logger.exception(f"Error validating repository: {e}")
+            info["errors"].append(f"Validation error: {e!s}")
             return False, info
-    
+
     async def _check_github_api_size(self, url: str, info: dict) -> dict:
         """
         Check repository size using GitHub API.
-        
+
         Args:
             url: GitHub repository URL
             info: Existing info dictionary to update
-            
+
         Returns:
             Updated info dictionary
         """
@@ -207,36 +206,36 @@ class GitRepositoryManager:
             match = re.search(r"github\.com[/:]([^/]+)/([^/.]+)", url)
             if not match:
                 return info
-            
+
             owner, repo = match.groups()
             repo = repo.replace(".git", "")
-            
+
             # Use GitHub API to get repository info
-            import urllib.request
             import json
-            
+            import urllib.request
+
             api_url = f"https://api.github.com/repos/{owner}/{repo}"
-            
+
             try:
                 with urllib.request.urlopen(api_url) as response:
                     data = json.loads(response.read())
-                    
+
                     # GitHub API returns size in KB
                     if "size" in data:
                         info["estimated_size_mb"] = data["size"] / 1024
-                    
+
                     # Note: file count is not available via GitHub API
                     self.logger.info(
-                        f"GitHub API reports repository size: {info['estimated_size_mb']:.2f}MB"
+                        f"GitHub API reports repository size: {info['estimated_size_mb']:.2f}MB",
                     )
             except Exception as api_error:
                 self.logger.debug(f"GitHub API check failed: {api_error}")
-        
+
         except Exception as e:
             self.logger.debug(f"Could not check GitHub API: {e}")
-        
+
         return info
-    
+
     async def clone_repository_with_validation(
         self,
         url: str,
@@ -251,7 +250,7 @@ class GitRepositoryManager:
     ) -> str:
         """
         Clone a repository with size validation.
-        
+
         Args:
             url: Repository URL
             target_dir: Target directory for cloning
@@ -262,32 +261,32 @@ class GitRepositoryManager:
             max_file_count: Maximum allowed number of files
             min_free_space_gb: Minimum required free disk space in GB
             force: Force clone even if validation fails (use with caution)
-            
+
         Returns:
             Path to the cloned repository
-            
+
         Raises:
             RuntimeError: If validation fails or cloning fails
         """
         # Validate repository size unless forced
         if not force:
             is_valid, info = await self.validate_repository_size(
-                url, max_size_mb, max_file_count, min_free_space_gb
+                url, max_size_mb, max_file_count, min_free_space_gb,
             )
-            
+
             if not is_valid:
                 errors = "; ".join(info["errors"])
                 msg = f"Repository validation failed: {errors}"
                 self.logger.error(msg)
                 raise RuntimeError(msg)
-            
+
             self.logger.info(
                 f"Repository validation passed - Size: {info['estimated_size_mb']:.2f}MB, "
-                f"Files: {info['file_count']}, Free space: {info['free_space_gb']:.2f}GB"
+                f"Files: {info['file_count']}, Free space: {info['free_space_gb']:.2f}GB",
             )
         else:
             self.logger.warning("Skipping size validation (force=True)")
-        
+
         # Proceed with cloning
         return await self.clone_repository(
             url=url,
