@@ -1696,134 +1696,32 @@ def register_tools(mcp: "FastMCP") -> None:
         use_search_hints: bool | None = None,
     ) -> str:
         """
-        Intelligent iterative search with automatic refinement and LLM-driven decisions.
+        Search tool that automatically finds comprehensive answers from local knowledge base or web sources.
 
-        Agentic Search is an advanced search system that combines local knowledge (Qdrant),
-        web search (SearXNG), selective crawling (Crawl4AI), and LLM-based decision making
-        to provide comprehensive, high-quality answers while minimizing costs.
+        FAST MODE: If knowledge exists in local database, returns answer immediately from Qdrant vector storage.
+        SMART MODE: If local knowledge is missing or incomplete, automatically searches web (SearXNG),
+        intelligently selects and crawls relevant URLs, indexes new content, and returns comprehensive answer.
 
-        **Key Innovation**: Unlike traditional search-then-crawl approaches, Agentic Search uses
-        LLM evaluation at each stage to determine:
-        - Is local knowledge sufficient? (completeness evaluation)
-        - Which URLs are worth crawling? (relevance ranking)
-        - What information gaps remain? (gap analysis)
-        - How to refine queries for better results? (query refinement)
+        Uses LLM to evaluate answer completeness (0.0-1.0 score, default threshold: 0.95) and automatically
+        decides whether to return local results or search web. Performs iterative search-crawl-evaluate cycles
+        until answer quality meets threshold or max iterations reached (default: 3).
 
-        ## Pipeline Stages:
-
-        **STAGE 1: Local Knowledge Check**
-        - Queries Qdrant vector database with all RAG enhancements
-        - LLM evaluates answer completeness (0.0-1.0 score)
-        - If score >= threshold (default 0.95): Returns results ✅
-        - If score < threshold: Proceeds to web search
-
-        **STAGE 2: Web Search**
-        - Searches SearXNG for URLs
-        - LLM ranks URLs by relevance (0.0-1.0 score)
-        - Selects top N promising URLs (default: 3)
-        - If no promising URLs: Refines query and retries
-
-        **STAGE 3: Selective Crawling**
-        - Crawls only promising URLs (cost optimization)
-        - Full indexing pipeline: chunking → embeddings → Qdrant storage
-        - Re-queries Qdrant with new content
-        - Re-evaluates completeness
-
-        **STAGE 4: Query Refinement**
-        - LLM generates refined queries based on gaps
-        - Iterative process (default: max 3 iterations)
-        - Prevents infinite loops with iteration limits
-
-        ## Success Metrics:
-        - **Completeness**: >95% answer quality (LLM-evaluated)
-        - **Efficiency**: <30% of search results crawled (vs 100% traditional)
-        - **Cost Reduction**: 50-70% fewer crawled pages
-        - **Speed**: <60 seconds per iteration average
-
-        ## Configuration:
-        Environment variables (defaults shown):
-        ```
-        AGENTIC_SEARCH_ENABLED=true
-        AGENTIC_SEARCH_COMPLETENESS_THRESHOLD=0.95
-        AGENTIC_SEARCH_MAX_ITERATIONS=3
-        AGENTIC_SEARCH_MAX_URLS_PER_ITERATION=3
-        AGENTIC_SEARCH_URL_SCORE_THRESHOLD=0.7
-        AGENTIC_SEARCH_USE_SEARCH_HINTS=false
-        AGENTIC_SEARCH_LLM_TEMPERATURE=0.3
-        AGENTIC_SEARCH_MAX_QDRANT_RESULTS=10
-        MODEL_CHOICE=gpt-4o-mini
-        ```
+        Best for: comprehensive research questions, technical documentation queries, finding up-to-date information,
+        discovering content not yet in local database.
 
         Args:
-            query: User's search query (required)
-            completeness_threshold: Min score for answer completeness 0.0-1.0 (default: 0.95)
-            max_iterations: Max search-crawl cycles 1-10 (default: 3)
-            max_urls_per_iteration: Max URLs to crawl per cycle 1-20 (default: 3)
-            url_score_threshold: Min relevance score to crawl URL 0.0-1.0 (default: 0.7)
-            use_search_hints: Generate smart Qdrant queries from metadata (default: false)
+            query: Search question (required)
+            completeness_threshold: Minimum answer quality score 0.0-1.0 (default: 0.95, higher = stricter)
+            max_iterations: Maximum search-crawl cycles (default: 3, range: 1-10)
+            max_urls_per_iteration: Maximum URLs to crawl per cycle (default: 3, range: 1-20)
+            url_score_threshold: Minimum URL relevance score to crawl 0.0-1.0 (default: 0.7, higher = more selective)
+            use_search_hints: Enable experimental smart query refinement from metadata (default: false)
 
         Returns:
-            JSON string with:
-            - success: bool
-            - query: original query
-            - iterations: number of cycles performed
-            - completeness: final completeness score (0.0-1.0)
-            - results: RAG results from Qdrant with similarity scores
-            - search_history: detailed log of all actions taken
-            - status: "complete" | "max_iterations_reached" | "error"
-            - error: error message if failed (optional)
-
-        Example Response:
-            ```json
-            {
-              "success": true,
-              "query": "How to implement OAuth2 in FastAPI?",
-              "iterations": 2,
-              "completeness": 0.96,
-              "results": [
-                {
-                  "content": "...",
-                  "url": "https://fastapi.tiangolo.com/tutorial/security/",
-                  "similarity_score": 0.89,
-                  "chunk_index": 0
-                }
-              ],
-              "search_history": [
-                {
-                  "iteration": 1,
-                  "query": "How to implement OAuth2 in FastAPI?",
-                  "action": "local_check",
-                  "completeness": 0.45,
-                  "gaps": ["JWT token generation", "refresh tokens"]
-                },
-                {
-                  "iteration": 1,
-                  "action": "web_search",
-                  "urls_found": 10,
-                  "urls_ranked": 10,
-                  "promising_urls": 3
-                },
-                {
-                  "iteration": 1,
-                  "action": "crawl",
-                  "urls": ["https://..."],
-                  "urls_stored": 3,
-                  "chunks_stored": 45
-                },
-                {
-                  "iteration": 2,
-                  "query": "FastAPI JWT token generation",
-                  "action": "local_check",
-                  "completeness": 0.96,
-                  "gaps": []
-                }
-              ],
-              "status": "complete"
-            }
-            ```
+            JSON with search results, completeness score, iterations performed, and detailed search history
 
         Raises:
-            MCPToolError: If agentic search is disabled or fails critically
+            MCPToolError: If agentic search is disabled in configuration or search fails critically
         """
         try:
             return await agentic_search_impl(
