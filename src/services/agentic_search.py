@@ -18,7 +18,7 @@ import logging
 from typing import Any
 
 from fastmcp import Context
-from openai import AsyncOpenAI, OpenAIError
+from openai import AsyncOpenAI, OpenAIError  # type: ignore[attr-defined]
 from pydantic import BaseModel, Field
 
 from config import get_settings
@@ -345,11 +345,12 @@ Provide:
                 response_format=CompletenessEvaluation,
             )
 
-            if not response.choices[0].message.parsed:
+            parsed_response = response.choices[0].message.parsed
+            if not parsed_response:
                 msg = "LLM returned empty parsed response"
                 raise ValueError(msg)
 
-            return response.choices[0].message.parsed
+            return parsed_response  # type: ignore[return-value]
 
         except OpenAIError as e:
             logger.exception("Completeness evaluation failed: %s", e)
@@ -485,11 +486,12 @@ Return a list of rankings with url, title, snippet, score, and reasoning for eac
                 response_format=URLRankingList,
             )
 
-            if not response.choices[0].message.parsed:
+            parsed_response = response.choices[0].message.parsed
+            if not parsed_response:
                 msg = "LLM returned empty parsed response"
                 raise ValueError(msg)
 
-            rankings = response.choices[0].message.parsed.rankings
+            rankings = parsed_response.rankings  # type: ignore[union-attr]
 
             # Sort by score descending
             rankings.sort(key=lambda r: r.score, reverse=True)
