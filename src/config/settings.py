@@ -164,6 +164,82 @@ class Settings:
         """Check if agentic RAG is enabled."""
         return os.getenv("USE_AGENTIC_RAG", "false").lower() == "true"
 
+    # Agentic Search settings
+    @property
+    def agentic_search_enabled(self) -> bool:
+        """Check if agentic search is enabled."""
+        return os.getenv("AGENTIC_SEARCH_ENABLED", "false").lower() == "true"
+
+    @property
+    def agentic_search_completeness_threshold(self) -> float:
+        """Get completeness threshold for agentic search (0.0-1.0)."""
+        try:
+            value = float(os.getenv("AGENTIC_SEARCH_COMPLETENESS_THRESHOLD", "0.95"))
+            return max(0.0, min(1.0, value))  # Clamp between 0 and 1
+        except (ValueError, TypeError):
+            logger.warning("Invalid AGENTIC_SEARCH_COMPLETENESS_THRESHOLD, using default 0.95")
+            return 0.95
+
+    @property
+    def agentic_search_max_iterations(self) -> int:
+        """Get maximum iterations for agentic search."""
+        try:
+            value = int(os.getenv("AGENTIC_SEARCH_MAX_ITERATIONS", "3"))
+            return max(1, min(10, value))  # Clamp between 1 and 10
+        except (ValueError, TypeError):
+            logger.warning("Invalid AGENTIC_SEARCH_MAX_ITERATIONS, using default 3")
+            return 3
+
+    @property
+    def agentic_search_max_urls_per_iteration(self) -> int:
+        """Get maximum URLs to crawl per iteration."""
+        try:
+            value = int(os.getenv("AGENTIC_SEARCH_MAX_URLS_PER_ITERATION", "3"))
+            return max(1, min(20, value))  # Clamp between 1 and 20
+        except (ValueError, TypeError):
+            logger.warning("Invalid AGENTIC_SEARCH_MAX_URLS_PER_ITERATION, using default 3")
+            return 3
+
+    @property
+    def agentic_search_url_score_threshold(self) -> float:
+        """Get URL relevance score threshold (0.0-1.0)."""
+        try:
+            value = float(os.getenv("AGENTIC_SEARCH_URL_SCORE_THRESHOLD", "0.7"))
+            return max(0.0, min(1.0, value))  # Clamp between 0 and 1
+        except (ValueError, TypeError):
+            logger.warning("Invalid AGENTIC_SEARCH_URL_SCORE_THRESHOLD, using default 0.7")
+            return 0.7
+
+    @property
+    def agentic_search_use_search_hints(self) -> bool:
+        """Check if search hints generation is enabled."""
+        return os.getenv("AGENTIC_SEARCH_USE_SEARCH_HINTS", "false").lower() == "true"
+
+    @property
+    def agentic_search_llm_temperature(self) -> float:
+        """Get LLM temperature for agentic search evaluations."""
+        try:
+            value = float(os.getenv("AGENTIC_SEARCH_LLM_TEMPERATURE", "0.3"))
+            return max(0.0, min(2.0, value))  # Clamp between 0 and 2
+        except (ValueError, TypeError):
+            logger.warning("Invalid AGENTIC_SEARCH_LLM_TEMPERATURE, using default 0.3")
+            return 0.3
+
+    @property
+    def agentic_search_max_qdrant_results(self) -> int:
+        """Get maximum results from Qdrant for agentic search."""
+        try:
+            value = int(os.getenv("AGENTIC_SEARCH_MAX_QDRANT_RESULTS", "10"))
+            return max(1, min(50, value))  # Clamp between 1 and 50
+        except (ValueError, TypeError):
+            logger.warning("Invalid AGENTIC_SEARCH_MAX_QDRANT_RESULTS, using default 10")
+            return 10
+
+    @property
+    def model_choice(self) -> str:
+        """Get LLM model for evaluations and completeness checks."""
+        return os.getenv("MODEL_CHOICE", "gpt-4o-mini")
+
     # Crawler settings
     @property
     def max_concurrent_sessions(self) -> int:

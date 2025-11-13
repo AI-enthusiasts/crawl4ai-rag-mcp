@@ -38,6 +38,7 @@ from services import (
 from services import (
     smart_crawl_url as smart_crawl_url_service_impl,
 )
+from services.agentic_search import agentic_search_impl
 from utils.validation import validate_github_url, validate_script_path
 
 logger = logging.getLogger(__name__)
@@ -1686,3 +1687,159 @@ def register_tools(mcp: "FastMCP") -> None:
                 },
                 indent=2,
             )
+
+    @mcp.tool()
+    @track_request("agentic_search")
+    async def agentic_search(
+        ctx: Context,
+        query: str,
+        completeness_threshold: float | None = None,
+        max_iterations: int | None = None,
+        max_urls_per_iteration: int | None = None,
+        url_score_threshold: float | None = None,
+        use_search_hints: bool | None = None,
+    ) -> str:
+        """
+        Intelligent iterative search with automatic refinement and LLM-driven decisions.
+
+        Agentic Search is an advanced search system that combines local knowledge (Qdrant),
+        web search (SearXNG), selective crawling (Crawl4AI), and LLM-based decision making
+        to provide comprehensive, high-quality answers while minimizing costs.
+
+        **Key Innovation**: Unlike traditional search-then-crawl approaches, Agentic Search uses
+        LLM evaluation at each stage to determine:
+        - Is local knowledge sufficient? (completeness evaluation)
+        - Which URLs are worth crawling? (relevance ranking)
+        - What information gaps remain? (gap analysis)
+        - How to refine queries for better results? (query refinement)
+
+        ## Pipeline Stages:
+
+        **STAGE 1: Local Knowledge Check**
+        - Queries Qdrant vector database with all RAG enhancements
+        - LLM evaluates answer completeness (0.0-1.0 score)
+        - If score >= threshold (default 0.95): Returns results ✅
+        - If score < threshold: Proceeds to web search
+
+        **STAGE 2: Web Search**
+        - Searches SearXNG for URLs
+        - LLM ranks URLs by relevance (0.0-1.0 score)
+        - Selects top N promising URLs (default: 3)
+        - If no promising URLs: Refines query and retries
+
+        **STAGE 3: Selective Crawling**
+        - Crawls only promising URLs (cost optimization)
+        - Full indexing pipeline: chunking → embeddings → Qdrant storage
+        - Re-queries Qdrant with new content
+        - Re-evaluates completeness
+
+        **STAGE 4: Query Refinement**
+        - LLM generates refined queries based on gaps
+        - Iterative process (default: max 3 iterations)
+        - Prevents infinite loops with iteration limits
+
+        ## Success Metrics:
+        - **Completeness**: >95% answer quality (LLM-evaluated)
+        - **Efficiency**: <30% of search results crawled (vs 100% traditional)
+        - **Cost Reduction**: 50-70% fewer crawled pages
+        - **Speed**: <60 seconds per iteration average
+
+        ## Configuration:
+        Environment variables (defaults shown):
+        ```
+        AGENTIC_SEARCH_ENABLED=true
+        AGENTIC_SEARCH_COMPLETENESS_THRESHOLD=0.95
+        AGENTIC_SEARCH_MAX_ITERATIONS=3
+        AGENTIC_SEARCH_MAX_URLS_PER_ITERATION=3
+        AGENTIC_SEARCH_URL_SCORE_THRESHOLD=0.7
+        AGENTIC_SEARCH_USE_SEARCH_HINTS=false
+        AGENTIC_SEARCH_LLM_TEMPERATURE=0.3
+        AGENTIC_SEARCH_MAX_QDRANT_RESULTS=10
+        MODEL_CHOICE=gpt-4o-mini
+        ```
+
+        Args:
+            query: User's search query (required)
+            completeness_threshold: Min score for answer completeness 0.0-1.0 (default: 0.95)
+            max_iterations: Max search-crawl cycles 1-10 (default: 3)
+            max_urls_per_iteration: Max URLs to crawl per cycle 1-20 (default: 3)
+            url_score_threshold: Min relevance score to crawl URL 0.0-1.0 (default: 0.7)
+            use_search_hints: Generate smart Qdrant queries from metadata (default: false)
+
+        Returns:
+            JSON string with:
+            - success: bool
+            - query: original query
+            - iterations: number of cycles performed
+            - completeness: final completeness score (0.0-1.0)
+            - results: RAG results from Qdrant with similarity scores
+            - search_history: detailed log of all actions taken
+            - status: "complete" | "max_iterations_reached" | "error"
+            - error: error message if failed (optional)
+
+        Example Response:
+            ```json
+            {
+              "success": true,
+              "query": "How to implement OAuth2 in FastAPI?",
+              "iterations": 2,
+              "completeness": 0.96,
+              "results": [
+                {
+                  "content": "...",
+                  "url": "https://fastapi.tiangolo.com/tutorial/security/",
+                  "similarity_score": 0.89,
+                  "chunk_index": 0
+                }
+              ],
+              "search_history": [
+                {
+                  "iteration": 1,
+                  "query": "How to implement OAuth2 in FastAPI?",
+                  "action": "local_check",
+                  "completeness": 0.45,
+                  "gaps": ["JWT token generation", "refresh tokens"]
+                },
+                {
+                  "iteration": 1,
+                  "action": "web_search",
+                  "urls_found": 10,
+                  "urls_ranked": 10,
+                  "promising_urls": 3
+                },
+                {
+                  "iteration": 1,
+                  "action": "crawl",
+                  "urls": ["https://..."],
+                  "urls_stored": 3,
+                  "chunks_stored": 45
+                },
+                {
+                  "iteration": 2,
+                  "query": "FastAPI JWT token generation",
+                  "action": "local_check",
+                  "completeness": 0.96,
+                  "gaps": []
+                }
+              ],
+              "status": "complete"
+            }
+            ```
+
+        Raises:
+            MCPToolError: If agentic search is disabled or fails critically
+        """
+        try:
+            return await agentic_search_impl(
+                ctx=ctx,
+                query=query,
+                completeness_threshold=completeness_threshold,
+                max_iterations=max_iterations,
+                max_urls_per_iteration=max_urls_per_iteration,
+                url_score_threshold=url_score_threshold,
+                use_search_hints=use_search_hints,
+            )
+        except Exception as e:
+            logger.exception(f"Error in agentic_search tool: {e}")
+            msg = f"Agentic search failed: {e!s}"
+            raise MCPToolError(msg)
