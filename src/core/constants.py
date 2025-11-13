@@ -42,6 +42,10 @@ LLM_TEMPERATURE_DETERMINISTIC = 0.3  # Deterministic for completeness/ranking
 LLM_TEMPERATURE_BALANCED = 0.5  # Balanced for query refinement
 LLM_TEMPERATURE_CREATIVE = 0.7  # Creative for ideation
 
+# LLM call optimization thresholds
+SCORE_IMPROVEMENT_THRESHOLD = 0.1  # Skip refinement if score improved by this much
+MAX_URLS_TO_RANK_DEFAULT = 20  # Default number of URLs to rank with LLM
+
 # Qdrant limits
 MAX_QDRANT_RESULTS_DEFAULT = 10  # Default results from Qdrant
 MAX_QDRANT_RESULTS_COMPREHENSIVE = 20  # More results for thorough analysis

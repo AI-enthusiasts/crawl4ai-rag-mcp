@@ -212,6 +212,13 @@ class Settings(BaseSettings):
         description="Enable smart URL filtering to avoid GitHub commits, pagination, etc.",
     )
 
+    agentic_search_max_urls_to_rank: int = Field(
+        default=20,
+        ge=5,
+        le=50,
+        description="Maximum number of search results to rank with LLM (reduce for lower costs)",
+    )
+
     agentic_search_llm_temperature: float = Field(
         default=0.3,
         ge=0.0,
