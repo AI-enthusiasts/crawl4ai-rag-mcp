@@ -7,7 +7,8 @@ This module implements the complete agentic search pipeline:
 4. Query Refinement (LLM-based iteration)
 
 The implementation is production-ready with:
-- Full type safety using Pydantic models and OpenAI structured outputs
+- Full type safety using Pydantic AI agents with structured outputs
+- Automatic retry handling with validation
 - Comprehensive error handling
 - Detailed logging
 - Configurable thresholds and limits
@@ -18,9 +19,11 @@ import logging
 from typing import Any
 
 from fastmcp import Context
-import httpx
-from openai import AsyncOpenAI, OpenAIError  # type: ignore[attr-defined]
 from pydantic import BaseModel, Field
+from pydantic_ai import Agent
+from pydantic_ai.exceptions import ModelRetry, UnexpectedModelBehavior
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.settings import ModelSettings
 
 from config import get_settings
 from core import MCPToolError
@@ -53,30 +56,55 @@ class AgenticSearchService:
     """
 
     def __init__(self) -> None:
-        """Initialize the agentic search service."""
-        # Per OpenAI Pydantic structured outputs docs:
-        # - timeout: default is 10 minutes (too long for production)
-        # - max_retries: default is 2, retry on 408/409/429/5xx errors
-        # - Connection errors, timeouts, rate limits are retried automatically
+        """Initialize the agentic search service with Pydantic AI agents."""
+        # Per Pydantic AI docs: Use ModelSettings for timeout and temperature
         from core.constants import (
-            LLM_API_CONNECT_TIMEOUT,
-            LLM_API_READ_TIMEOUT,
             LLM_API_TIMEOUT_DEFAULT,
             MAX_RETRIES_DEFAULT,
         )
 
-        timeout = httpx.Timeout(
-            timeout=LLM_API_TIMEOUT_DEFAULT,  # Total timeout (60s)
-            connect=LLM_API_CONNECT_TIMEOUT,  # Connection timeout (5s)
-            read=LLM_API_READ_TIMEOUT,  # Read timeout for responses (60s)
+        # Create OpenAI model instance with API key
+        # Per Pydantic AI docs: OpenAIModel wraps the OpenAI client
+        model = OpenAIModel(
+            model_name=settings.model_choice,
+            api_key=settings.openai_api_key,
         )
 
-        self.client = AsyncOpenAI(
-            api_key=settings.openai_api_key,
-            timeout=timeout,
-            max_retries=MAX_RETRIES_DEFAULT,  # Retry 3 times (default is 2)
+        # Shared model settings for all agents
+        # Per Pydantic AI docs: timeout, temperature configured via ModelSettings
+        self.base_model_settings = ModelSettings(
+            temperature=settings.agentic_search_llm_temperature,
+            timeout=LLM_API_TIMEOUT_DEFAULT,  # 60s timeout
         )
-        self.model = settings.model_choice
+
+        # Create specialized agents for each LLM task
+        # Per Pydantic AI docs: Agent with output_type for structured outputs
+        self.completeness_agent = Agent(
+            model=model,
+            output_type=CompletenessEvaluation,
+            output_retries=MAX_RETRIES_DEFAULT,  # Retry 3 times for validation errors
+            model_settings=self.base_model_settings,
+        )
+
+        self.ranking_agent = Agent(
+            model=model,
+            output_type=URLRankingList,
+            output_retries=MAX_RETRIES_DEFAULT,
+            model_settings=self.base_model_settings,
+        )
+
+        # Query refinement agent with custom temperature for creativity
+        # Per Pydantic AI docs: Use ModelSettings to override temperature per agent
+        # Note: output_type defined inline in _stage4_query_refinement (dynamic model)
+        refinement_settings = ModelSettings(
+            temperature=0.5,  # More creative for query generation
+            timeout=LLM_API_TIMEOUT_DEFAULT,
+        )
+        self.refinement_model_settings = refinement_settings
+        self.openai_model = model  # Store for dynamic agent creation
+
+        # Configuration parameters
+        self.model_name = settings.model_choice
         self.temperature = settings.agentic_search_llm_temperature
         self.completeness_threshold = settings.agentic_search_completeness_threshold
         self.max_iterations = settings.agentic_search_max_iterations
@@ -382,32 +410,20 @@ Provide:
 - gaps: List of missing information or knowledge gaps (empty list if complete)"""
 
         try:
-            response = await self.client.beta.chat.completions.parse(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=self.temperature,
-                response_format=CompletenessEvaluation,
-            )
+            # Per Pydantic AI docs: agent.run() returns RunResult with typed output
+            # Retries and validation handled automatically
+            result = await self.completeness_agent.run(prompt)
+            return result.output
 
-            parsed_response = response.choices[0].message.parsed
-            if not parsed_response:
-                msg = "LLM returned empty parsed response"
-                raise ValueError(msg)
-
-            return parsed_response  # type: ignore[return-value]
-
-        except OpenAIError as e:
-            # Per OpenAI SDK docs: SDK already retries transient errors (429, 5xx, timeouts)
-            # If we reach here, retries have been exhausted - log and re-raise
+        except UnexpectedModelBehavior as e:
+            # Per Pydantic AI docs: Raised when retries exhausted
             logger.error(
-                "Completeness evaluation failed after SDK retries: %s (type: %s)",
+                "Completeness evaluation failed after retries: %s",
                 e,
-                type(e).__name__,
             )
-            raise  # Re-raise to propagate error instead of silently returning default
+            raise  # Re-raise to propagate error
 
         except Exception as e:
-            # Unexpected errors (not OpenAI-related) should also propagate
             logger.error(
                 "Unexpected error in completeness evaluation: %s (type: %s)",
                 e,
@@ -534,36 +550,23 @@ Be selective - most URLs should score below 0.7.
 Return a list of rankings with url, title, snippet, score, and reasoning for each."""
 
         try:
-            response = await self.client.beta.chat.completions.parse(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=self.temperature,
-                response_format=URLRankingList,
-            )
-
-            parsed_response = response.choices[0].message.parsed
-            if not parsed_response:
-                msg = "LLM returned empty parsed response"
-                raise ValueError(msg)
-
-            rankings = parsed_response.rankings  # type: ignore[union-attr]
+            # Per Pydantic AI docs: agent.run() returns RunResult with typed output
+            result = await self.ranking_agent.run(prompt)
+            rankings = result.output.rankings
 
             # Sort by score descending
             rankings.sort(key=lambda r: r.score, reverse=True)
             return rankings
 
-        except OpenAIError as e:
-            # Per OpenAI SDK docs: SDK already retries transient errors (429, 5xx, timeouts)
-            # If we reach here, retries have been exhausted - log and re-raise
+        except UnexpectedModelBehavior as e:
+            # Per Pydantic AI docs: Raised when retries exhausted
             logger.error(
-                "URL ranking failed after SDK retries: %s (type: %s)",
+                "URL ranking failed after retries: %s",
                 e,
-                type(e).__name__,
             )
-            raise  # Re-raise to propagate error instead of silently returning defaults
+            raise  # Re-raise to propagate error
 
         except Exception as e:
-            # Unexpected errors (not OpenAI-related) should also propagate
             logger.error(
                 "Unexpected error in URL ranking: %s (type: %s)",
                 e,
@@ -697,6 +700,7 @@ Provide:
 
         try:
             # Create a temporary model for this response
+            # Per Pydantic AI docs: Can create Agent with any Pydantic model as output_type
             class QueryRefinementResponse(BaseModel):
                 """Response model for query refinement."""
 
@@ -710,18 +714,21 @@ Provide:
                     description="Explanation of refinement strategy",
                 )
 
-            response = await self.client.beta.chat.completions.parse(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.5,  # Slightly more creative for query generation
-                response_format=QueryRefinementResponse,
+            # Create temporary agent with inline response model
+            # Per Pydantic AI docs: Create Agent instance with specific output_type
+            from core.constants import MAX_RETRIES_DEFAULT
+
+            refinement_agent = Agent(
+                model=self.openai_model,
+                output_type=QueryRefinementResponse,
+                output_retries=MAX_RETRIES_DEFAULT,
+                model_settings=self.refinement_model_settings,
             )
 
-            if not response.choices[0].message.parsed:
-                msg = "LLM returned empty parsed response"
-                raise ValueError(msg)
+            # Per Pydantic AI docs: agent.run() returns RunResult with typed output
+            result = await refinement_agent.run(prompt)
+            parsed = result.output
 
-            parsed = response.choices[0].message.parsed
             return QueryRefinement(
                 original_query=original_query,
                 current_query=current_query,
@@ -729,18 +736,15 @@ Provide:
                 reasoning=parsed.reasoning,
             )
 
-        except OpenAIError as e:
-            # Per OpenAI SDK docs: SDK already retries transient errors (429, 5xx, timeouts)
-            # If we reach here, retries have been exhausted - log and re-raise
+        except UnexpectedModelBehavior as e:
+            # Per Pydantic AI docs: Raised when retries exhausted
             logger.error(
-                "Query refinement failed after SDK retries: %s (type: %s)",
+                "Query refinement failed after retries: %s",
                 e,
-                type(e).__name__,
             )
-            raise  # Re-raise to propagate error instead of silently returning fallback
+            raise  # Re-raise to propagate error
 
         except Exception as e:
-            # Unexpected errors (not OpenAI-related) should also propagate
             logger.error(
                 "Unexpected error in query refinement: %s (type: %s)",
                 e,
@@ -749,18 +753,18 @@ Provide:
             raise  # Re-raise instead of returning fallback
 
 
-# Singleton instance for connection pooling (per OpenAI SDK best practices)
+# Singleton instance for connection pooling (per Pydantic AI best practices)
 _agentic_search_service: AgenticSearchService | None = None
 
 
 def get_agentic_search_service() -> AgenticSearchService:
     """Get singleton instance of AgenticSearchService.
 
-    Per OpenAI SDK docs: Reuse client instances to benefit from connection pooling.
-    Creating a new client for every request wastes resources and degrades performance.
+    Per Pydantic AI docs: Reuse Agent instances to benefit from connection pooling.
+    Creating new agents for every request wastes resources and degrades performance.
 
     Returns:
-        Singleton AgenticSearchService instance with cached AsyncOpenAI client
+        Singleton AgenticSearchService instance with cached Pydantic AI agents
     """
     global _agentic_search_service
     if _agentic_search_service is None:
