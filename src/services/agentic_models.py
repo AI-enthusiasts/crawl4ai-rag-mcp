@@ -48,7 +48,7 @@ class CompletenessEvaluation(BaseModel):
         description="List of missing information or knowledge gaps",
     )
 
-    @field_validator("gaps")
+    @field_validator("gaps")  # type: ignore[misc]
     @classmethod
     def validate_gaps(cls, v: list[str]) -> list[str]:
         """Ensure gaps are non-empty strings."""
@@ -83,7 +83,7 @@ class URLRanking(BaseModel):
         description="LLM's explanation of the relevance score",
     )
 
-    @field_validator("url")
+    @field_validator("url")  # type: ignore[misc]
     @classmethod
     def validate_url(cls, v: str) -> str:
         """Ensure URL is non-empty and stripped."""
@@ -163,13 +163,13 @@ class SearchIteration(BaseModel):
         description="Total chunks stored in vector database",
     )
 
-    @field_validator("gaps")
+    @field_validator("gaps")  # type: ignore[misc]
     @classmethod
     def validate_gaps(cls, v: list[str]) -> list[str]:
         """Ensure gaps are non-empty strings."""
         return [gap.strip() for gap in v if gap and gap.strip()]
 
-    @field_validator("urls")
+    @field_validator("urls")  # type: ignore[misc]
     @classmethod
     def validate_urls(cls, v: list[str]) -> list[str]:
         """Ensure URLs are non-empty strings."""
@@ -269,7 +269,7 @@ class QueryRefinement(BaseModel):
         description="LLM's explanation of the refinements",
     )
 
-    @field_validator("refined_queries")
+    @field_validator("refined_queries")  # type: ignore[misc]
     @classmethod
     def validate_refined_queries(cls, v: list[str]) -> list[str]:
         """Ensure refined queries are non-empty and unique."""
@@ -320,7 +320,7 @@ class SearchMetadata(BaseModel):
         description="Programming languages detected",
     )
 
-    @field_validator("main_topics", "headers", "code_languages")
+    @field_validator("main_topics", "headers", "code_languages")  # type: ignore[misc]
     @classmethod
     def validate_string_lists(cls, v: list[str]) -> list[str]:
         """Ensure list items are non-empty strings."""
@@ -347,7 +347,7 @@ class SearchHints(BaseModel):
         description="LLM's explanation of the hints",
     )
 
-    @field_validator("hints")
+    @field_validator("hints")  # type: ignore[misc]
     @classmethod
     def validate_hints(cls, v: list[str]) -> list[str]:
         """Ensure hints are non-empty and unique."""
