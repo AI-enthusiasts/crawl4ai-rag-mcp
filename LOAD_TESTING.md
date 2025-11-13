@@ -1,33 +1,64 @@
 # Load Testing Guide
 
-## Quick Start
+## Quick Start (Recommended)
 
+**Using Makefile** (easiest way):
+```bash
+# 1. Ensure .env file has credentials (auto-loaded by Makefile)
+cat .env | grep MCP_
+
+# 2. Run fast tests (~4 min)
+make load-test
+```
+
+**Using pytest directly**:
 ```bash
 # 1. Configure server URL
 export MCP_SERVER_URL="https://rag.melo.eu.org/mcp"
 export MCP_API_KEY="your-api-key"
 
 # 2. Run tests
-uv run pytest tests/integration/test_mcp_load_testing.py::TestMCPThroughput -v
+~/.local/bin/uv run pytest tests/integration/test_mcp_load_testing.py::TestMCPThroughput -v
 ```
 
 ## Running Tests
 
+### Using Makefile (Recommended)
+
+Environment variables are loaded automatically from `.env` file.
+
+```bash
+# Fast tests (Throughput + Latency, ~4 min) - RECOMMENDED
+make load-test              # Alias for load-test-fast
+make load-test-fast         # Same as above
+
+# Individual test suites
+make load-test-throughput   # ~2 min - Measures requests/second
+make load-test-latency      # ~2 min - Response time distribution
+make load-test-concurrency  # ~5 min - Parallel request handling
+make load-test-endurance    # ~15 min - 60s sustained load (SLOW)
+
+# All tests including endurance (~20 min)
+make load-test-all
+```
+
+### Using pytest directly
+
 ```bash
 # All tests (9 tests)
-uv run pytest tests/integration/test_mcp_load_testing.py -v
+~/.local/bin/uv run pytest tests/integration/test_mcp_load_testing.py -v
 
 # Exclude slow tests (endurance)
-uv run pytest tests/integration/test_mcp_load_testing.py -v -m "not slow"
+~/.local/bin/uv run pytest tests/integration/test_mcp_load_testing.py -v -m "not slow"
 
 # Specific category
-uv run pytest tests/integration/test_mcp_load_testing.py::TestMCPThroughput -v
-uv run pytest tests/integration/test_mcp_load_testing.py::TestMCPLatency -v
-uv run pytest tests/integration/test_mcp_load_testing.py::TestMCPConcurrency -v
-uv run pytest tests/integration/test_mcp_load_testing.py::TestMCPEndurance -v
+~/.local/bin/uv run pytest tests/integration/test_mcp_load_testing.py::TestMCPThroughput -v
+~/.local/bin/uv run pytest tests/integration/test_mcp_load_testing.py::TestMCPLatency -v
+~/.local/bin/uv run pytest tests/integration/test_mcp_load_testing.py::TestMCPConcurrency -v
+~/.local/bin/uv run pytest tests/integration/test_mcp_load_testing.py::TestMCPEndurance -v
 
 # Specific test
-uv run pytest tests/integration/test_mcp_load_testing.py::TestMCPThroughput::test_search_tool_throughput -v
+~/.local/bin/uv run pytest tests/integration/test_mcp_load_testing.py::TestMCPThroughput::test_search_tool_throughput -v
 ```
 
 ## Test Categories
@@ -119,12 +150,28 @@ uv run pytest tests/integration/test_mcp_load_testing.py::TestMCPEndurance -v
 
 ### Environment Variables
 
+**Using Makefile** (auto-loaded from `.env`):
+```bash
+# Edit .env file (Makefile loads it automatically)
+cat >> .env << 'EOF'
+MCP_SERVER_URL=https://rag.melo.eu.org/mcp
+MCP_API_KEY=your-api-key
+EOF
+
+# Run tests (no export needed)
+make load-test
+```
+
+**Using pytest directly** (manual export):
 ```bash
 # Required: MCP server URL (with /mcp endpoint)
 export MCP_SERVER_URL="https://rag.melo.eu.org/mcp"
 
 # Required: API key for authentication
 export MCP_API_KEY="your-api-key"
+
+# Run tests
+~/.local/bin/uv run pytest tests/integration/test_mcp_load_testing.py -v
 ```
 
 ### Performance Thresholds

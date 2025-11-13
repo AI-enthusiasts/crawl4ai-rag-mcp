@@ -3,6 +3,12 @@ SHELL := /bin/bash
 .DELETE_ON_ERROR:  # Clean up on failure  
 .ONESHELL:         # Run recipes in single shell
 
+# Load environment variables from .env file
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
+
 # ============================================
 # Variables
 # ============================================
@@ -33,6 +39,7 @@ RUFF := uv run ruff
 .PHONY: start-full start-dev volumes backup restore
 .PHONY: dev-services dev-stdio dev-hybrid dev-services-down dev-services-logs dev-setup-stdio
 .PHONY: help-legacy test-quick
+.PHONY: load-test load-test-fast load-test-throughput load-test-latency load-test-concurrency load-test-endurance load-test-all
 
 # ============================================
 # Default Target
@@ -75,6 +82,10 @@ help-legacy: ## Show legacy command help
 	@echo "  make test-integration- Run integration tests"
 	@echo "  make test-all        - Run all tests"
 	@echo "  make test-coverage   - Run tests with coverage"
+	@echo ""
+	@echo "Load Testing:"
+	@echo "  make load-test       - Run fast load tests (~4 min)"
+	@echo "  make load-test-all   - Run all load tests (~20 min)"
 
 # ============================================
 # Installation & Setup (NEW)
@@ -349,6 +360,76 @@ test-coverage: ## Run tests with coverage
 
 test-quick: ## Run quick unit tests
 	@docker compose run --rm mcp-crawl4ai uv run pytest tests/unit -v
+
+# ============================================
+# Load Testing
+# ============================================
+load-test: load-test-fast ## Run load tests (alias for fast tests)
+
+load-test-fast: ## Run fast load tests (Throughput + Latency, ~4 min)
+	@echo "╔════════════════════════════════════════════╗"
+	@echo "║     Running Fast Load Tests (~4 min)      ║"
+	@echo "╚════════════════════════════════════════════╝"
+	@echo ""
+	@echo "Server: $(MCP_SERVER_URL)"
+	@echo ""
+	@if [ -z "$(MCP_SERVER_URL)" ] || [ -z "$(MCP_API_KEY)" ]; then \
+		echo "Error: MCP_SERVER_URL and MCP_API_KEY must be set"; \
+		echo ""; \
+		echo "Set them in .env file or export:"; \
+		echo "  export MCP_SERVER_URL=https://rag.melo.eu.org/mcp"; \
+		echo "  export MCP_API_KEY=your-api-key"; \
+		exit 1; \
+	fi
+	@~/.local/bin/uv run pytest tests/integration/test_mcp_load_testing.py -v -m "not slow" --tb=short
+
+load-test-throughput: ## Run throughput tests only (~2 min)
+	@echo "Running throughput tests..."
+	@if [ -z "$(MCP_SERVER_URL)" ] || [ -z "$(MCP_API_KEY)" ]; then \
+		echo "Error: MCP_SERVER_URL and MCP_API_KEY must be set"; \
+		exit 1; \
+	fi
+	@~/.local/bin/uv run pytest tests/integration/test_mcp_load_testing.py::TestMCPThroughput -v --tb=short
+
+load-test-latency: ## Run latency tests only (~2 min)
+	@echo "Running latency tests..."
+	@if [ -z "$(MCP_SERVER_URL)" ] || [ -z "$(MCP_API_KEY)" ]; then \
+		echo "Error: MCP_SERVER_URL and MCP_API_KEY must be set"; \
+		exit 1; \
+	fi
+	@~/.local/bin/uv run pytest tests/integration/test_mcp_load_testing.py::TestMCPLatency -v --tb=short
+
+load-test-concurrency: ## Run concurrency tests only (~5 min)
+	@echo "Running concurrency tests..."
+	@if [ -z "$(MCP_SERVER_URL)" ] || [ -z "$(MCP_API_KEY)" ]; then \
+		echo "Error: MCP_SERVER_URL and MCP_API_KEY must be set"; \
+		exit 1; \
+	fi
+	@~/.local/bin/uv run pytest tests/integration/test_mcp_load_testing.py::TestMCPConcurrency -v --tb=short
+
+load-test-endurance: ## Run endurance tests only (~15 min, slow)
+	@echo "╔════════════════════════════════════════════╗"
+	@echo "║   Running Endurance Tests (~15 min)       ║"
+	@echo "╚════════════════════════════════════════════╝"
+	@echo ""
+	@echo "⚠️  This test runs for 60 seconds sustained load"
+	@echo ""
+	@if [ -z "$(MCP_SERVER_URL)" ] || [ -z "$(MCP_API_KEY)" ]; then \
+		echo "Error: MCP_SERVER_URL and MCP_API_KEY must be set"; \
+		exit 1; \
+	fi
+	@~/.local/bin/uv run pytest tests/integration/test_mcp_load_testing.py::TestMCPEndurance -v --tb=short
+
+load-test-all: ## Run all load tests including endurance (~20 min)
+	@echo "╔════════════════════════════════════════════╗"
+	@echo "║   Running ALL Load Tests (~20 min)        ║"
+	@echo "╚════════════════════════════════════════════╝"
+	@echo ""
+	@if [ -z "$(MCP_SERVER_URL)" ] || [ -z "$(MCP_API_KEY)" ]; then \
+		echo "Error: MCP_SERVER_URL and MCP_API_KEY must be set"; \
+		exit 1; \
+	fi
+	@~/.local/bin/uv run pytest tests/integration/test_mcp_load_testing.py -v --tb=short
 
 # ============================================
 # Docker Build & Release (NEW)

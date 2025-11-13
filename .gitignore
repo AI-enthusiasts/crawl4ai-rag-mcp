@@ -13,6 +13,10 @@ coverage.xml
 qa-logs/
 CLAUDE.md
 
+# Test logs and outputs
+*.log
+tests/results/docker_logs/
+
 # Pre-commit and security scanning
 bandit-report.json
 .secrets.baseline.tmp
