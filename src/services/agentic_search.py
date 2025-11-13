@@ -63,6 +63,7 @@ class AgenticSearchService:
         self.url_score_threshold = settings.agentic_search_url_score_threshold
         self.use_search_hints = settings.agentic_search_use_search_hints
         self.enable_url_filtering = settings.agentic_search_enable_url_filtering
+        self.max_urls_to_rank = settings.agentic_search_max_urls_to_rank
         self.max_qdrant_results = settings.agentic_search_max_qdrant_results
 
     async def execute_search(
@@ -168,7 +169,8 @@ class AgenticSearchService:
                     break
 
                 # STAGE 3: Selective Crawling & Indexing
-                await self._stage3_selective_crawl(
+                previous_score = final_completeness  # Save score before crawling
+                urls_stored = await self._stage3_selective_crawl(
                     ctx,
                     promising_urls,
                     current_query,
@@ -177,34 +179,52 @@ class AgenticSearchService:
                     search_history,
                 )
 
-                # Re-evaluate after crawling
-                evaluation, rag_results = await self._stage1_local_check(
-                    ctx, current_query, iteration, search_history, is_recheck=True,
-                )
+                # OPTIMIZATION 1: Skip re-check if no content was stored
+                # Saves 1 LLM call per failed crawl
+                if urls_stored > 0:
+                    logger.info(f"Re-checking completeness after storing {urls_stored} URLs")
+                    evaluation, rag_results = await self._stage1_local_check(
+                        ctx, current_query, iteration, search_history, is_recheck=True,
+                    )
 
-                final_completeness = evaluation.score
-                final_results = rag_results
+                    final_completeness = evaluation.score
+                    final_results = rag_results
 
-                if evaluation.score >= threshold:
+                    if evaluation.score >= threshold:
+                        logger.info(
+                            f"Completeness threshold met after crawling: {evaluation.score:.2f}",
+                        )
+                        return AgenticSearchResult(
+                            success=True,
+                            query=query,
+                            iterations=iteration,
+                            completeness=evaluation.score,
+                            results=rag_results,
+                            search_history=search_history,
+                            status=SearchStatus.COMPLETE,
+                        )
+                else:
                     logger.info(
-                        f"Completeness threshold met after crawling: {evaluation.score:.2f}",
-                    )
-                    return AgenticSearchResult(
-                        success=True,
-                        query=query,
-                        iterations=iteration,
-                        completeness=evaluation.score,
-                        results=rag_results,
-                        search_history=search_history,
-                        status=SearchStatus.COMPLETE,
+                        "No content stored during crawl, skipping re-check (optimization)",
                     )
 
-                # Still incomplete, try refining query for next iteration
+                # OPTIMIZATION 2: Skip refinement if score improved significantly
+                # Saves 1 LLM call when making good progress
+                from core.constants import SCORE_IMPROVEMENT_THRESHOLD
+
+                score_improvement = final_completeness - previous_score
                 if iteration < max_iter:
-                    refined = await self._stage4_query_refinement(
-                        query, current_query, evaluation.gaps,
-                    )
-                    current_query = refined.refined_queries[0]
+                    if score_improvement >= SCORE_IMPROVEMENT_THRESHOLD:
+                        logger.info(
+                            f"Score improved significantly ({previous_score:.2f} → "
+                            f"{final_completeness:.2f}, +{score_improvement:.2f}), "
+                            f"skipping refinement (optimization)",
+                        )
+                    else:
+                        refined = await self._stage4_query_refinement(
+                            query, current_query, evaluation.gaps,
+                        )
+                        current_query = refined.refined_queries[0]
 
             # Max iterations reached
             logger.info(f"Max iterations reached: {iteration}/{max_iter}")
@@ -413,6 +433,14 @@ Provide:
 
         logger.info(f"Found {len(search_results)} search results")
 
+        # OPTIMIZATION 3: Limit URLs to rank (configurable)
+        # Reduces LLM tokens and speeds up ranking
+        if len(search_results) > self.max_urls_to_rank:
+            logger.info(
+                f"Limiting ranking to top {self.max_urls_to_rank} of {len(search_results)} results",
+            )
+            search_results = search_results[: self.max_urls_to_rank]
+
         # LLM ranking of URLs
         rankings = await self._rank_urls(query, gaps, search_results)
 
@@ -534,7 +562,7 @@ Return a list of rankings with url, title, snippet, score, and reasoning for eac
         use_hints: bool,
         iteration: int,
         search_history: list[SearchIteration],
-    ) -> None:
+    ) -> int:
         """STAGE 3: Crawl promising URLs recursively with smart filtering and limits.
 
         Args:
@@ -544,6 +572,9 @@ Return a list of rankings with url, title, snippet, score, and reasoning for eac
             use_hints: Whether to use search hints
             iteration: Current iteration number
             search_history: History to append to
+
+        Returns:
+            Number of URLs successfully stored in Qdrant
         """
         logger.info(f"STAGE 3: Recursively crawling {len(urls)} promising URLs")
 
@@ -581,6 +612,8 @@ Return a list of rankings with url, title, snippet, score, and reasoning for eac
         # This requires investigating Crawl4AI's metadata capabilities
         if use_hints:
             logger.info("Search hints requested but not yet implemented")
+
+        return urls_stored
 
     async def _stage4_query_refinement(
         self, original_query: str, current_query: str, gaps: list[str],
