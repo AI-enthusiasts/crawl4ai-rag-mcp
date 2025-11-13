@@ -18,6 +18,7 @@ import logging
 from typing import Any
 
 from fastmcp import Context
+import httpx
 from openai import AsyncOpenAI, OpenAIError  # type: ignore[attr-defined]
 from pydantic import BaseModel, Field
 
@@ -53,7 +54,24 @@ class AgenticSearchService:
 
     def __init__(self) -> None:
         """Initialize the agentic search service."""
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+        # Configure timeout per OpenAI SDK docs: default is 10 minutes (too long)
+        # Use httpx.Timeout for granular control over connection/read timeouts
+        from core.constants import (
+            LLM_API_CONNECT_TIMEOUT,
+            LLM_API_READ_TIMEOUT,
+            LLM_API_TIMEOUT_DEFAULT,
+        )
+
+        timeout = httpx.Timeout(
+            timeout=LLM_API_TIMEOUT_DEFAULT,  # Total timeout
+            connect=LLM_API_CONNECT_TIMEOUT,  # Connection timeout (5s)
+            read=LLM_API_READ_TIMEOUT,  # Read timeout for responses (60s)
+        )
+
+        self.client = AsyncOpenAI(
+            api_key=settings.openai_api_key,
+            timeout=timeout,
+        )
         self.model = settings.model_choice
         self.temperature = settings.agentic_search_llm_temperature
         self.completeness_threshold = settings.agentic_search_completeness_threshold
@@ -375,20 +393,23 @@ Provide:
             return parsed_response  # type: ignore[return-value]
 
         except OpenAIError as e:
-            logger.exception("Completeness evaluation failed: %s", e)
-            # Return safe default
-            return CompletenessEvaluation(
-                score=0.0,
-                reasoning=f"Evaluation failed: {e}",
-                gaps=["Unable to evaluate completeness"],
+            # Per OpenAI SDK docs: SDK already retries transient errors (429, 5xx, timeouts)
+            # If we reach here, retries have been exhausted - log and re-raise
+            logger.error(
+                "Completeness evaluation failed after SDK retries: %s (type: %s)",
+                e,
+                type(e).__name__,
             )
+            raise  # Re-raise to propagate error instead of silently returning default
+
         except Exception as e:
-            logger.exception("Unexpected error in completeness evaluation: %s", e)
-            return CompletenessEvaluation(
-                score=0.0,
-                reasoning=f"Unexpected error: {e}",
-                gaps=["Unable to evaluate completeness"],
+            # Unexpected errors (not OpenAI-related) should also propagate
+            logger.error(
+                "Unexpected error in completeness evaluation: %s (type: %s)",
+                e,
+                type(e).__name__,
             )
+            raise  # Re-raise instead of returning default
 
     async def _stage2_web_search(
         self,
@@ -528,31 +549,23 @@ Return a list of rankings with url, title, snippet, score, and reasoning for eac
             return rankings
 
         except OpenAIError as e:
-            logger.exception("URL ranking failed: %s", e)
-            # Return all URLs with neutral score
-            return [
-                URLRanking(
-                    url=r["url"],
-                    title=r["title"],
-                    snippet=r.get("snippet", ""),
-                    score=0.5,
-                    reasoning="Ranking failed, using neutral score",
-                )
-                for r in search_results
-            ]
+            # Per OpenAI SDK docs: SDK already retries transient errors (429, 5xx, timeouts)
+            # If we reach here, retries have been exhausted - log and re-raise
+            logger.error(
+                "URL ranking failed after SDK retries: %s (type: %s)",
+                e,
+                type(e).__name__,
+            )
+            raise  # Re-raise to propagate error instead of silently returning defaults
+
         except Exception as e:
-            logger.exception("Unexpected error in URL ranking: %s", e)
-            # Return all URLs with neutral score
-            return [
-                URLRanking(
-                    url=r["url"],
-                    title=r["title"],
-                    snippet=r.get("snippet", ""),
-                    score=0.5,
-                    reasoning=f"Unexpected error: {e}",
-                )
-                for r in search_results
-            ]
+            # Unexpected errors (not OpenAI-related) should also propagate
+            logger.error(
+                "Unexpected error in URL ranking: %s (type: %s)",
+                e,
+                type(e).__name__,
+            )
+            raise  # Re-raise instead of returning defaults
 
     async def _stage3_selective_crawl(
         self,
@@ -682,22 +695,42 @@ Provide:
             )
 
         except OpenAIError as e:
-            logger.exception("Query refinement failed: %s", e)
-            # Return current query as fallback
-            return QueryRefinement(
-                original_query=original_query,
-                current_query=current_query,
-                refined_queries=[current_query],
-                reasoning=f"Refinement failed: {e}",
+            # Per OpenAI SDK docs: SDK already retries transient errors (429, 5xx, timeouts)
+            # If we reach here, retries have been exhausted - log and re-raise
+            logger.error(
+                "Query refinement failed after SDK retries: %s (type: %s)",
+                e,
+                type(e).__name__,
             )
+            raise  # Re-raise to propagate error instead of silently returning fallback
+
         except Exception as e:
-            logger.exception("Unexpected error in query refinement: %s", e)
-            return QueryRefinement(
-                original_query=original_query,
-                current_query=current_query,
-                refined_queries=[current_query],
-                reasoning=f"Unexpected error: {e}",
+            # Unexpected errors (not OpenAI-related) should also propagate
+            logger.error(
+                "Unexpected error in query refinement: %s (type: %s)",
+                e,
+                type(e).__name__,
             )
+            raise  # Re-raise instead of returning fallback
+
+
+# Singleton instance for connection pooling (per OpenAI SDK best practices)
+_agentic_search_service: AgenticSearchService | None = None
+
+
+def get_agentic_search_service() -> AgenticSearchService:
+    """Get singleton instance of AgenticSearchService.
+
+    Per OpenAI SDK docs: Reuse client instances to benefit from connection pooling.
+    Creating a new client for every request wastes resources and degrades performance.
+
+    Returns:
+        Singleton AgenticSearchService instance with cached AsyncOpenAI client
+    """
+    global _agentic_search_service
+    if _agentic_search_service is None:
+        _agentic_search_service = AgenticSearchService()
+    return _agentic_search_service
 
 
 async def agentic_search_impl(
@@ -735,7 +768,8 @@ async def agentic_search_impl(
         )
 
     try:
-        service = AgenticSearchService()
+        # Get singleton service instance (connection pooling optimization)
+        service = get_agentic_search_service()
         result = await service.execute_search(
             ctx=ctx,
             query=query,
