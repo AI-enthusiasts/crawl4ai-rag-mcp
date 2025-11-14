@@ -2,25 +2,18 @@
 Qdrant adapter implementation for VectorDatabase protocol.
 
 Uses Qdrant vector database for similarity search.
-Fixed version with proper async/sync handling.
+Delegates operations to modular qdrant package functions.
 """
 
 import os
 import sys
-import uuid
-from datetime import UTC
 from typing import Any
 
-from qdrant_client import AsyncQdrantClient, models
-from qdrant_client.models import (
-    Distance,
-    FieldCondition,
-    Filter,
-    MatchValue,
-    PointIdsList,
-    PointStruct,
-    VectorParams,
-)
+from qdrant_client import AsyncQdrantClient
+from qdrant_client.models import Distance, VectorParams
+
+# Import qdrant package modules
+from . import qdrant
 
 
 class QdrantAdapter:
@@ -28,6 +21,7 @@ class QdrantAdapter:
     Qdrant implementation of the VectorDatabase protocol.
 
     Uses AsyncQdrantClient for native async vector search operations.
+    Delegates all operations to modular qdrant package functions.
     """
 
     def __init__(self, url: str | None = None, api_key: str | None = None):
@@ -72,12 +66,7 @@ class QdrantAdapter:
                         file=sys.stderr,
                     )
 
-    def _generate_point_id(self, url: str, chunk_number: int) -> str:
-        """Generate a deterministic UUID for a document point"""
-        id_string = f"{url}_{chunk_number}"
-        # Use uuid5 to generate a deterministic UUID from the URL and chunk number
-        return str(uuid.uuid5(uuid.NAMESPACE_URL, id_string))
-
+    # Document operations - delegate to qdrant.operations
     async def add_documents(
         self,
         urls: list[str],
@@ -87,85 +76,30 @@ class QdrantAdapter:
         embeddings: list[list[float]],
         source_ids: list[str] | None = None,
     ) -> None:
-        """Add documents to Qdrant"""
-        if source_ids is None:
-            source_ids = [""] * len(urls)
+        """Add documents to Qdrant - delegates to qdrant.operations"""
+        return await qdrant.operations.add_documents(
+            self.client,
+            urls,
+            chunk_numbers,
+            contents,
+            metadatas,
+            embeddings,
+            source_ids,
+        )
 
-        # First, delete any existing documents with the same URLs
-        unique_urls = list(set(urls))
-        for url in unique_urls:
-            try:
-                await self.delete_documents_by_url([url])
-            except Exception as e:
-                print(f"Error deleting documents from Qdrant: {e}")
+    async def url_exists(self, url: str) -> bool:
+        """Check if URL exists - delegates to qdrant.operations"""
+        return await qdrant.operations.url_exists(self.client, url)
 
-        # Process documents in batches
-        for i in range(0, len(urls), self.batch_size):
-            batch_slice = slice(i, min(i + self.batch_size, len(urls)))
-            batch_urls = urls[batch_slice]
-            batch_chunks = chunk_numbers[batch_slice]
-            batch_contents = contents[batch_slice]
-            batch_metadatas = metadatas[batch_slice]
-            batch_embeddings = embeddings[batch_slice]
-            batch_source_ids = source_ids[batch_slice]
+    async def get_documents_by_url(self, url: str) -> list[dict[str, Any]]:
+        """Get all document chunks for a URL - delegates to qdrant.operations"""
+        return await qdrant.operations.get_documents_by_url(self.client, url)
 
-            # Create points for Qdrant
-            points = []
-            for _j, (
-                url,
-                chunk_num,
-                content,
-                metadata,
-                embedding,
-                source_id,
-            ) in enumerate(
-                zip(
-                    batch_urls,
-                    batch_chunks,
-                    batch_contents,
-                    batch_metadatas,
-                    batch_embeddings,
-                    batch_source_ids,
-                    strict=False,
-                ),
-            ):
-                point_id = self._generate_point_id(url, chunk_num)
+    async def delete_documents_by_url(self, urls: list[str]) -> None:
+        """Delete document chunks by URL - delegates to qdrant.operations"""
+        return await qdrant.operations.delete_documents_by_url(self.client, urls)
 
-                # Extract source_id from URL if not provided - same logic as Supabase adapter
-                if not source_id:
-                    from urllib.parse import urlparse
-                    parsed_url = urlparse(url)
-                    source_id = parsed_url.netloc or parsed_url.path
-                    # Remove 'www.' prefix if present for consistency
-                    if source_id and source_id.startswith("www."):
-                        source_id = source_id[4:]
-
-                # Prepare payload - always include source_id
-                payload = {
-                    "url": url,
-                    "chunk_number": chunk_num,
-                    "content": content,
-                    "metadata": metadata or {},
-                    "source_id": source_id,  # Always include source_id
-                }
-
-                point = PointStruct(
-                    id=point_id,
-                    vector=embedding,
-                    payload=payload,
-                )
-                points.append(point)
-
-            # Upsert batch to Qdrant
-            try:
-                await self.client.upsert(
-                    collection_name=self.CODE_EXAMPLES,
-                    points=points,
-                )
-            except Exception as e:
-                print(f"Error upserting code examples to Qdrant: {e}")
-                raise
-
+    # Search operations - delegate to qdrant.search
     async def search_documents(
         self,
         query_embedding: list[float],
@@ -173,49 +107,14 @@ class QdrantAdapter:
         filter_metadata: dict[str, Any] | None = None,
         source_filter: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Search for similar documents"""
-        # Build filter conditions
-        filter_conditions = []
-
-        if filter_metadata:
-            for key, value in filter_metadata.items():
-                filter_conditions.append(
-                    FieldCondition(
-                        key=f"metadata.{key}",
-                        match=MatchValue(value=value),
-                    ),
-                )
-
-        if source_filter:
-            filter_conditions.append(
-                FieldCondition(
-                    key="source_id",  # Changed from metadata.source to source_id
-                    match=MatchValue(value=source_filter),
-                ),
-            )
-
-        # Create filter if conditions exist
-        search_filter = None
-        if filter_conditions:
-            search_filter = Filter(must=filter_conditions)
-
-        # Perform search
-        results = await self.client.search(
-            collection_name=self.CRAWLED_PAGES,
-            query_vector=query_embedding,
-            query_filter=search_filter,
-            limit=match_count,
+        """Search for similar documents - delegates to qdrant.search"""
+        return await qdrant.search.search_documents(
+            self.client,
+            query_embedding,
+            match_count,
+            filter_metadata,
+            source_filter,
         )
-
-        # Format results
-        formatted_results = []
-        for result in results:
-            doc = result.payload.copy()
-            doc["similarity"] = result.score  # Interface expects "similarity"
-            doc["id"] = result.id
-            formatted_results.append(doc)
-
-        return formatted_results
 
     async def search_documents_by_keyword(
         self,
@@ -223,42 +122,13 @@ class QdrantAdapter:
         match_count: int = 10,
         source_filter: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Search documents by keyword using scroll API"""
-        filter_conditions = []
-
-        # Add keyword filter - search in content
-        filter_conditions.append(
-            FieldCondition(
-                key="content",
-                match=MatchValue(value=keyword),
-            ),
+        """Search documents by keyword - delegates to qdrant.search"""
+        return await qdrant.search.search_documents_by_keyword(
+            self.client,
+            keyword,
+            match_count,
+            source_filter,
         )
-
-        if source_filter:
-            filter_conditions.append(
-                FieldCondition(
-                    key="source_id",  # Changed from metadata.source to source_id
-                    match=MatchValue(value=source_filter),
-                ),
-            )
-
-        search_filter = Filter(must=filter_conditions)
-
-        # Use scroll to find matching documents
-        points, _ = await self.client.scroll(
-            collection_name=self.CRAWLED_PAGES,
-            scroll_filter=search_filter,
-            limit=match_count,
-        )
-
-        # Format results
-        formatted_results = []
-        for point in points[:match_count]:
-            doc = point.payload.copy()
-            doc["id"] = point.id
-            formatted_results.append(doc)
-
-        return formatted_results
 
     async def search(
         self,
@@ -267,29 +137,13 @@ class QdrantAdapter:
         filter_metadata: dict[str, Any] | None = None,
         source_filter: str | None = None,
     ) -> list[dict[str, Any]]:
-        """
-        Generic search method that generates embeddings internally.
-
-        Args:
-            query: Search query string
-            match_count: Maximum number of results to return
-            filter_metadata: Optional metadata filter
-            source_filter: Optional source filter
-
-        Returns:
-            List of matching documents with similarity scores
-        """
-        # Generate embedding for the query
-        from utils import create_embedding
-
-        query_embedding = create_embedding(query)
-
-        # Delegate to the existing search_documents method
-        return await self.search_documents(
-            query_embedding=query_embedding,
-            match_count=match_count,
-            filter_metadata=filter_metadata,
-            source_filter=source_filter,
+        """Generic search with embedding generation - delegates to qdrant.search"""
+        return await qdrant.search.search(
+            self.client,
+            query,
+            match_count,
+            filter_metadata,
+            source_filter,
         )
 
     async def hybrid_search(
@@ -299,164 +153,16 @@ class QdrantAdapter:
         filter_metadata: dict[str, Any] | None = None,
         source_filter: str | None = None,
     ) -> list[dict[str, Any]]:
-        """
-        Hybrid search combining vector similarity and keyword matching.
-
-        Args:
-            query: Search query string
-            match_count: Maximum number of results to return
-            filter_metadata: Optional metadata filter
-            source_filter: Optional source filter
-
-        Returns:
-            List of matching documents combining vector and keyword results
-        """
-        # Perform vector search
-        vector_results = await self.search(
-            query=query,
-            match_count=match_count // 2 + 1,  # Get half from vector search
-            filter_metadata=filter_metadata,
-            source_filter=source_filter,
+        """Hybrid search combining vector and keyword - delegates to qdrant.search"""
+        return await qdrant.search.hybrid_search(
+            self.client,
+            query,
+            match_count,
+            filter_metadata,
+            source_filter,
         )
 
-        # Perform keyword search
-        keyword_results = await self.search_documents_by_keyword(
-            keyword=query,
-            match_count=match_count // 2 + 1,  # Get half from keyword search
-            source_filter=source_filter,
-        )
-
-        # Combine and deduplicate results
-        combined_results = {}
-
-        # Add vector results with their similarity scores
-        for result in vector_results:
-            doc_id = result.get("id", result.get("url", ""))
-            if doc_id:
-                result["search_type"] = "vector"
-                result["combined_score"] = (
-                    result.get("similarity", 0.0) * 0.7
-                )  # Weight vector search more
-                combined_results[doc_id] = result
-
-        # Add keyword results (give them a base similarity score)
-        for result in keyword_results:
-            doc_id = result.get("id", result.get("url", ""))
-            if doc_id:
-                if doc_id in combined_results:
-                    # Document found in both searches - boost the score
-                    combined_results[doc_id]["combined_score"] += (
-                        0.3  # Boost for appearing in both
-                    )
-                    combined_results[doc_id]["search_type"] = "hybrid"
-                else:
-                    # Document only found in keyword search
-                    result["search_type"] = "keyword"
-                    result["similarity"] = 0.5  # Base similarity for keyword matches
-                    result["combined_score"] = (
-                        0.3  # Lower weight for keyword-only matches
-                    )
-                    combined_results[doc_id] = result
-
-        # Sort by combined score and return top results
-        final_results = list(combined_results.values())
-        final_results.sort(key=lambda x: x.get("combined_score", 0), reverse=True)
-
-        # Update similarity to reflect combined score and limit results
-        for result in final_results[:match_count]:
-            result["similarity"] = result.get("combined_score", 0)
-            # Remove the temporary combined_score field
-            result.pop("combined_score", None)
-
-        return final_results[:match_count]
-
-    async def url_exists(self, url: str) -> bool:
-        """Check if URL exists in database (efficient existence check).
-
-        Uses count() instead of scroll() for performance.
-        Per Qdrant docs: count() only returns number, not point data.
-
-        Args:
-            url: URL to check
-
-        Returns:
-            True if URL exists, False otherwise
-        """
-        filter_condition = Filter(
-            must=[
-                FieldCondition(
-                    key="url",
-                    match=MatchValue(value=url),
-                ),
-            ],
-        )
-
-        # Use count for efficient existence check
-        count_result = await self.client.count(
-            collection_name=self.CRAWLED_PAGES,
-            count_filter=filter_condition,
-            exact=False,  # Approximate count is fine for existence check
-        )
-
-        return count_result.count > 0
-
-    async def get_documents_by_url(self, url: str) -> list[dict[str, Any]]:
-        """Get all document chunks for a specific URL"""
-        filter_condition = Filter(
-            must=[
-                FieldCondition(
-                    key="url",
-                    match=MatchValue(value=url),
-                ),
-            ],
-        )
-
-        # Use scroll to get all chunks
-        points, _ = await self.client.scroll(
-            collection_name=self.CRAWLED_PAGES,
-            scroll_filter=filter_condition,
-            limit=1000,  # Large limit to get all chunks
-        )
-
-        # Format and sort by chunk number
-        results = []
-        for point in points:
-            doc = point.payload.copy()
-            doc["id"] = point.id
-            results.append(doc)
-
-        # Sort by chunk number
-        results.sort(key=lambda x: x.get("chunk_number", 0))
-
-        return results
-
-    async def delete_documents_by_url(self, urls: list[str]) -> None:
-        """Delete all document chunks for the given URLs"""
-        for url in urls:
-            # First, find all points with this URL
-            filter_condition = Filter(
-                must=[
-                    FieldCondition(
-                        key="url",
-                        match=MatchValue(value=url),
-                    ),
-                ],
-            )
-
-            points, _ = await self.client.scroll(
-                collection_name=self.CRAWLED_PAGES,
-                scroll_filter=filter_condition,
-                limit=1000,
-            )
-
-            if points:
-                # Delete all points for this URL
-                point_ids = [point.id for point in points]
-                await self.client.delete(
-                    collection_name=self.CRAWLED_PAGES,
-                    points_selector=PointIdsList(points=point_ids),
-                )
-
+    # Code examples operations - delegate to qdrant.code_examples
     async def add_code_examples(
         self,
         urls: list[str],
@@ -467,67 +173,17 @@ class QdrantAdapter:
         embeddings: list[list[float]],
         source_ids: list[str] | None = None,
     ) -> None:
-        """Add code examples to Qdrant"""
-        if source_ids is None:
-            source_ids = [""] * len(urls)
-
-        # Process in batches
-        for i in range(0, len(urls), self.batch_size):
-            batch_slice = slice(i, min(i + self.batch_size, len(urls)))
-            batch_urls = urls[batch_slice]
-            batch_chunks = chunk_numbers[batch_slice]
-            batch_code_examples = code_examples[batch_slice]
-            batch_summaries = summaries[batch_slice]
-            batch_metadatas = metadatas[batch_slice]
-            batch_embeddings = embeddings[batch_slice]
-            batch_source_ids = source_ids[batch_slice]
-
-            # Create points
-            points = []
-            for (
-                url,
-                chunk_num,
-                code_example,
-                summary,
-                metadata,
-                embedding,
-                source_id,
-            ) in zip(
-                batch_urls,
-                batch_chunks,
-                batch_code_examples,
-                batch_summaries,
-                batch_metadatas,
-                batch_embeddings,
-                batch_source_ids,
-                strict=False,
-            ):
-                # Generate a unique UUID for code examples using a different namespace
-                id_string = f"code_{url}_{chunk_num}"
-                point_id = str(uuid.uuid5(uuid.NAMESPACE_URL, id_string))
-
-                payload = {
-                    "url": url,
-                    "chunk_number": chunk_num,
-                    "code": code_example,
-                    "summary": summary,
-                    "metadata": metadata or {},
-                }
-                if source_id:
-                    payload["source_id"] = source_id
-
-                point = PointStruct(
-                    id=point_id,
-                    vector=embedding,
-                    payload=payload,
-                )
-                points.append(point)
-
-            # Upsert to Qdrant
-            await self.client.upsert(
-                collection_name=self.CODE_EXAMPLES,
-                points=points,
-            )
+        """Add code examples - delegates to qdrant.code_examples"""
+        return await qdrant.code_examples.add_code_examples(
+            self.client,
+            urls,
+            chunk_numbers,
+            code_examples,
+            summaries,
+            metadatas,
+            embeddings,
+            source_ids,
+        )
 
     async def search_code_examples(
         self,
@@ -535,89 +191,21 @@ class QdrantAdapter:
         match_count: int = 10,
         filter_metadata: dict[str, Any] | None = None,
         source_filter: str | None = None,
-        # Legacy parameter for backward compatibility
         query_embedding: list[float] | None = None,
     ) -> list[dict[str, Any]]:
-        """Search for similar code examples"""
-        # Handle backward compatibility - prioritize query_embedding if provided
-        if query_embedding is not None:
-            final_embedding = query_embedding
-        elif query is not None:
-            # Generate embedding if query is a string
-            if isinstance(query, str):
-                from utils import create_embedding
-
-                final_embedding = create_embedding(query)
-            else:
-                final_embedding = query
-        else:
-            msg = "Either 'query' or 'query_embedding' must be provided"
-            raise ValueError(msg)
-
-        # Build filter if needed
-        filter_conditions = []
-
-        if filter_metadata:
-            for key, value in filter_metadata.items():
-                filter_conditions.append(
-                    FieldCondition(
-                        key=f"metadata.{key}",
-                        match=MatchValue(value=value),
-                    ),
-                )
-
-        if source_filter:
-            filter_conditions.append(
-                FieldCondition(
-                    key="source_id",  # Changed from metadata.source to source_id
-                    match=MatchValue(value=source_filter),
-                ),
-            )
-
-        # Create filter if conditions exist
-        search_filter = None
-        if filter_conditions:
-            search_filter = Filter(must=filter_conditions)
-
-        # Perform search
-        results = await self.client.search(
-            collection_name=self.CODE_EXAMPLES,
-            query_vector=final_embedding,
-            query_filter=search_filter,
-            limit=match_count,
+        """Search code examples - delegates to qdrant.code_examples"""
+        return await qdrant.code_examples.search_code_examples(
+            self.client,
+            query,
+            match_count,
+            filter_metadata,
+            source_filter,
+            query_embedding,
         )
 
-        # Format results
-        formatted_results = []
-        for result in results:
-            doc = result.payload.copy()
-            doc["similarity"] = result.score  # Interface expects "similarity"
-            doc["id"] = result.id
-            formatted_results.append(doc)
-
-        return formatted_results
-
     async def delete_code_examples_by_url(self, urls: list[str]) -> None:
-        """Delete all code examples with the given URLs"""
-        for url in urls:
-            # First, find all points with this URL
-            filter_condition = Filter(
-                must=[FieldCondition(key="url", match=MatchValue(value=url))],
-            )
-
-            points, _ = await self.client.scroll(
-                collection_name=self.CODE_EXAMPLES,
-                scroll_filter=filter_condition,
-                limit=1000,
-            )
-
-            if points:
-                # Delete all points for this URL
-                point_ids = [point.id for point in points]
-                await self.client.delete(
-                    collection_name=self.CODE_EXAMPLES,
-                    points_selector=PointIdsList(points=point_ids),
-                )
+        """Delete code examples by URL - delegates to qdrant.code_examples"""
+        return await qdrant.code_examples.delete_code_examples_by_url(self.client, urls)
 
     async def search_code_examples_by_keyword(
         self,
@@ -625,42 +213,13 @@ class QdrantAdapter:
         match_count: int = 10,
         source_filter: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Search code examples by keyword using scroll API"""
-        filter_conditions = []
-
-        # Add keyword filter - search in code content
-        filter_conditions.append(
-            FieldCondition(
-                key="code",
-                match=MatchValue(value=keyword),
-            ),
+        """Search code examples by keyword - delegates to qdrant.code_examples"""
+        return await qdrant.code_examples.search_code_examples_by_keyword(
+            self.client,
+            keyword,
+            match_count,
+            source_filter,
         )
-
-        if source_filter:
-            filter_conditions.append(
-                FieldCondition(
-                    key="source_id",  # Changed from metadata.source to source_id
-                    match=MatchValue(value=source_filter),
-                ),
-            )
-
-        search_filter = Filter(must=filter_conditions)
-
-        # Use scroll to find matching code examples
-        points, _ = await self.client.scroll(
-            collection_name=self.CODE_EXAMPLES,
-            scroll_filter=search_filter,
-            limit=match_count,
-        )
-
-        # Format results
-        formatted_results = []
-        for point in points[:match_count]:
-            doc = point.payload.copy()
-            doc["id"] = point.id
-            formatted_results.append(doc)
-
-        return formatted_results
 
     async def get_repository_code_examples(
         self,
@@ -668,80 +227,17 @@ class QdrantAdapter:
         code_type: str | None = None,
         match_count: int = 100,
     ) -> list[dict[str, Any]]:
-        """
-        Get all code examples for a specific repository.
-
-        Args:
-            repo_name: Repository name to filter by
-            code_type: Optional code type filter ('class', 'method', 'function')
-            match_count: Maximum number of results
-
-        Returns:
-            List of code examples from the repository
-        """
-        filter_conditions = [
-            FieldCondition(
-                key="metadata.repository_name",
-                match=MatchValue(value=repo_name),
-            ),
-        ]
-
-        if code_type:
-            filter_conditions.append(
-                FieldCondition(
-                    key="metadata.code_type",
-                    match=MatchValue(value=code_type),
-                ),
-            )
-
-        search_filter = Filter(must=filter_conditions)
-
-        points, _ = await self.client.scroll(
-            collection_name=self.CODE_EXAMPLES,
-            scroll_filter=search_filter,
-            limit=match_count,
+        """Get repository code examples - delegates to qdrant.code_examples"""
+        return await qdrant.code_examples.get_repository_code_examples(
+            self.client,
+            repo_name,
+            code_type,
+            match_count,
         )
-
-        # Format results
-        formatted_results = []
-        for point in points:
-            doc = point.payload.copy()
-            doc["id"] = point.id
-            formatted_results.append(doc)
-
-        return formatted_results
 
     async def delete_repository_code_examples(self, repo_name: str) -> None:
-        """
-        Delete all code examples for a specific repository.
-
-        Args:
-            repo_name: Repository name to delete code examples for
-        """
-        filter_condition = Filter(
-            must=[
-                FieldCondition(
-                    key="metadata.repository_name",
-                    match=MatchValue(value=repo_name),
-                ),
-            ],
-        )
-
-        points, _ = await self.client.scroll(
-            collection_name=self.CODE_EXAMPLES,
-            scroll_filter=filter_condition,
-            limit=1000,
-        )
-
-        if points:
-            # Extract point IDs
-            point_ids = [point.id for point in points]
-
-            # Delete the points
-            await self.client.delete(
-                collection_name=self.CODE_EXAMPLES,
-                points_selector=PointIdsList(points=point_ids),
-            )
+        """Delete repository code examples - delegates to qdrant.code_examples"""
+        return await qdrant.code_examples.delete_repository_code_examples(self.client, repo_name)
 
     async def search_code_by_signature(
         self,
@@ -750,58 +246,16 @@ class QdrantAdapter:
         repo_filter: str | None = None,
         match_count: int = 10,
     ) -> list[dict[str, Any]]:
-        """
-        Search for code examples by method/function signature.
-
-        Args:
-            method_name: Name of method or function to search for
-            class_name: Optional class name to filter by
-            repo_filter: Optional repository name to filter by
-            match_count: Maximum number of results
-
-        Returns:
-            List of matching code examples
-        """
-        filter_conditions = [
-            FieldCondition(
-                key="metadata.name",
-                match=MatchValue(value=method_name),
-            ),
-        ]
-
-        if class_name:
-            filter_conditions.append(
-                FieldCondition(
-                    key="metadata.class_name",
-                    match=MatchValue(value=class_name),
-                ),
-            )
-
-        if repo_filter:
-            filter_conditions.append(
-                FieldCondition(
-                    key="metadata.repository_name",
-                    match=MatchValue(value=repo_filter),
-                ),
-            )
-
-        search_filter = Filter(must=filter_conditions)
-
-        points, _ = await self.client.scroll(
-            collection_name=self.CODE_EXAMPLES,
-            scroll_filter=search_filter,
-            limit=match_count,
+        """Search code by signature - delegates to qdrant.code_examples"""
+        return await qdrant.code_examples.search_code_by_signature(
+            self.client,
+            method_name,
+            class_name,
+            repo_filter,
+            match_count,
         )
 
-        # Format results
-        formatted_results = []
-        for point in points:
-            doc = point.payload.copy()
-            doc["id"] = point.id
-            formatted_results.append(doc)
-
-        return formatted_results
-
+    # Source operations - delegate to qdrant.operations
     async def add_source(
         self,
         source_id: str,
@@ -811,25 +265,15 @@ class QdrantAdapter:
         metadata: dict[str, Any],
         embedding: list[float],
     ) -> None:
-        """Add a source to Qdrant"""
-        # Generate a deterministic UUID from source_id
-        point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, source_id))
-
-        point = PointStruct(
-            id=point_id,
-            vector=embedding,
-            payload={
-                "source_id": source_id,
-                "url": url,
-                "title": title,
-                "description": description,
-                "metadata": metadata or {},
-            },
-        )
-
-        await self.client.upsert(
-            collection_name=self.SOURCES,
-            points=[point],
+        """Add a source - delegates to qdrant.operations"""
+        return await qdrant.operations.add_source(
+            self.client,
+            source_id,
+            url,
+            title,
+            description,
+            metadata,
+            embedding,
         )
 
     async def search_sources(
@@ -837,116 +281,28 @@ class QdrantAdapter:
         query_embedding: list[float],
         match_count: int = 10,
     ) -> list[dict[str, Any]]:
-        """Search for similar sources"""
-        results = await self.client.search(
-            collection_name=self.SOURCES,
-            query_vector=query_embedding,
-            query_filter=None,
-            limit=match_count,
+        """Search sources - delegates to qdrant.operations"""
+        return await qdrant.operations.search_sources(
+            self.client,
+            query_embedding,
+            match_count,
         )
-
-        # Format results
-        formatted_results = []
-        for result in results:
-            doc = result.payload.copy()
-            doc["similarity"] = result.score  # Interface expects "similarity"
-            doc["id"] = result.id
-            formatted_results.append(doc)
-
-        return formatted_results
 
     async def update_source(
         self,
         source_id: str,
         updates: dict[str, Any],
     ) -> None:
-        """Update a source's metadata"""
-        # Generate a deterministic UUID from source_id
-        point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, source_id))
-
-        # Get existing source
-        try:
-            existing_points = await self.client.retrieve(
-                collection_name=self.SOURCES,
-                ids=[point_id],
-            )
-
-            if not existing_points:
-                msg = f"Source {source_id} not found"
-                raise ValueError(msg)
-
-            # Update payload
-            existing_point = existing_points[0]
-            updated_payload = existing_point.payload.copy()
-            updated_payload.update(updates)
-
-            # Update the point
-            await self.client.set_payload(
-                collection_name=self.SOURCES,
-                payload=updated_payload,
-                points=[point_id],
-            )
-        except Exception as e:
-            print(f"Error updating source: {e}", file=sys.stderr)
-            raise
+        """Update source metadata - delegates to qdrant.operations"""
+        return await qdrant.operations.update_source(
+            self.client,
+            source_id,
+            updates,
+        )
 
     async def get_sources(self) -> list[dict[str, Any]]:
-        """
-        Get all available sources.
-
-        Returns:
-            List of sources, each containing:
-            - source_id: Source identifier
-            - summary: Source summary
-            - total_word_count: Total word count
-            - created_at: Creation timestamp
-            - updated_at: Update timestamp
-        """
-        try:
-            # Scroll through all points in the sources collection
-            all_sources = []
-            offset = None
-            limit = 100
-
-            while True:
-                # Get a batch of sources
-                points, next_offset = await self.client.scroll(
-                    collection_name=self.SOURCES,
-                    offset=offset,
-                    limit=limit,
-                    with_payload=True,
-                )
-
-                # Format each source
-                for point in points:
-                    source_data = {
-                        "source_id": point.payload.get(
-                            "source_id",
-                            point.id,
-                        ),  # Get from payload, fallback to ID
-                        "summary": point.payload.get("summary", ""),
-                        "total_word_count": point.payload.get("total_word_count", 0),
-                        "created_at": point.payload.get("created_at", ""),
-                        "updated_at": point.payload.get("updated_at", ""),
-                        "enabled": point.payload.get("enabled", True),
-                        "url_count": point.payload.get("url_count", 0),
-                    }
-                    all_sources.append(source_data)
-
-                # Check if there are more sources
-                if next_offset is None:
-                    break
-
-                offset = next_offset
-
-            # Sort by source_id for consistency
-            all_sources.sort(key=lambda x: x["source_id"])
-
-            return all_sources
-
-        except Exception as e:
-            print(f"Error getting sources: {e}", file=sys.stderr)
-            return []
+        """Get all sources - delegates to qdrant.operations"""
+        return await qdrant.operations.get_sources(self.client)
 
     async def update_source_info(
         self,
@@ -954,122 +310,10 @@ class QdrantAdapter:
         summary: str,
         word_count: int,
     ) -> None:
-        """
-        Update or insert source information.
-
-        Args:
-            source_id: Source identifier
-            summary: Source summary
-            word_count: Word count for this source
-        """
-        from datetime import datetime
-
-        timestamp = datetime.now(UTC).isoformat()
-
-        try:
-            # Generate a deterministic UUID from source_id
-            point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, source_id))
-
-            # Try to get existing source
-            try:
-                existing_points = await self.client.retrieve(
-                    collection_name=self.SOURCES,
-                    ids=[point_id],
-                )
-
-                if existing_points:
-                    # Update existing source
-                    existing_point = existing_points[0]
-                    updated_payload = existing_point.payload.copy()
-                    updated_payload.update(
-                        {
-                            "summary": summary,
-                            "total_word_count": word_count,
-                            "updated_at": timestamp,
-                        },
-                    )
-
-                    await self.client.set_payload(
-                        collection_name=self.SOURCES,
-                        payload=updated_payload,
-                        points=[point_id],
-                    )
-                else:
-                    # Create new source
-                    await self._create_new_source(
-                        source_id,
-                        summary,
-                        word_count,
-                        timestamp,
-                        point_id,
-                    )
-            except Exception:
-                # Source doesn't exist, create new one
-                await self._create_new_source(
-                    source_id,
-                    summary,
-                    word_count,
-                    timestamp,
-                    point_id,
-                )
-
-        except Exception as e:
-            print(f"Error updating source info: {e}", file=sys.stderr)
-            raise
-
-    async def _create_new_source(
-        self,
-        source_id: str,
-        summary: str,
-        word_count: int,
-        timestamp: str,
-        point_id: str,
-    ) -> None:
-        """Helper method to create a new source"""
-        try:
-            # Create new source with a deterministic embedding
-            # IMPORTANT: This embedding must be 1536 dimensions to match OpenAI's text-embedding-3-small model
-            # Previously this was creating 384-dimensional embeddings which caused vector dimension errors
-
-            # Generate a deterministic embedding from the source_id using SHA256 hash
-            import hashlib
-
-            hash_object = hashlib.sha256(source_id.encode())
-            hash_bytes = hash_object.digest()  # 32 bytes from SHA256
-
-            # Convert hash bytes to floats between -1 and 1
-            # Each byte (0-255) is normalized to the range [-1, 1]
-            base_embedding = [(b - 128) / 128.0 for b in hash_bytes]
-
-            # OpenAI embeddings are 1536 dimensions, but SHA256 only gives us 32 values
-            # We repeat the pattern to fill all 1536 dimensions deterministically
-            embedding: list[float] = []
-            while len(embedding) < 1536:
-                embedding.extend(base_embedding)
-
-            # Ensure exactly 1536 dimensions (trim any excess from the last repetition)
-            embedding = embedding[:1536]
-
-            points = [
-                models.PointStruct(
-                    id=point_id,
-                    vector=embedding,
-                    payload={
-                        "source_id": source_id,
-                        "summary": summary,
-                        "total_word_count": word_count,
-                        "created_at": timestamp,
-                        "updated_at": timestamp,
-                        "enabled": True,
-                        "url_count": 1,
-                    },
-                ),
-            ]
-
-            await self.client.upsert(
-                collection_name=self.SOURCES,
-                points=points,
-            )
-        except Exception as e:
-            print(f"Error creating new source: {e}", file=sys.stderr)
-            raise
+        """Update source information - delegates to qdrant.operations"""
+        return await qdrant.operations.update_source_info(
+            self.client,
+            source_id,
+            summary,
+            word_count,
+        )
