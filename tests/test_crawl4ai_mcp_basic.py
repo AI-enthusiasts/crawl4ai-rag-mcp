@@ -10,12 +10,11 @@ import pytest
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.crawl4ai_mcp import (
-    format_neo4j_error,
-    is_sitemap,
-    is_txt,
-    rerank_results,
-    track_request,
+from src.core.context import format_neo4j_error
+from src.core.decorators import track_request
+from src.utils.url_helpers import is_sitemap, is_txt
+from src.utils.reranking import rerank_results
+from src.utils.validation import (
     validate_github_url,
     validate_neo4j_connection,
     validate_script_path,

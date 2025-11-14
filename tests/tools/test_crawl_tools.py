@@ -38,7 +38,7 @@ class TestScrapeUrlsTool:
     async def test_scrape_urls_single_url_success(self, mock_mcp, mock_context):
         """Test scrape_urls tool with single URL."""
         with patch("src.tools.crawl.process_urls_for_mcp") as mock_process:
-            with patch("src.tools.crawl.clean_url") as mock_clean:
+            with patch("src.utils.url_helpers.clean_url") as mock_clean:
                 mock_clean.return_value = "https://example.com"
                 mock_process.return_value = json.dumps(
                     {
@@ -86,7 +86,7 @@ class TestScrapeUrlsTool:
     async def test_scrape_urls_multiple_urls_list(self, mock_mcp, mock_context):
         """Test scrape_urls tool with list of URLs."""
         with patch("src.tools.crawl.process_urls_for_mcp") as mock_process:
-            with patch("src.tools.crawl.clean_url") as mock_clean:
+            with patch("src.utils.url_helpers.clean_url") as mock_clean:
                 mock_clean.side_effect = lambda x: x  # Return as-is
                 mock_process.return_value = json.dumps(
                     {
@@ -130,7 +130,7 @@ class TestScrapeUrlsTool:
     async def test_scrape_urls_json_array_string(self, mock_mcp, mock_context):
         """Test scrape_urls tool with JSON array string."""
         with patch("src.tools.crawl.process_urls_for_mcp") as mock_process:
-            with patch("src.tools.crawl.clean_url") as mock_clean:
+            with patch("src.utils.url_helpers.clean_url") as mock_clean:
                 mock_clean.side_effect = lambda x: x
                 mock_process.return_value = json.dumps(
                     {"success": True, "results": []}
@@ -166,7 +166,7 @@ class TestScrapeUrlsTool:
     @pytest.mark.asyncio
     async def test_scrape_urls_no_valid_urls(self, mock_mcp, mock_context):
         """Test scrape_urls tool with no valid URLs."""
-        with patch("src.tools.crawl.clean_url") as mock_clean:
+        with patch("src.utils.url_helpers.clean_url") as mock_clean:
             mock_clean.return_value = None  # Invalid URL
 
             # Register and get function
@@ -198,7 +198,7 @@ class TestScrapeUrlsTool:
     @pytest.mark.asyncio
     async def test_scrape_urls_input_too_large(self, mock_mcp, mock_context):
         """Test scrape_urls tool with input size limit."""
-        with patch("src.tools.crawl.clean_url") as mock_clean:
+        with patch("src.utils.url_helpers.clean_url") as mock_clean:
             # Register and get function
             mcp_instance = MagicMock()
             registered_funcs = {}
@@ -234,7 +234,7 @@ class TestScrapeUrlsTool:
     async def test_scrape_urls_with_raw_markdown(self, mock_mcp, mock_context):
         """Test scrape_urls tool with raw markdown return."""
         with patch("src.tools.crawl.process_urls_for_mcp") as mock_process:
-            with patch("src.tools.crawl.clean_url") as mock_clean:
+            with patch("src.utils.url_helpers.clean_url") as mock_clean:
                 mock_clean.return_value = "https://example.com"
                 mock_process.return_value = "# Markdown Content\n\nRaw markdown here"
 
@@ -269,7 +269,7 @@ class TestScrapeUrlsTool:
     async def test_scrape_urls_error_handling(self, mock_mcp, mock_context):
         """Test scrape_urls tool error handling."""
         with patch("src.tools.crawl.process_urls_for_mcp") as mock_process:
-            with patch("src.tools.crawl.clean_url") as mock_clean:
+            with patch("src.utils.url_helpers.clean_url") as mock_clean:
                 mock_clean.return_value = "https://example.com"
                 mock_process.side_effect = Exception("Network error")
 

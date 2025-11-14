@@ -19,13 +19,9 @@ from dotenv import load_dotenv
 load_dotenv(".env.test", override=True)
 
 # Import the MCP server functions
-from crawl4ai_mcp import (
-    check_ai_script_hallucinations,
-    crawl4ai_lifespan,
-    mcp,
-    parse_github_repository,
-    query_knowledge_graph,
-)
+from src import check_ai_script_hallucinations
+from src.knowledge_graph.queries import query_knowledge_graph
+from src.knowledge_graph.repository import parse_github_repository
 
 
 class MockContext:

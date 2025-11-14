@@ -10,15 +10,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 # Import functions to test
-from crawl4ai_mcp import (
-    extract_section_info,
-    format_neo4j_error,
+from src.core.context import format_neo4j_error
+from src.core.decorators import track_request
+from src.utils.reranking import rerank_results
+from src.utils.url_helpers import (
     is_sitemap,
     is_txt,
     parse_sitemap,
-    rerank_results,
-    smart_chunk_markdown,
-    track_request,
+)
+from src.utils.validation import (
     validate_github_url,
     validate_neo4j_connection,
     validate_script_path,
