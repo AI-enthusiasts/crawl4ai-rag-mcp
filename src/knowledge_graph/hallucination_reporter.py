@@ -21,16 +21,16 @@ logger = logging.getLogger(__name__)
 class HallucinationReporter:
     """Generates reports about detected hallucinations"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.report_timestamp = datetime.now(UTC)
 
     def generate_comprehensive_report(self, validation_result: ScriptValidationResult) -> dict[str, Any]:
         """Generate a comprehensive report in JSON format"""
         # Categorize validations by status (knowledge graph items only)
-        valid_items = []
-        invalid_items = []
-        uncertain_items = []
-        not_found_items = []
+        valid_items: list[dict[str, Any]] = []
+        invalid_items: list[dict[str, Any]] = []
+        uncertain_items: list[dict[str, Any]] = []
+        not_found_items: list[dict[str, Any]] = []
 
         # Process imports (only knowledge graph ones)
         for val in validation_result.import_validations:
@@ -186,7 +186,7 @@ class HallucinationReporter:
         }
 
 
-    def _is_from_knowledge_graph(self, item_name: str, validation_result) -> bool:
+    def _is_from_knowledge_graph(self, item_name: str, validation_result: ScriptValidationResult) -> bool:
         """Check if an item is from a knowledge graph module"""
         if not item_name:
             return False
@@ -206,7 +206,7 @@ class HallucinationReporter:
 
         return any(item_name in module or module.endswith(item_name) for module in kg_modules)
 
-    def _serialize_validation_result(self, validation_result) -> dict[str, Any]:
+    def _serialize_validation_result(self, validation_result: Any) -> dict[str, Any] | None:
         """Convert ValidationResult to JSON-serializable dictionary"""
         if validation_result is None:
             return None
@@ -220,7 +220,8 @@ class HallucinationReporter:
         }
 
     def _categorize_item(self, item: dict[str, Any], status: ValidationStatus,
-                        valid_items: list, invalid_items: list, uncertain_items: list, not_found_items: list):
+                        valid_items: list[dict[str, Any]], invalid_items: list[dict[str, Any]],
+                        uncertain_items: list[dict[str, Any]], not_found_items: list[dict[str, Any]]) -> None:
         """Categorize validation item by status"""
         if status == ValidationStatus.VALID:
             valid_items.append(item)
@@ -360,14 +361,14 @@ class HallucinationReporter:
 
         return recommendations
 
-    def save_json_report(self, report: dict[str, Any], output_path: str):
+    def save_json_report(self, report: dict[str, Any], output_path: str) -> None:
         """Save report as JSON file"""
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
 
         logger.info(f"JSON report saved to: {output_path}")
 
-    def save_markdown_report(self, report: dict[str, Any], output_path: str):
+    def save_markdown_report(self, report: dict[str, Any], output_path: str) -> None:
         """Save report as Markdown file"""
         md_content = self._generate_markdown_content(report)
 
@@ -490,7 +491,7 @@ class HallucinationReporter:
 
         return "\n".join(md)
 
-    def print_summary(self, report: dict[str, Any]):
+    def print_summary(self, report: dict[str, Any]) -> None:
         """Print a concise summary to console"""
         print("\n" + "="*80)
         print("🤖 AI HALLUCINATION DETECTION REPORT")

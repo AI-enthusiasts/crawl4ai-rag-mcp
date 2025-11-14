@@ -116,7 +116,7 @@ def is_safe_hostname(hostname: str) -> dict[str, Any]:
 
         # Check all resolved IPs
         for family, _, _, _, sockaddr in addr_info:
-            ip_str = sockaddr[0]  # Extract IP from (ip, port) tuple
+            ip_str = str(sockaddr[0])  # Extract IP from (ip, port) tuple, cast to str
 
             # Recursively validate resolved IP
             ip_check = is_safe_hostname(ip_str)
