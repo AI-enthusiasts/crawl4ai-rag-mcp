@@ -39,7 +39,7 @@ from services.agentic_search import (
 @pytest.fixture
 def mock_agentic_dependencies():
     """Patch OpenAIModel and Agent for AgenticSearchService."""
-    with patch("services.agentic_search.settings") as mock_settings:
+    with patch("services.agentic_search.config.settings") as mock_settings:
         mock_settings.model_choice = "gpt-4o-mini"
         mock_settings.openai_api_key = "test-key"
         mock_settings.agentic_search_llm_temperature = 0.3
@@ -53,8 +53,8 @@ def mock_agentic_dependencies():
         mock_settings.agentic_search_max_urls_to_rank = 20
         mock_settings.agentic_search_max_qdrant_results = 10
 
-        with patch("services.agentic_search.OpenAIModel"):
-            with patch("services.agentic_search.Agent") as mock_agent:
+        with patch("services.agentic_search.config.OpenAIModel"):
+            with patch("services.agentic_search.config.Agent") as mock_agent:
                 mock_agent.return_value = MagicMock()
                 yield mock_settings
 
@@ -65,7 +65,7 @@ class TestAgenticSearchServiceInitialization:
     @pytest.fixture
     def mock_settings(self):
         """Mock settings for initialization."""
-        with patch("services.agentic_search.settings") as mock_settings:
+        with patch("services.agentic_search.config.settings") as mock_settings:
             mock_settings.model_choice = "gpt-4o-mini"
             mock_settings.openai_api_key = "test-key"
             mock_settings.agentic_search_llm_temperature = 0.3
@@ -83,8 +83,8 @@ class TestAgenticSearchServiceInitialization:
     def test_service_initialization(self, mock_settings):
         """Test service initializes with correct configuration."""
         # Mock OpenAIModel and Agent to avoid API key validation
-        with patch("services.agentic_search.OpenAIModel") as mock_openai_model:
-            with patch("services.agentic_search.Agent") as mock_agent:
+        with patch("services.agentic_search.config.OpenAIModel") as mock_openai_model:
+            with patch("services.agentic_search.config.Agent") as mock_agent:
                 mock_openai_model.return_value = MagicMock()
                 mock_agent.return_value = MagicMock()
 
@@ -112,8 +112,8 @@ class TestAgenticSearchServiceInitialization:
 
     def test_service_agents_have_correct_settings(self, mock_settings):
         """Test that agents are configured with correct model settings."""
-        with patch("services.agentic_search.OpenAIModel"):
-            with patch("services.agentic_search.Agent"):
+        with patch("services.agentic_search.config.OpenAIModel"):
+            with patch("services.agentic_search.config.Agent"):
                 service = AgenticSearchService()
 
                 # Base model settings
@@ -131,7 +131,7 @@ class TestCompletenessEvaluation:
     @pytest.fixture
     def mock_service(self):
         """Create service with mocked agents."""
-        with patch("services.agentic_search.settings") as mock_settings:
+        with patch("services.agentic_search.config.settings") as mock_settings:
             mock_settings.model_choice = "gpt-4o-mini"
             mock_settings.openai_api_key = "test-key"
             mock_settings.agentic_search_llm_temperature = 0.3
@@ -145,8 +145,8 @@ class TestCompletenessEvaluation:
             mock_settings.agentic_search_max_urls_to_rank = 20
             mock_settings.agentic_search_max_qdrant_results = 10
             
-            with patch("services.agentic_search.OpenAIModel"):
-                with patch("services.agentic_search.Agent"):
+            with patch("services.agentic_search.config.OpenAIModel"):
+                with patch("services.agentic_search.config.Agent"):
                     service = AgenticSearchService()
                     yield service
 
@@ -244,7 +244,7 @@ class TestStage1LocalCheck:
     @pytest.fixture
     def mock_service(self):
         """Create service with mocked agents."""
-        with patch("services.agentic_search.settings") as mock_settings:
+        with patch("services.agentic_search.config.settings") as mock_settings:
             mock_settings.model_choice = "gpt-4o-mini"
             mock_settings.openai_api_key = "test-key"
             mock_settings.agentic_search_llm_temperature = 0.3
@@ -258,8 +258,8 @@ class TestStage1LocalCheck:
             mock_settings.agentic_search_max_urls_to_rank = 20
             mock_settings.agentic_search_max_qdrant_results = 10
             
-            with patch("services.agentic_search.OpenAIModel"):
-                with patch("services.agentic_search.Agent"):
+            with patch("services.agentic_search.config.OpenAIModel"):
+                with patch("services.agentic_search.config.Agent"):
                     service = AgenticSearchService()
                     yield service
 
@@ -362,7 +362,7 @@ class TestURLRanking:
     @pytest.fixture
     def mock_service(self):
         """Create service with mocked agents."""
-        with patch("services.agentic_search.settings") as mock_settings:
+        with patch("services.agentic_search.config.settings") as mock_settings:
             mock_settings.model_choice = "gpt-4o-mini"
             mock_settings.openai_api_key = "test-key"
             mock_settings.agentic_search_llm_temperature = 0.3
@@ -376,8 +376,8 @@ class TestURLRanking:
             mock_settings.agentic_search_max_urls_to_rank = 20
             mock_settings.agentic_search_max_qdrant_results = 10
             
-            with patch("services.agentic_search.OpenAIModel"):
-                with patch("services.agentic_search.Agent"):
+            with patch("services.agentic_search.config.OpenAIModel"):
+                with patch("services.agentic_search.config.Agent"):
                     service = AgenticSearchService()
                     yield service
 
@@ -470,7 +470,7 @@ class TestStage2WebSearch:
     @pytest.fixture
     def mock_service(self):
         """Create service with mocked agents."""
-        with patch("services.agentic_search.settings") as mock_settings:
+        with patch("services.agentic_search.config.settings") as mock_settings:
             mock_settings.model_choice = "gpt-4o-mini"
             mock_settings.openai_api_key = "test-key"
             mock_settings.agentic_search_llm_temperature = 0.3
@@ -484,8 +484,8 @@ class TestStage2WebSearch:
             mock_settings.agentic_search_max_urls_to_rank = 20
             mock_settings.agentic_search_max_qdrant_results = 10
             
-            with patch("services.agentic_search.OpenAIModel"):
-                with patch("services.agentic_search.Agent"):
+            with patch("services.agentic_search.config.OpenAIModel"):
+                with patch("services.agentic_search.config.Agent"):
                     service = AgenticSearchService()
                     yield service
 
@@ -581,7 +581,7 @@ class TestStage3SelectiveCrawl:
     @pytest.fixture
     def mock_service(self):
         """Create service with mocked agents."""
-        with patch("services.agentic_search.settings") as mock_settings:
+        with patch("services.agentic_search.config.settings") as mock_settings:
             mock_settings.model_choice = "gpt-4o-mini"
             mock_settings.openai_api_key = "test-key"
             mock_settings.agentic_search_llm_temperature = 0.3
@@ -595,8 +595,8 @@ class TestStage3SelectiveCrawl:
             mock_settings.agentic_search_max_urls_to_rank = 20
             mock_settings.agentic_search_max_qdrant_results = 10
             
-            with patch("services.agentic_search.OpenAIModel"):
-                with patch("services.agentic_search.Agent"):
+            with patch("services.agentic_search.config.OpenAIModel"):
+                with patch("services.agentic_search.config.Agent"):
                     service = AgenticSearchService()
                     yield service
 
@@ -746,7 +746,7 @@ class TestStage4QueryRefinement:
     @pytest.fixture
     def mock_service(self):
         """Create service with mocked agents."""
-        with patch("services.agentic_search.settings") as mock_settings:
+        with patch("services.agentic_search.config.settings") as mock_settings:
             mock_settings.model_choice = "gpt-4o-mini"
             mock_settings.openai_api_key = "test-key"
             mock_settings.agentic_search_llm_temperature = 0.3
@@ -760,8 +760,8 @@ class TestStage4QueryRefinement:
             mock_settings.agentic_search_max_urls_to_rank = 20
             mock_settings.agentic_search_max_qdrant_results = 10
             
-            with patch("services.agentic_search.OpenAIModel"):
-                with patch("services.agentic_search.Agent"):
+            with patch("services.agentic_search.config.OpenAIModel"):
+                with patch("services.agentic_search.config.Agent"):
                     service = AgenticSearchService()
                     yield service
 
@@ -779,7 +779,7 @@ class TestStage4QueryRefinement:
         mock_result.output.reasoning = "Focusing on performance aspects"
         mock_agent.run = AsyncMock(return_value=mock_result)
 
-        with patch("services.agentic_search.Agent", return_value=mock_agent):
+        with patch("services.agentic_search.config.Agent", return_value=mock_agent):
             refinement = await mock_service._stage4_query_refinement(
                 original_query="Python programming",
                 current_query="Python basics",
@@ -798,7 +798,7 @@ class TestStage4QueryRefinement:
         mock_agent = AsyncMock()
         mock_agent.run = AsyncMock(side_effect=UnexpectedModelBehavior("Model failed"))
 
-        with patch("services.agentic_search.Agent", return_value=mock_agent):
+        with patch("services.agentic_search.config.Agent", return_value=mock_agent):
             with pytest.raises(LLMError, match="LLM query refinement failed"):
                 await mock_service._stage4_query_refinement(
                     original_query="test",
@@ -812,7 +812,7 @@ class TestStage4QueryRefinement:
         mock_agent = AsyncMock()
         mock_agent.run = AsyncMock(side_effect=Exception("Unexpected error"))
 
-        with patch("services.agentic_search.Agent", return_value=mock_agent):
+        with patch("services.agentic_search.config.Agent", return_value=mock_agent):
             with pytest.raises(LLMError, match="Query refinement failed"):
                 await mock_service._stage4_query_refinement(
                     original_query="test",
@@ -827,7 +827,7 @@ class TestExecuteSearch:
     @pytest.fixture
     def mock_service(self):
         """Create service with mocked agents."""
-        with patch("services.agentic_search.settings") as mock_settings:
+        with patch("services.agentic_search.config.settings") as mock_settings:
             mock_settings.model_choice = "gpt-4o-mini"
             mock_settings.openai_api_key = "test-key"
             mock_settings.agentic_search_llm_temperature = 0.3
@@ -841,8 +841,8 @@ class TestExecuteSearch:
             mock_settings.agentic_search_max_urls_to_rank = 20
             mock_settings.agentic_search_max_qdrant_results = 10
             
-            with patch("services.agentic_search.OpenAIModel"):
-                with patch("services.agentic_search.Agent"):
+            with patch("services.agentic_search.config.OpenAIModel"):
+                with patch("services.agentic_search.config.Agent"):
                     service = AgenticSearchService()
                     yield service
 
@@ -1071,7 +1071,7 @@ class TestAgenticSearchImpl:
             status=SearchStatus.COMPLETE,
         )
 
-        with patch("services.agentic_search.settings") as mock_settings:
+        with patch("services.agentic_search.config.settings") as mock_settings:
             mock_settings.agentic_search_enabled = True
 
             with patch(
@@ -1091,7 +1091,7 @@ class TestAgenticSearchImpl:
     @pytest.mark.asyncio
     async def test_agentic_search_impl_disabled(self, mock_ctx):
         """Test agentic search when disabled."""
-        with patch("services.agentic_search.settings") as mock_settings:
+        with patch("services.agentic_search.config.settings") as mock_settings:
             mock_settings.agentic_search_enabled = False
 
             with pytest.raises(MCPToolError, match="Agentic search is not enabled"):
@@ -1100,7 +1100,7 @@ class TestAgenticSearchImpl:
     @pytest.mark.asyncio
     async def test_agentic_search_impl_handles_exception(self, mock_ctx):
         """Test agentic search implementation handles exceptions."""
-        with patch("services.agentic_search.settings") as mock_settings:
+        with patch("services.agentic_search.config.settings") as mock_settings:
             mock_settings.agentic_search_enabled = True
 
             with patch(
@@ -1116,7 +1116,7 @@ class TestSingletonPattern:
 
     def test_get_agentic_search_service_singleton(self):
         """Test that get_agentic_search_service returns singleton."""
-        with patch("services.agentic_search.settings") as mock_settings:
+        with patch("services.agentic_search.config.settings") as mock_settings:
             mock_settings.model_choice = "gpt-4o-mini"
             mock_settings.openai_api_key = "test-key"
             mock_settings.agentic_search_llm_temperature = 0.3
@@ -1147,7 +1147,7 @@ class TestEdgeCases:
     @pytest.fixture
     def mock_service(self):
         """Create service with mocked agents."""
-        with patch("services.agentic_search.settings") as mock_settings:
+        with patch("services.agentic_search.config.settings") as mock_settings:
             mock_settings.model_choice = "gpt-4o-mini"
             mock_settings.openai_api_key = "test-key"
             mock_settings.agentic_search_llm_temperature = 0.3
@@ -1161,8 +1161,8 @@ class TestEdgeCases:
             mock_settings.agentic_search_max_urls_to_rank = 20
             mock_settings.agentic_search_max_qdrant_results = 10
             
-            with patch("services.agentic_search.OpenAIModel"):
-                with patch("services.agentic_search.Agent"):
+            with patch("services.agentic_search.config.OpenAIModel"):
+                with patch("services.agentic_search.config.Agent"):
                     service = AgenticSearchService()
                     yield service
 

@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+from crawl4ai import BrowserConfig
 
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
@@ -41,7 +42,7 @@ class TestSmartCrawlUrl:
     def mock_app_context(self):
         """Create mock application context."""
         app_ctx = MagicMock()
-        app_ctx.browser_config = {"headless": True}
+        app_ctx.browser_config = BrowserConfig(headless=True, verbose=False)
         app_ctx.database_client = AsyncMock()
         app_ctx.dispatcher = MagicMock()
         return app_ctx
@@ -499,7 +500,7 @@ class TestCrawlTextFile:
     def mock_app_context(self):
         """Create mock application context."""
         app_ctx = MagicMock()
-        app_ctx.browser_config = {"headless": True}
+        app_ctx.browser_config = BrowserConfig(headless=True, verbose=False)
         app_ctx.database_client = AsyncMock()
         app_ctx.database_client.store_crawled_page = AsyncMock()
         return app_ctx
@@ -764,7 +765,7 @@ class TestCrawlRecursive:
     def mock_app_context(self):
         """Create mock application context."""
         app_ctx = MagicMock()
-        app_ctx.browser_config = {"headless": True}
+        app_ctx.browser_config = BrowserConfig(headless=True, verbose=False)
         app_ctx.database_client = AsyncMock()
         app_ctx.database_client.store_crawled_page = AsyncMock()
         app_ctx.dispatcher = MagicMock()
