@@ -21,7 +21,7 @@ class MockNeo4jSession:
         self.exception = None
         self.closed = False
 
-    def run(self, query: str, parameters: dict | None = None):
+    def run(self, query: str, parameters: dict | None = None, **kwargs):
         """Mock run method that returns predefined results"""
         if self.exception:
             raise self.exception
@@ -30,9 +30,9 @@ class MockNeo4jSession:
         result = MockNeo4jResult(self.results)
         return result
 
-    async def run_async(self, query: str, parameters: dict | None = None):
+    async def run_async(self, query: str, parameters: dict | None = None, **kwargs):
         """Async version of run method"""
-        return self.run(query, parameters)
+        return self.run(query, parameters, **kwargs)
 
     def close(self):
         """Mock close method"""
@@ -47,6 +47,14 @@ class MockNeo4jSession:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+    async def __aenter__(self):
+        """Async context manager entry"""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit"""
+        await self.close_async()
 
 
 class MockNeo4jResult:
@@ -113,13 +121,13 @@ class MockNeo4jDriver:
         """Async version of session method"""
         return self.session(**kwargs)
 
-    def close(self):
-        """Mock close method"""
+    async def close(self):
+        """Mock close method (async)"""
         self.closed = True
 
-    async def close_async(self):
-        """Async version of close method"""
-        self.close()
+    def close_sync(self):
+        """Sync version of close method"""
+        self.closed = True
 
     def verify_connectivity(self):
         """Mock connectivity verification"""
