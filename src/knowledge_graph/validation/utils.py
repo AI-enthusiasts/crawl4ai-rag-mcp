@@ -7,9 +7,26 @@ knowledge graph membership.
 """
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any
 
-from . import ValidationResult, ValidationStatus
+
+class ValidationStatus(Enum):
+    """Status of a validation result"""
+    VALID = "VALID"
+    INVALID = "INVALID"
+    UNCERTAIN = "UNCERTAIN"
+    NOT_FOUND = "NOT_FOUND"
+
+
+@dataclass
+class ValidationResult:
+    """Result of validating a single element"""
+    status: "ValidationStatus"
+    confidence: float  # 0.0 to 1.0
+    message: str
+    details: dict[str, Any] = field(default_factory=dict)
+    suggestions: list[str] = field(default_factory=list)
 
 
 @dataclass
