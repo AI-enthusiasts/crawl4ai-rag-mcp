@@ -137,7 +137,7 @@ class UniversalCodeExample:
     validation_status: str = "extracted"  # extracted, validated, verified
     confidence_score: float | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize default values and validate inputs."""
         self.validate()
 
@@ -161,7 +161,7 @@ class UniversalCodeExample:
 
     def to_metadata(self) -> dict[str, Any]:
         """Convert to comprehensive metadata dictionary for Qdrant storage."""
-        metadata = {
+        metadata: dict[str, Any] = {
             "repository_name": self.repository_name,
             "file_path": self.file_path,
             "module_name": self.module_name,
@@ -480,7 +480,7 @@ class Neo4jCodeExtractor:
         logger.info(f"Extracted {len(code_examples)} code examples from {repo_name}")
         return code_examples
 
-    async def extract_repository_code_universal(self, repo_name: str) -> list[UniversalCodeExample]:
+    async def extract_repository_code_universal(self, repo_name: str) -> list[CodeExample | UniversalCodeExample]:
         """
         Extract repository code using UniversalCodeExample format.
 
@@ -530,7 +530,7 @@ class Neo4jCodeExtractor:
         """
 
         result = await self.session.run(query, repo_name=repo_name)
-        classes = []
+        classes: list[CodeExample | UniversalCodeExample] = []
 
         async for record in result:
             class_name = record["class_name"]
@@ -541,6 +541,7 @@ class Neo4jCodeExtractor:
             methods = record["methods"]
 
             # Create class example
+            class_example: CodeExample | UniversalCodeExample
             if self.use_universal:
                 class_example = self._create_universal_class_example(
                     repo_name, file_path, module_name, class_name,
@@ -566,6 +567,7 @@ class Neo4jCodeExtractor:
             # Create individual method examples for important methods
             for method in methods:
                 if method["name"] and not method["name"].startswith("_"):  # Public methods
+                    method_example: CodeExample | UniversalCodeExample
                     if self.use_universal:
                         method_example = self._create_universal_method_example(
                             repo_name, file_path, module_name, method,
@@ -606,7 +608,7 @@ class Neo4jCodeExtractor:
         """
 
         result = await self.session.run(query, repo_name=repo_name)
-        functions = []
+        functions: list[CodeExample | UniversalCodeExample] = []
 
         async for record in result:
             function_name = record["function_name"]
@@ -620,6 +622,7 @@ class Neo4jCodeExtractor:
 
             full_name = f"{module_name}.{function_name}" if module_name else function_name
 
+            function_example: CodeExample | UniversalCodeExample
             if self.use_universal:
                 function_example = self._create_universal_function_example(
                     repo_name, file_path, module_name, function_name,
@@ -886,6 +889,7 @@ async def extract_repository_code(
                     })
                 else:
                     # Legacy format for CodeExample
+                    assert isinstance(example, CodeExample), "Expected CodeExample in legacy format"
                     examples_data.append({
                         "repository_name": example.repository_name,
                         "file_path": example.file_path,
