@@ -5,8 +5,19 @@ import sys
 
 import openai
 
-# Create OpenAI client instance
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Lazy client initialization
+_client: openai.OpenAI | None = None
+
+
+def _get_client() -> openai.OpenAI:
+    """Get or create OpenAI client instance (lazy initialization)."""
+    global _client
+    if _client is None:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY environment variable is not set")
+        _client = openai.OpenAI(api_key=api_key)
+    return _client
 
 
 def extract_source_summary(source_id: str, content: str, max_length: int = 500) -> str:
@@ -44,6 +55,9 @@ The above content is from the documentation for '{source_id}'. Please provide a 
 """
 
     try:
+        # Get OpenAI client (lazy initialization)
+        client = _get_client()
+
         # Call the OpenAI API to generate the summary
         response = client.chat.completions.create(
             model=model_choice,
