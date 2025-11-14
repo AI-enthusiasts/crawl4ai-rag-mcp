@@ -45,8 +45,9 @@ COPY src/main.py src/
 
 # Install dependencies with cache mount
 # UV will use the pytorch-cpu index configured in pyproject.toml
+# Use regular install (not editable) so package is properly built into site-packages
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system -e .
+    uv pip install --system .
 
 # Copy the rest of the source code (includes knowledge_graph module)
 COPY src/ ./src/
@@ -127,7 +128,6 @@ LABEL org.opencontainers.image.version="0.1.0"
 # Environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8051
-ENV PYTHONPATH=/app
 
 # Switch to non-root user
 USER appuser
