@@ -53,7 +53,7 @@ from src.services.crawling import process_urls_for_mcp
 from src.services.search import search_and_process
 from src.services.smart_crawl import smart_crawl_url
 
-# Knowledge graph hallucination checking
+# Knowledge graph operations
 # Note: There's a naming conflict - validation.py file vs validation/ directory
 # We need to import from the parent module with specific file reference
 import sys
@@ -71,6 +71,10 @@ if _validation_spec and _validation_spec.loader:
     check_ai_script_hallucinations = _validation_module.check_ai_script_hallucinations
 else:
     check_ai_script_hallucinations = None
+
+# Knowledge graph repository and queries
+from src.knowledge_graph.repository import parse_github_repository
+from src.knowledge_graph.queries import query_knowledge_graph
 
 # Tools registration
 from src.tools import register_tools
@@ -153,6 +157,8 @@ __all__ = [
     "smart_crawl_url",
     # Knowledge graph
     "check_ai_script_hallucinations",
+    "parse_github_repository",
+    "query_knowledge_graph",
     # MCP server and tools
     "register_tools",
     "mcp",

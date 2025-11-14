@@ -17,13 +17,7 @@
 
 ### Performance Optimization
 - Профилирование медленных операций
-- Оптимизация Neo4j запросов
 - Кэширование embeddings
-
-### Documentation
-- API documentation (Sphinx/MkDocs)
-- User guide для MCP tools
-- Architecture diagrams
 
 ---
 
