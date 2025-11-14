@@ -7,7 +7,7 @@ import asyncio
 
 import pytest
 
-from src.database.factory import get_database_client
+from src.database.factory import create_database_client
 from src.utils.type_guards import is_valid_url
 
 pytestmark = pytest.mark.integration
@@ -21,7 +21,7 @@ async def test_database_empty_query_handling() -> None:
     """
     from src.database import perform_rag_query
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     # Empty query should return empty results, not crash
     result = await perform_rag_query(db_client, "", match_count=5)
@@ -39,7 +39,7 @@ async def test_database_very_long_query() -> None:
     """
     from src.database import perform_rag_query
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     # Create a very long query (10KB of text)
     long_query = "Python programming " * 500
@@ -61,7 +61,7 @@ async def test_database_special_characters_in_query() -> None:
     """
     from src.database import perform_rag_query
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     # Test various special characters
     special_queries = [
@@ -84,7 +84,7 @@ async def test_concurrent_database_writes() -> None:
 
     Edge case: Multiple concurrent writes to same collection.
     """
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     # Simulate concurrent metadata updates
     async def update_source_info(source_id: str) -> None:
@@ -114,7 +114,7 @@ async def test_database_invalid_source_filter() -> None:
     """
     from src.database import perform_rag_query
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     # Use non-existent source filter
     result = await perform_rag_query(
@@ -161,7 +161,7 @@ async def test_database_zero_match_count() -> None:
     """
     from src.database import perform_rag_query
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     result = await perform_rag_query(db_client, "test query", match_count=0)
 
@@ -177,7 +177,7 @@ async def test_database_negative_match_count() -> None:
     """
     from src.database import perform_rag_query
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     try:
         result = await perform_rag_query(db_client, "test query", match_count=-1)
@@ -197,7 +197,7 @@ async def test_database_extremely_large_match_count() -> None:
     """
     from src.database import perform_rag_query
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     # Request 1 million results
     result = await perform_rag_query(db_client, "test query", match_count=1_000_000)
@@ -213,7 +213,7 @@ async def test_repeated_database_initialization() -> None:
 
     Edge case: Multiple initialize() calls should be idempotent.
     """
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     # Initialize multiple times
     for _ in range(3):
@@ -230,7 +230,7 @@ async def test_database_unicode_content() -> None:
     """
     from src.database import perform_rag_query
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     unicode_queries = [
         "Python 🐍 programming",
@@ -254,7 +254,7 @@ async def test_asyncio_task_cancellation() -> None:
     """
     from src.database import perform_rag_query
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     async def long_running_query() -> str:
         await asyncio.sleep(0.1)
