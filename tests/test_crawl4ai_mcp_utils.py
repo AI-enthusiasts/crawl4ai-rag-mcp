@@ -14,15 +14,8 @@ import requests
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from crawl4ai_mcp import (
-    parse_sitemap,
-    smart_chunk_markdown,
-    searxng_search,
-    add_documents_to_database,
-    add_code_examples_to_database,
-    crawl_batch,
-    Crawl4AIContext
-)
+from src.core.context import Crawl4AIContext
+from src.utils.url_helpers import parse_sitemap
 
 
 class TestUtilityFunctions:

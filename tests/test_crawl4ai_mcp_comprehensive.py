@@ -10,15 +10,7 @@ import pytest
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.crawl4ai_mcp import (
-    crawl_batch,
-    crawl_markdown_file,
-    crawl_recursive_internal_links,
-    extract_section_info,
-    parse_sitemap,
-    process_code_example,
-    smart_chunk_markdown,
-)
+from src.utils.url_helpers import parse_sitemap
 
 
 class TestTextProcessing:

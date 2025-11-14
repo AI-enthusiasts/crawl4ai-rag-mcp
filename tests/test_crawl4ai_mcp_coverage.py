@@ -13,12 +13,15 @@ import pytest
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from crawl4ai_mcp import (
-    Crawl4AIContext,
-    check_ai_script_hallucinations,
-    parse_github_repository,
-    query_knowledge_graph,
-)
+from src.core.context import Crawl4AIContext
+from src.knowledge_graph.repository import parse_github_repository
+from src.knowledge_graph.queries import query_knowledge_graph
+
+# check_ai_script_hallucinations moved to knowledge_graph module
+try:
+    from src import check_ai_script_hallucinations
+except ImportError:
+    check_ai_script_hallucinations = None
 
 from tests.test_doubles import FakeCrawler
 

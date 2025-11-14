@@ -39,17 +39,6 @@ class TestSearchTool:
     @pytest.mark.asyncio
     async def test_search_success(self, mock_mcp, mock_context):
         """Test search tool with successful search."""
-        # Register tools
-        register_search_tools(mock_mcp)
-
-        # Get the registered search function
-        search_func = None
-        for call in mock_mcp.tool.call_args_list:
-            # The decorator returns the function
-            pass
-        # Since we're mocking, we need to import the actual function
-        from src.tools.search import register_search_tools
-
         # Mock the search_and_process function
         with patch("src.tools.search.search_and_process") as mock_search:
             mock_search.return_value = json.dumps(
@@ -345,7 +334,7 @@ class TestAnalyzeCodeCrossLanguageTool:
     @pytest.mark.asyncio
     async def test_analyze_code_cross_language_success(self, mock_mcp, mock_context):
         """Test cross-language code analysis with successful search."""
-        with patch("src.tools.search.get_app_context") as mock_get_ctx:
+        with patch("src.core.context.get_app_context") as mock_get_ctx:
             with patch("src.tools.search.get_available_sources") as mock_sources:
                 with patch("src.tools.search.perform_rag_query") as mock_rag:
                     # Mock app context
@@ -409,7 +398,7 @@ class TestAnalyzeCodeCrossLanguageTool:
     @pytest.mark.asyncio
     async def test_analyze_code_no_app_context(self, mock_mcp, mock_context):
         """Test cross-language analysis when app context is not available."""
-        with patch("src.tools.search.get_app_context") as mock_get_ctx:
+        with patch("src.core.context.get_app_context") as mock_get_ctx:
             mock_get_ctx.return_value = None
 
             # Register and get function
@@ -444,7 +433,7 @@ class TestAnalyzeCodeCrossLanguageTool:
         self, mock_mcp, mock_context
     ):
         """Test cross-language analysis with JSON string language list."""
-        with patch("src.tools.search.get_app_context") as mock_get_ctx:
+        with patch("src.core.context.get_app_context") as mock_get_ctx:
             with patch("src.tools.search.get_available_sources") as mock_sources:
                 with patch("src.tools.search.perform_rag_query") as mock_rag:
                     # Mock app context
@@ -493,7 +482,7 @@ class TestAnalyzeCodeCrossLanguageTool:
     @pytest.mark.asyncio
     async def test_analyze_code_database_error(self, mock_mcp, mock_context):
         """Test cross-language analysis with database error."""
-        with patch("src.tools.search.get_app_context") as mock_get_ctx:
+        with patch("src.core.context.get_app_context") as mock_get_ctx:
             with patch("src.tools.search.get_available_sources") as mock_sources:
                 # Mock app context
                 mock_app_ctx = MagicMock()

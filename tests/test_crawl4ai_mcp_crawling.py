@@ -9,12 +9,7 @@ import pytest
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.crawl4ai_mcp import (
-    _process_multiple_urls,
-    crawl_batch,
-    crawl_markdown_file,
-    crawl_recursive_internal_links,
-)
+
 
 
 class TestCrawlingFunctions:
