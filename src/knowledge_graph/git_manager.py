@@ -11,6 +11,8 @@ import os
 import shutil
 import tempfile
 from datetime import datetime
+from typing import Any
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +20,7 @@ logger = logging.getLogger(__name__)
 class GitRepositoryManager:
     """Manages Git repository operations with async support."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the Git repository manager."""
         self.logger = logger
 
@@ -81,7 +83,7 @@ class GitRepositoryManager:
         max_size_mb: int = 500,
         max_file_count: int = 10000,
         min_free_space_gb: float = 1.0,
-    ) -> tuple[bool, dict]:
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Validate repository size before cloning to prevent resource exhaustion.
 
@@ -98,7 +100,7 @@ class GitRepositoryManager:
                 - free_space_gb: Available disk space
                 - errors: List of validation errors
         """
-        info = {
+        info: dict[str, Any] = {
             "estimated_size_mb": 0,
             "file_count": 0,
             "free_space_gb": 0,
@@ -189,7 +191,7 @@ class GitRepositoryManager:
             info["errors"].append(f"Validation error: {e!s}")
             return False, info
 
-    async def _check_github_api_size(self, url: str, info: dict) -> dict:
+    async def _check_github_api_size(self, url: str, info: dict[str, Any]) -> dict[str, Any]:
         """
         Check repository size using GitHub API.
 
@@ -297,7 +299,7 @@ class GitRepositoryManager:
         )
 
 
-    async def update_repository(self, repo_dir: str, branch: str | None = None) -> dict:
+    async def update_repository(self, repo_dir: str, branch: str | None = None) -> dict[str, Any]:
         """
         Update an existing repository (pull latest changes).
 
@@ -409,7 +411,7 @@ class GitRepositoryManager:
         repo_dir: str,
         limit: int = 100,
         branch: str | None = None,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """
         Get commit history.
 
@@ -457,7 +459,7 @@ class GitRepositoryManager:
         repo_dir: str,
         file_path: str,
         limit: int = 50,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """
         Get commit history for a specific file.
 
@@ -524,7 +526,7 @@ class GitRepositoryManager:
         result = await self._run_git_command(cmd, cwd=repo_dir)
         return result.strip()
 
-    async def get_repository_info(self, repo_dir: str) -> dict:
+    async def get_repository_info(self, repo_dir: str) -> dict[str, Any]:
         """
         Get comprehensive repository information.
 
@@ -534,7 +536,7 @@ class GitRepositoryManager:
         Returns:
             Repository metadata including size, file count, etc.
         """
-        info = {}
+        info: dict[str, Any] = {}
 
         # Get remote URL
         try:
@@ -561,7 +563,7 @@ class GitRepositoryManager:
             info["file_count"] = len([f for f in files if f])
 
             # Count by extension
-            extensions = {}
+            extensions: dict[str, int] = {}
             for file in files:
                 if file and "." in file:
                     ext = file.split(".")[-1].lower()
@@ -615,7 +617,7 @@ class GitRepositoryManager:
         repo_dir: str,
         from_commit: str,
         to_commit: str = "HEAD",
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """
         Get files changed between two commits.
 
@@ -696,7 +698,7 @@ class GitRepositoryManager:
             path: Directory path to remove
         """
 
-        def handle_remove_readonly(func, path, exc):
+        def handle_remove_readonly(func: Callable[[str], None], path: str, exc: Any) -> None:
             try:
                 if os.path.exists(path):
                     os.chmod(path, 0o777)

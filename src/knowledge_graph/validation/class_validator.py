@@ -7,6 +7,7 @@ repository class information.
 
 import logging
 from dataclasses import dataclass, field
+from typing import Any, Callable
 
 from ..ai_script_analyzer import ClassInstantiation
 from . import ValidationResult, ValidationStatus
@@ -27,15 +28,15 @@ class ClassValidation:
     class_instantiation: ClassInstantiation
     validation: ValidationResult
     constructor_params: list[str] = field(default_factory=list)
-    parameter_validation: ValidationResult = None
+    parameter_validation: ValidationResult | None = None
 
 
 async def validate_class_instantiations(
     instantiations: list[ClassInstantiation],
-    find_class,
-    find_method,
-    validate_parameters,
-    is_from_knowledge_graph,
+    find_class: Callable[..., Any],
+    find_method: Callable[..., Any],
+    validate_parameters: Callable[..., Any],
+    is_from_knowledge_graph: Callable[..., Any],
     knowledge_graph_modules: set[str],
 ) -> list[ClassValidation]:
     """
@@ -70,10 +71,10 @@ async def validate_class_instantiations(
 
 async def validate_single_class_instantiation(
     instantiation: ClassInstantiation,
-    find_class,
-    find_method,
-    validate_parameters,
-    is_from_knowledge_graph,
+    find_class: Callable[..., Any],
+    find_method: Callable[..., Any],
+    validate_parameters: Callable[..., Any],
+    is_from_knowledge_graph: Callable[..., Any],
     knowledge_graph_modules: set[str],
 ) -> ClassValidation:
     """

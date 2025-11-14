@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -16,18 +17,18 @@ from crawl4ai import (
 from crawl4ai.utils import get_memory_stats
 from fastmcp import Context
 
-from core.constants import MAX_VISITED_URLS_LIMIT
-from core.logging import logger
-from core.stdout_utils import SuppressStdout
+from src.core.constants import MAX_VISITED_URLS_LIMIT
+from src.core.logging import logger
+from src.core.stdout_utils import SuppressStdout
 
 # Import add_documents_to_database from utils package
-from utils import add_documents_to_database
-from utils.text_processing import smart_chunk_markdown
-from utils.url_helpers import extract_domain_from_url, normalize_url
+from src.utils import add_documents_to_database
+from src.utils.text_processing import smart_chunk_markdown
+from src.utils.url_helpers import extract_domain_from_url, normalize_url
 
 
 @asynccontextmanager
-async def track_memory(operation_name: str):
+async def track_memory(operation_name: str) -> AsyncIterator[dict[str, Any]]:
     """
     Context manager to track memory usage before and after an operation.
 
@@ -128,7 +129,7 @@ async def crawl_batch(
         ValueError: If URLs are invalid for crawl4ai
     """
     # Import validation functions
-    from utils.validation import validate_urls_for_crawling
+    from src.utils.validation import validate_urls_for_crawling
 
     # Enhanced debug logging - only log details in debug mode to avoid exposing sensitive data
     logger.info(f"crawl_batch received {len(urls)} URLs for processing")
@@ -393,7 +394,7 @@ async def process_urls_for_mcp(
         # Extract the Crawl4AI context from the FastMCP context
         if not hasattr(ctx, "crawl4ai_context") or not ctx.crawl4ai_context:
             # Get from global app context if available
-            from core.context import get_app_context
+            from src.core.context import get_app_context
 
             app_ctx = get_app_context()
             if not app_ctx:
@@ -551,7 +552,7 @@ def should_filter_url(url: str, enable_filtering: bool = True) -> bool:
 
     import re
 
-    from core.constants import URL_FILTER_PATTERNS
+    from src.core.constants import URL_FILTER_PATTERNS
 
     # Check against all filter patterns
     for pattern in URL_FILTER_PATTERNS:
@@ -595,7 +596,7 @@ async def crawl_urls_for_agentic_search(
     """
     try:
         # Extract the Crawl4AI context from the FastMCP context
-        from core.context import get_app_context
+        from src.core.context import get_app_context
 
         app_ctx = get_app_context()
         if not app_ctx:
@@ -627,7 +628,7 @@ async def crawl_urls_for_agentic_search(
         dispatcher = app_ctx.dispatcher
 
         # Track visited URLs globally (across all starting URLs)
-        visited = set()
+        visited: set[str] = set()
         # Protect visited set from race conditions (per asyncio.Lock docs)
         visited_lock = asyncio.Lock()
         urls_filtered = 0

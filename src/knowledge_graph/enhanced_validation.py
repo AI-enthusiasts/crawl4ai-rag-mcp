@@ -16,7 +16,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from services.validated_search import ValidatedCodeSearchService
+from src.services.validated_search import ValidatedCodeSearchService
 
 logger = logging.getLogger(__name__)
 

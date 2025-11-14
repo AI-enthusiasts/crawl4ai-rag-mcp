@@ -20,15 +20,15 @@ from fastmcp import Context
 if TYPE_CHECKING:
     from fastmcp import FastMCP
 
-from core import MCPToolError, track_request
-from core.context import get_app_context
-from knowledge_graph import (
+from src.core import MCPToolError, track_request
+from src.core.context import get_app_context
+from src.knowledge_graph import (
     query_knowledge_graph,
 )
-from knowledge_graph.repository import (
+from src.knowledge_graph.repository import (
     parse_github_repository as parse_github_repository_impl,
 )
-from utils.validation import validate_github_url
+from src.utils.validation import validate_github_url
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
         mcp: FastMCP instance to register tools with
     """
 
-    @mcp.tool()  # type: ignore[misc]
+    @mcp.tool()
     @track_request("query_knowledge_graph")
     async def query_knowledge_graph(
         ctx: Context,
@@ -148,7 +148,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
             msg = f"Knowledge graph query failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()  # type: ignore[misc]
+    @mcp.tool()
     @track_request("parse_github_repository")
     async def parse_github_repository(
         ctx: Context,
@@ -185,7 +185,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
             msg = f"Repository parsing failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()  # type: ignore[misc]
+    @mcp.tool()
     @track_request("parse_repository_branch")
     async def parse_repository_branch(
         ctx: Context,
@@ -219,7 +219,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
                 raise MCPToolError(validation_result.get("error", "Invalid GitHub URL"))
 
             # Parse repository with branch support
-            from knowledge_graph.repository import parse_github_repository_with_branch
+            from src.knowledge_graph.repository import parse_github_repository_with_branch
 
             return await parse_github_repository_with_branch(ctx, repo_url, branch)
         except Exception as e:
@@ -227,7 +227,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
             msg = f"Repository branch parsing failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()  # type: ignore[misc]
+    @mcp.tool()
     @track_request("get_repository_info")
     async def get_repository_info(
         ctx: Context,
@@ -252,7 +252,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
             JSON string with comprehensive repository information
         """
         try:
-            from knowledge_graph.repository import get_repository_metadata_from_neo4j
+            from src.knowledge_graph.repository import get_repository_metadata_from_neo4j
 
             return await get_repository_metadata_from_neo4j(ctx, repo_name)
         except Exception as e:
@@ -260,7 +260,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
             msg = f"Failed to get repository info: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()  # type: ignore[misc]
+    @mcp.tool()
     @track_request("update_parsed_repository")
     async def update_parsed_repository(
         ctx: Context,
@@ -289,7 +289,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
             if not validation_result["valid"]:
                 raise MCPToolError(validation_result.get("error", "Invalid GitHub URL"))
 
-            from knowledge_graph.repository import update_repository_in_neo4j
+            from src.knowledge_graph.repository import update_repository_in_neo4j
 
             return await update_repository_in_neo4j(ctx, repo_url)
         except Exception as e:
@@ -297,7 +297,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
             msg = f"Repository update failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()  # type: ignore[misc]
+    @mcp.tool()
     @track_request("parse_local_repository")
     async def parse_local_repository(
         ctx: Context,

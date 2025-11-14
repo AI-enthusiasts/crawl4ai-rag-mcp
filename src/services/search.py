@@ -8,9 +8,9 @@ import aiohttp
 from bs4 import BeautifulSoup
 from fastmcp import Context
 
-from config import get_settings
-from core import MCPToolError
-from utils.type_guards import is_valid_url
+from src.config import get_settings
+from src.core import MCPToolError
+from src.utils.type_guards import is_valid_url
 
 from .crawling import process_urls_for_mcp
 

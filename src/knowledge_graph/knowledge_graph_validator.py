@@ -7,8 +7,9 @@ repository information. Checks imports, methods, attributes, and parameters.
 
 import logging
 from typing import Any
+from collections.abc import Callable
 
-from neo4j import AsyncGraphDatabase
+from neo4j import AsyncGraphDatabase, AsyncDriver
 
 from .ai_script_analyzer import AnalysisResult
 from .validation import (
@@ -59,16 +60,16 @@ class KnowledgeGraphValidator:
         self.neo4j_uri = neo4j_uri
         self.neo4j_user = neo4j_user
         self.neo4j_password = neo4j_password
-        self.driver = None
+        self.driver: AsyncDriver | None = None
 
         # Cache for performance
         self.module_cache: dict[str, list[str]] = {}
         self.class_cache: dict[str, dict[str, Any]] = {}
         self.method_cache: dict[str, list[dict[str, Any]]] = {}
-        self.repo_cache: dict[str, str] = {}  # module_name -> repo_name
+        self.repo_cache: dict[str, str | None] = {}  # module_name -> repo_name
         self.knowledge_graph_modules: set[str] = set()  # Track modules in knowledge graph
 
-    async def initialize(self):
+    async def initialize(self) -> None:
         """Initialize Neo4j connection"""
         # Import notification suppression (available in neo4j>=5.21.0)
         try:
@@ -89,7 +90,7 @@ class KnowledgeGraphValidator:
             )
         logger.info("Knowledge graph validator initialized")
 
-    async def close(self):
+    async def close(self) -> None:
         """Close Neo4j connection"""
         if self.driver:
             await self.driver.close()
@@ -132,7 +133,7 @@ class KnowledgeGraphValidator:
 
     # Delegation methods - Import validation
 
-    async def _validate_imports(self, imports):
+    async def _validate_imports(self, imports: Any) -> list[ImportValidation]:
         """Delegate to validation.import_validator.validate_imports"""
         return await validate_imports(
             imports,
@@ -142,7 +143,7 @@ class KnowledgeGraphValidator:
             self.knowledge_graph_modules,
         )
 
-    async def _validate_single_import(self, import_info):
+    async def _validate_single_import(self, import_info: Any) -> ImportValidation:
         """Delegate to validation.import_validator.validate_single_import"""
         return await validate_single_import(
             import_info,
@@ -154,7 +155,7 @@ class KnowledgeGraphValidator:
 
     # Delegation methods - Class validation
 
-    async def _validate_class_instantiations(self, instantiations):
+    async def _validate_class_instantiations(self, instantiations: Any) -> list[ClassValidation]:
         """Delegate to validation.class_validator.validate_class_instantiations"""
         return await validate_class_instantiations(
             instantiations,
@@ -165,7 +166,7 @@ class KnowledgeGraphValidator:
             self.knowledge_graph_modules,
         )
 
-    async def _validate_single_class_instantiation(self, instantiation):
+    async def _validate_single_class_instantiation(self, instantiation: Any) -> ClassValidation:
         """Delegate to validation.class_validator.validate_single_class_instantiation"""
         return await validate_single_class_instantiation(
             instantiation,
@@ -178,7 +179,7 @@ class KnowledgeGraphValidator:
 
     # Delegation methods - Method validation
 
-    async def _validate_method_calls(self, method_calls):
+    async def _validate_method_calls(self, method_calls: Any) -> list[MethodValidation]:
         """Delegate to validation.method_validator.validate_method_calls"""
         return await validate_method_calls(
             method_calls,
@@ -189,7 +190,7 @@ class KnowledgeGraphValidator:
             self.knowledge_graph_modules,
         )
 
-    async def _validate_single_method_call(self, method_call):
+    async def _validate_single_method_call(self, method_call: Any) -> MethodValidation:
         """Delegate to validation.method_validator.validate_single_method_call"""
         return await validate_single_method_call(
             method_call,
@@ -202,7 +203,7 @@ class KnowledgeGraphValidator:
 
     # Delegation methods - Attribute validation
 
-    async def _validate_attribute_accesses(self, attribute_accesses):
+    async def _validate_attribute_accesses(self, attribute_accesses: Any) -> list[AttributeValidation]:
         """Delegate to validation.attribute_validator.validate_attribute_accesses"""
         return await validate_attribute_accesses(
             attribute_accesses,
@@ -212,7 +213,7 @@ class KnowledgeGraphValidator:
             self.knowledge_graph_modules,
         )
 
-    async def _validate_single_attribute_access(self, attr_access):
+    async def _validate_single_attribute_access(self, attr_access: Any) -> AttributeValidation:
         """Delegate to validation.attribute_validator.validate_single_attribute_access"""
         return await validate_single_attribute_access(
             attr_access,
@@ -224,7 +225,7 @@ class KnowledgeGraphValidator:
 
     # Delegation methods - Function validation
 
-    async def _validate_function_calls(self, function_calls):
+    async def _validate_function_calls(self, function_calls: Any) -> list[FunctionValidation]:
         """Delegate to validation.function_validator.validate_function_calls"""
         return await validate_function_calls(
             function_calls,
@@ -234,7 +235,7 @@ class KnowledgeGraphValidator:
             self.knowledge_graph_modules,
         )
 
-    async def _validate_single_function_call(self, func_call):
+    async def _validate_single_function_call(self, func_call: Any) -> FunctionValidation:
         """Delegate to validation.function_validator.validate_single_function_call"""
         return await validate_single_function_call(
             func_call,
@@ -246,20 +247,28 @@ class KnowledgeGraphValidator:
 
     # Delegation methods - Utility functions
 
-    def _calculate_overall_confidence(self, result):
+    def _calculate_overall_confidence(self, result: ScriptValidationResult) -> float:
         """Delegate to validation.utils.calculate_overall_confidence"""
         return calculate_overall_confidence(
             result,
-            lambda class_type: is_from_knowledge_graph(class_type, self.knowledge_graph_modules),
+            self.knowledge_graph_modules,
         )
 
-    def _is_from_knowledge_graph(self, class_type):
+    def _is_from_knowledge_graph(self, class_type: str) -> bool:
         """Delegate to validation.utils.is_from_knowledge_graph"""
         return is_from_knowledge_graph(class_type, self.knowledge_graph_modules)
 
-    def _detect_hallucinations(self, result):
+    def _detect_hallucinations(self, result: ScriptValidationResult) -> list[dict[str, Any]]:
         """Delegate to validation.utils.detect_hallucinations"""
         return detect_hallucinations(
             result,
-            lambda class_type: is_from_knowledge_graph(class_type, self.knowledge_graph_modules),
+            self.knowledge_graph_modules,
         )
+
+
+__all__ = [
+    "KnowledgeGraphValidator",
+    "ScriptValidationResult",
+    "ValidationResult",
+    "ValidationStatus",
+]

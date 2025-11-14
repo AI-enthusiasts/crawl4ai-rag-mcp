@@ -9,20 +9,20 @@ This module contains search-related MCP tools including:
 
 import json
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from fastmcp import Context
 
 if TYPE_CHECKING:
     from fastmcp import FastMCP
 
-from core import MCPToolError, track_request
-from database import (
+from src.core import MCPToolError, track_request
+from src.database import (
     get_available_sources,
     perform_rag_query,
 )
-from services import search_and_process
-from services.agentic_search import agentic_search_impl
+from src.services import search_and_process
+from src.services.agentic_search import agentic_search_impl
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ def register_search_tools(mcp: "FastMCP") -> None:
         mcp: FastMCP instance to register tools with
     """
 
-    @mcp.tool()  # type: ignore[misc]
+    @mcp.tool()
     @track_request("search")
     async def search(
         ctx: Context,
@@ -76,7 +76,7 @@ def register_search_tools(mcp: "FastMCP") -> None:
             msg = f"Search failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()  # type: ignore[misc]
+    @mcp.tool()
     @track_request("agentic_search")
     async def agentic_search(
         ctx: Context,
@@ -130,12 +130,12 @@ def register_search_tools(mcp: "FastMCP") -> None:
             msg = f"Agentic search failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()  # type: ignore[misc]
+    @mcp.tool()
     @track_request("analyze_code_cross_language")
     async def analyze_code_cross_language(
         ctx: Context,
         query: str,
-        languages: list[str] | None = None,
+        languages: list[str] | str | None = None,
         match_count: int = 10,
         source_filter: str | None = None,
         include_file_context: bool = True,
@@ -167,7 +167,7 @@ def register_search_tools(mcp: "FastMCP") -> None:
 
         try:
             # Get the app context
-            from core.context import get_app_context
+            from src.core.context import get_app_context
 
             app_ctx = get_app_context()
 
@@ -244,7 +244,7 @@ def register_search_tools(mcp: "FastMCP") -> None:
                 )
 
             # Organize results by language
-            results_by_language = {}
+            results_by_language: dict[str, list[dict[str, Any]]] = {}
 
             for result in rag_data.get("results", []):
                 # Extract language information from metadata or URL

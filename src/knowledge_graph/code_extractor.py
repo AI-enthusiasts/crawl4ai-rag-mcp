@@ -657,7 +657,7 @@ class Neo4jCodeExtractor:
 
     def _create_universal_class_example(
         self, repo_name: str, file_path: str, module_name: str,
-        class_name: str, class_full_name: str, methods: list[dict],
+        class_name: str, class_full_name: str, methods: list[dict[str, Any]],
         method_count: int,
     ) -> UniversalCodeExample:
         """Create UniversalCodeExample for a class."""
@@ -705,7 +705,7 @@ class Neo4jCodeExtractor:
 
     def _create_universal_method_example(
         self, repo_name: str, file_path: str, module_name: str,
-        method: dict, class_name: str, class_full_name: str,
+        method: dict[str, Any], class_name: str, class_full_name: str,
     ) -> UniversalCodeExample:
         """Create UniversalCodeExample for a method."""
         method_name = method["name"]
@@ -758,7 +758,7 @@ class Neo4jCodeExtractor:
     def _create_universal_function_example(
         self, repo_name: str, file_path: str, module_name: str,
         function_name: str, full_name: str, params_list: list[str],
-        return_type: str, record: dict,
+        return_type: str, record: dict[str, Any],
     ) -> UniversalCodeExample:
         """Create UniversalCodeExample for a function."""
         # Generate signature
@@ -801,7 +801,7 @@ class Neo4jCodeExtractor:
             language_specific=language_specific,
         )
 
-    def _generate_class_code(self, class_name: str, methods: list[dict]) -> str:
+    def _generate_class_code(self, class_name: str, methods: list[dict[str, Any]]) -> str:
         """Generate a code representation for a class (legacy method)."""
         code = f"class {class_name}:\n"
         code += '    """Class with the following public methods:"""\n'
@@ -819,7 +819,7 @@ class Neo4jCodeExtractor:
 
         return code
 
-    def _generate_method_code(self, method: dict) -> str:
+    def _generate_method_code(self, method: dict[str, Any]) -> str:
         """Generate a code representation for a method (legacy method)."""
         name = method["name"]
         params = ", ".join(method["params_list"] or [])
@@ -831,7 +831,7 @@ class Neo4jCodeExtractor:
 
         return code
 
-    def _generate_function_code(self, function: dict) -> str:
+    def _generate_function_code(self, function: dict[str, Any]) -> str:
         """Generate a code representation for a function (legacy method)."""
         name = function["name"]
         params = ", ".join(function["params_list"] or [])

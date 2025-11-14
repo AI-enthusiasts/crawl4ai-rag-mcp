@@ -15,9 +15,9 @@ from fastmcp import Context
 if TYPE_CHECKING:
     from fastmcp import FastMCP
 
-from core import MCPToolError, track_request
-from services import process_urls_for_mcp
-from services import (
+from src.core import MCPToolError, track_request
+from src.services import process_urls_for_mcp
+from src.services import (
     smart_crawl_url as smart_crawl_url_service_impl,
 )
 
@@ -32,7 +32,7 @@ def register_crawl_tools(mcp: "FastMCP") -> None:
         mcp: FastMCP instance to register tools with
     """
 
-    @mcp.tool()  # type: ignore[misc]
+    @mcp.tool()
     @track_request("scrape_urls")
     async def scrape_urls(
         ctx: Context,
@@ -126,7 +126,7 @@ def register_crawl_tools(mcp: "FastMCP") -> None:
                 urls = [str(url)]
 
             # Clean and validate each URL in the final list
-            from utils.url_helpers import clean_url
+            from src.utils.url_helpers import clean_url
 
             cleaned_urls = []
             invalid_urls = []
@@ -180,7 +180,7 @@ def register_crawl_tools(mcp: "FastMCP") -> None:
             msg = f"Scraping failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()  # type: ignore[misc]
+    @mcp.tool()
     @track_request("smart_crawl_url")
     async def smart_crawl_url(
         ctx: Context,

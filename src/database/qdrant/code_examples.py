@@ -6,10 +6,10 @@ All functions are standalone and accept QdrantClient as first parameter.
 """
 
 import uuid
-from typing import Any
+from typing import Any, cast
 
 from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import FieldCondition, Filter, MatchValue, PointIdsList, PointStruct
+from qdrant_client.models import Condition, FieldCondition, Filter, MatchValue, PointIdsList, PointStruct
 
 # Constants
 CODE_EXAMPLES = "code_examples"
@@ -105,7 +105,7 @@ async def search_code_examples(
     elif query is not None:
         # Generate embedding if query is a string
         if isinstance(query, str):
-            from utils import create_embedding
+            from src.utils import create_embedding
 
             final_embedding = create_embedding(query)
         else:
@@ -137,7 +137,7 @@ async def search_code_examples(
     # Create filter if conditions exist
     search_filter = None
     if filter_conditions:
-        search_filter = Filter(must=filter_conditions)
+        search_filter = Filter(must=cast(list[Condition], filter_conditions))
 
     # Perform search
     results = await client.search(
@@ -150,6 +150,8 @@ async def search_code_examples(
     # Format results
     formatted_results = []
     for result in results:
+        if result.payload is None:
+            continue
         doc = result.payload.copy()
         doc["similarity"] = result.score  # Interface expects "similarity"
         doc["id"] = result.id
@@ -163,7 +165,7 @@ async def delete_code_examples_by_url(client: AsyncQdrantClient, urls: list[str]
     for url in urls:
         # First, find all points with this URL
         filter_condition = Filter(
-            must=[FieldCondition(key="url", match=MatchValue(value=url))],
+            must=cast(list[Condition], [FieldCondition(key="url", match=MatchValue(value=url))]),
         )
 
         points, _ = await client.scroll(
@@ -206,7 +208,7 @@ async def search_code_examples_by_keyword(
             ),
         )
 
-    search_filter = Filter(must=filter_conditions)
+    search_filter = Filter(must=cast(list[Condition], filter_conditions))
 
     # Use scroll to find matching code examples
     points, _ = await client.scroll(
@@ -218,6 +220,8 @@ async def search_code_examples_by_keyword(
     # Format results
     formatted_results = []
     for point in points[:match_count]:
+        if point.payload is None:
+            continue
         doc = point.payload.copy()
         doc["id"] = point.id
         formatted_results.append(doc)
@@ -258,7 +262,7 @@ async def get_repository_code_examples(
             ),
         )
 
-    search_filter = Filter(must=filter_conditions)
+    search_filter = Filter(must=cast(list[Condition], filter_conditions))
 
     points, _ = await client.scroll(
         collection_name=CODE_EXAMPLES,
@@ -269,6 +273,8 @@ async def get_repository_code_examples(
     # Format results
     formatted_results = []
     for point in points:
+        if point.payload is None:
+            continue
         doc = point.payload.copy()
         doc["id"] = point.id
         formatted_results.append(doc)
@@ -288,12 +294,12 @@ async def delete_repository_code_examples(
         repo_name: Repository name to delete code examples for
     """
     filter_condition = Filter(
-        must=[
+        must=cast(list[Condition], [
             FieldCondition(
                 key="metadata.repository_name",
                 match=MatchValue(value=repo_name),
             ),
-        ],
+        ]),
     )
 
     points, _ = await client.scroll(
@@ -356,7 +362,7 @@ async def search_code_by_signature(
             ),
         )
 
-    search_filter = Filter(must=filter_conditions)
+    search_filter = Filter(must=cast(list[Condition], filter_conditions))
 
     points, _ = await client.scroll(
         collection_name=CODE_EXAMPLES,
@@ -367,6 +373,8 @@ async def search_code_by_signature(
     # Format results
     formatted_results = []
     for point in points:
+        if point.payload is None:
+            continue
         doc = point.payload.copy()
         doc["id"] = point.id
         formatted_results.append(doc)

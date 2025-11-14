@@ -7,7 +7,7 @@ import socket
 from typing import Any
 from urllib.parse import urlparse
 
-from config import get_settings
+from src.config import get_settings
 
 # Get settings instance
 settings = get_settings()

@@ -11,11 +11,11 @@ This package contains all MCP tool definitions organized by category:
 Each module provides a register_*_tools() function to register tools with FastMCP.
 """
 
-from tools.crawl import register_crawl_tools
-from tools.knowledge_graph import register_knowledge_graph_tools
-from tools.rag import register_rag_tools
-from tools.search import register_search_tools
-from tools.validation import register_validation_tools
+from src.tools.crawl import register_crawl_tools
+from src.tools.knowledge_graph import register_knowledge_graph_tools
+from src.tools.rag import register_rag_tools
+from src.tools.search import register_search_tools
+from src.tools.validation import register_validation_tools
 
 __all__ = [
     "register_search_tools",

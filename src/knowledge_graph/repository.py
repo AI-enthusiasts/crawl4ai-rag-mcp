@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 # Import for getting app context
 def get_app_context() -> Any:
     """Get the stored app context."""
-    from core.context import get_app_context as _get_app_context
+    from src.core.context import get_app_context as _get_app_context
 
     return _get_app_context()
 

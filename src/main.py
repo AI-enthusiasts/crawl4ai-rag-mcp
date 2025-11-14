@@ -13,10 +13,16 @@ from fastmcp import FastMCP
 from fastmcp.server.auth import OAuthProvider, StaticTokenVerifier
 from mcp.server.auth.settings import ClientRegistrationOptions, RevocationOptions
 
-from config import get_settings
-from core import logger
-from core.context import cleanup_global_context, initialize_global_context
-from tools import register_tools
+from src.config import get_settings
+from src.core import logger
+from src.core.context import cleanup_global_context, initialize_global_context
+from src.tools import (
+    register_crawl_tools,
+    register_knowledge_graph_tools,
+    register_rag_tools,
+    register_search_tools,
+    register_validation_tools,
+)
 
 # Get settings instance
 settings = get_settings()
@@ -29,7 +35,7 @@ try:
     port = settings.port
     # Ensure port has a valid default even if empty string
     if not port:
-        port = "8051"
+        port = 8051
     logger.info(f"Host: {host}, Port: {port}")
 
     # Determine authentication mode based on settings
@@ -41,15 +47,15 @@ try:
         logger.info("Configuring OAuth Provider with Dynamic Client Registration...")
 
         auth = OAuthProvider(
-            base_url=settings.oauth2_issuer,
+            base_url=settings.oauth2_issuer or "",
             issuer_url=settings.oauth2_issuer,
             service_documentation_url=f"{settings.oauth2_issuer}/docs",
             client_registration_options=ClientRegistrationOptions(
                 enabled=True,  # Enable DCR for Claude Web
-                valid_scopes=settings.oauth2_scopes,
+                valid_scopes=settings.get_oauth2_scopes_list(),
             ),
             revocation_options=RevocationOptions(enabled=True),
-            required_scopes=settings.oauth2_required_scopes,
+            required_scopes=settings.get_oauth2_required_scopes_list(),
         )
         auth_mode = "oauth2"
         logger.info("✓ OAuth Provider enabled")
@@ -97,7 +103,11 @@ except Exception as e:
 
 
 # Register all MCP tools
-register_tools(mcp)
+register_search_tools(mcp)
+register_crawl_tools(mcp)
+register_rag_tools(mcp)
+register_knowledge_graph_tools(mcp)
+register_validation_tools(mcp)
 
 
 def create_mcp_server() -> FastMCP:

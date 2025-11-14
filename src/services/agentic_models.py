@@ -49,7 +49,7 @@ class CompletenessEvaluation(BaseModel):
         description="List of missing information or knowledge gaps",
     )
 
-    @field_validator("score")  # type: ignore[misc]
+    @field_validator("score")
     @classmethod
     def validate_score(cls, v: float) -> float:
         """Validate score is finite (not NaN or infinity).
@@ -65,7 +65,7 @@ class CompletenessEvaluation(BaseModel):
             raise ValueError(msg)
         return v
 
-    @field_validator("gaps")  # type: ignore[misc]
+    @field_validator("gaps")
     @classmethod
     def validate_gaps(cls, v: list[str]) -> list[str]:
         """Ensure gaps are non-empty strings."""
@@ -100,7 +100,7 @@ class URLRanking(BaseModel):
         description="LLM's explanation of the relevance score",
     )
 
-    @field_validator("score")  # type: ignore[misc]
+    @field_validator("score")
     @classmethod
     def validate_score(cls, v: float) -> float:
         """Validate score is finite (not NaN or infinity).
@@ -116,7 +116,7 @@ class URLRanking(BaseModel):
             raise ValueError(msg)
         return v
 
-    @field_validator("url")  # type: ignore[misc]
+    @field_validator("url")
     @classmethod
     def validate_url(cls, v: str) -> str:
         """Ensure URL is non-empty and stripped."""
@@ -196,7 +196,7 @@ class SearchIteration(BaseModel):
         description="Total chunks stored in vector database",
     )
 
-    @field_validator("completeness")  # type: ignore[misc]
+    @field_validator("completeness")
     @classmethod
     def validate_completeness(cls, v: float | None) -> float | None:
         """Validate completeness is finite (not NaN or infinity)."""
@@ -210,13 +210,13 @@ class SearchIteration(BaseModel):
             raise ValueError(msg)
         return v
 
-    @field_validator("gaps")  # type: ignore[misc]
+    @field_validator("gaps")
     @classmethod
     def validate_gaps(cls, v: list[str]) -> list[str]:
         """Ensure gaps are non-empty strings."""
         return [gap.strip() for gap in v if gap and gap.strip()]
 
-    @field_validator("urls")  # type: ignore[misc]
+    @field_validator("urls")
     @classmethod
     def validate_urls(cls, v: list[str]) -> list[str]:
         """Ensure URLs are non-empty strings."""
@@ -247,7 +247,7 @@ class RAGResult(BaseModel):
         description="Index of the chunk within its source document",
     )
 
-    @field_validator("similarity_score")  # type: ignore[misc]
+    @field_validator("similarity_score")
     @classmethod
     def validate_similarity_score(cls, v: float) -> float:
         """Validate similarity score is finite (not NaN or infinity)."""
@@ -299,7 +299,7 @@ class AgenticSearchResult(BaseModel):
         description="Error message if search failed",
     )
 
-    @field_validator("completeness")  # type: ignore[misc]
+    @field_validator("completeness")
     @classmethod
     def validate_completeness(cls, v: float) -> float:
         """Validate completeness is finite (not NaN or infinity)."""
@@ -340,7 +340,7 @@ class QueryRefinement(BaseModel):
         description="LLM's explanation of the refinements",
     )
 
-    @field_validator("refined_queries")  # type: ignore[misc]
+    @field_validator("refined_queries")
     @classmethod
     def validate_refined_queries(cls, v: list[str]) -> list[str]:
         """Ensure refined queries are non-empty and unique."""
@@ -391,7 +391,7 @@ class SearchMetadata(BaseModel):
         description="Programming languages detected",
     )
 
-    @field_validator("main_topics", "headers", "code_languages")  # type: ignore[misc]
+    @field_validator("main_topics", "headers", "code_languages")
     @classmethod
     def validate_string_lists(cls, v: list[str]) -> list[str]:
         """Ensure list items are non-empty strings."""
@@ -418,7 +418,7 @@ class SearchHints(BaseModel):
         description="LLM's explanation of the hints",
     )
 
-    @field_validator("hints")  # type: ignore[misc]
+    @field_validator("hints")
     @classmethod
     def validate_hints(cls, v: list[str]) -> list[str]:
         """Ensure hints are non-empty and unique."""
