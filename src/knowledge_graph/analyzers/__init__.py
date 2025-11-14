@@ -1,15 +1,10 @@
 """
-Code analyzers for various programming languages.
+Code analyzers for multiple programming languages.
+
+Currently supports:
+- Python (via Neo4jCodeAnalyzer)
 """
 
-from .base import CodeAnalyzer
-from .factory import AnalyzerFactory
-from .go import GoAnalyzer
-from .javascript import JavaScriptAnalyzer
+from .python_analyzer import Neo4jCodeAnalyzer
 
-__all__ = [
-    "AnalyzerFactory",
-    "CodeAnalyzer",
-    "GoAnalyzer",
-    "JavaScriptAnalyzer",
-]
+__all__ = ["Neo4jCodeAnalyzer"]
