@@ -5,6 +5,7 @@ from xml.etree import ElementTree as ET
 
 import httpx
 
+from src.core.exceptions import FetchError, NetworkError
 from src.core.logging import logger
 
 
@@ -52,8 +53,11 @@ def parse_sitemap_content(xml_content: str) -> list[str]:
         tree = ET.fromstring(xml_content)
         urls = [loc.text for loc in tree.findall(".//{*}loc")]
         return [url for url in urls if url]  # Filter None values
+    except ET.ParseError as e:
+        logger.error(f"XML parse error in sitemap: {e}")
+        return []
     except Exception as e:
-        logger.error(f"Error parsing sitemap XML: {e}")
+        logger.error(f"Unexpected error parsing sitemap XML: {e}")
         return []
 
 
@@ -76,8 +80,12 @@ def parse_sitemap(sitemap_url: str) -> list[str]:
             resp = client.get(sitemap_url)
             if resp.status_code == 200:
                 return parse_sitemap_content(resp.text)
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error fetching sitemap: {e}")
+    except NetworkError as e:
+        logger.error(f"Network error fetching sitemap: {e}")
     except Exception as e:
-        logger.error(f"Error fetching sitemap: {e}")
+        logger.error(f"Unexpected error fetching sitemap: {e}")
     return []
 
 
@@ -134,8 +142,12 @@ def sanitize_url_for_logging(url: str) -> str:
 
         return sanitized
 
+    except ValueError as e:
+        # URL parsing validation error
+        logger.debug(f"Invalid URL for sanitization: {e}")
+        return "[INVALID_URL]"
     except Exception:
-        # If parsing fails, return a generic placeholder
+        # If parsing fails for any other reason, return a generic placeholder
         return "[INVALID_URL]"
 
 
@@ -200,5 +212,9 @@ def extract_domain_from_url(url: str) -> str | None:
             domain = domain[4:]
 
         return domain
+    except ValueError as e:
+        # URL parsing validation error
+        logger.debug(f"Invalid URL for domain extraction: {e}")
+        return None
     except Exception:
         return None

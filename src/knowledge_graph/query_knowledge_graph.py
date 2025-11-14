@@ -14,6 +14,8 @@ from typing import Any
 from dotenv import load_dotenv
 from neo4j import AsyncGraphDatabase, AsyncDriver
 
+from src.core.exceptions import QueryError
+
 
 class KnowledgeGraphQuerier:
     """Interactive tool to query the knowledge graph"""
@@ -311,8 +313,11 @@ class KnowledgeGraphQuerier:
 
                 return records
 
+            except QueryError as e:
+                print(f"❌ Neo4j query error: {e!s}")
+                return None
             except Exception as e:
-                print(f"❌ Query error: {e!s}")
+                print(f"❌ Unexpected error: {e!s}")
                 return None
 
 
@@ -365,8 +370,10 @@ async def interactive_mode(querier: KnowledgeGraphQuerier) -> None:
         except KeyboardInterrupt:
             print("\n👋 Goodbye!")
             break
+        except QueryError as e:
+            print(f"❌ Query error: {e!s}")
         except Exception as e:
-            print(f"❌ Error: {e!s}")
+            print(f"❌ Unexpected error: {e!s}")
 
 
 async def main() -> None:

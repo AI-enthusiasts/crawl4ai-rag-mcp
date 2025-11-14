@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from fastmcp import FastMCP
 
 from src.core import MCPToolError, track_request
+from src.core.exceptions import DatabaseError, SearchError
 from src.database import (
     get_available_sources,
     perform_rag_query,
@@ -71,10 +72,18 @@ def register_search_tools(mcp: "FastMCP") -> None:
                 num_results=num_results,
                 batch_size=batch_size,
             )
-        except Exception as e:
-            logger.exception(f"Error in search tool: {e}")
+        except SearchError as e:
+            logger.error(f"Search error: {e}")
             msg = f"Search failed: {e!s}"
-            raise MCPToolError(msg)
+            raise MCPToolError(msg) from e
+        except DatabaseError as e:
+            logger.error(f"Database error during search: {e}")
+            msg = f"Search failed: {e!s}"
+            raise MCPToolError(msg) from e
+        except Exception as e:
+            logger.exception(f"Unexpected error in search tool: {e}")
+            msg = f"Search failed: {e!s}"
+            raise MCPToolError(msg) from e
 
     @mcp.tool()
     @track_request("agentic_search")
@@ -125,10 +134,18 @@ def register_search_tools(mcp: "FastMCP") -> None:
                 url_score_threshold=url_score_threshold,
                 use_search_hints=use_search_hints,
             )
-        except Exception as e:
-            logger.exception(f"Error in agentic_search tool: {e}")
+        except SearchError as e:
+            logger.error(f"Search error in agentic search: {e}")
             msg = f"Agentic search failed: {e!s}"
-            raise MCPToolError(msg)
+            raise MCPToolError(msg) from e
+        except DatabaseError as e:
+            logger.error(f"Database error in agentic search: {e}")
+            msg = f"Agentic search failed: {e!s}"
+            raise MCPToolError(msg) from e
+        except Exception as e:
+            logger.exception(f"Unexpected error in agentic_search tool: {e}")
+            msg = f"Agentic search failed: {e!s}"
+            raise MCPToolError(msg) from e
 
     @mcp.tool()
     @track_request("analyze_code_cross_language")
@@ -357,8 +374,18 @@ def register_search_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
 
+        except DatabaseError as e:
+            logger.error(f"Database error in cross-language code analysis: {e}")
+            return json.dumps(
+                {
+                    "success": False,
+                    "query": query,
+                    "error": f"Database error: {e!s}",
+                },
+                indent=2,
+            )
         except Exception as e:
-            logger.exception(f"Error in cross-language code analysis: {e}")
+            logger.exception(f"Unexpected error in cross-language code analysis: {e}")
             return json.dumps(
                 {
                     "success": False,

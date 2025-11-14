@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+from src.core.exceptions import ParsingError, AnalysisError, QueryError
 from src.services.validated_search import ValidatedCodeSearchService
 
 logger = logging.getLogger(__name__)
@@ -71,9 +72,14 @@ class EnhancedScriptAnalyzer:
             }
 
         except SyntaxError as e:
-            logger.exception(f"Syntax error in script {script_path}: {e}")
+            logger.error(f"Syntax error in script {script_path}: {e}")
+            raise ParsingError(f"Script has syntax errors: {e}") from e
+        except ParsingError:
+            raise
+        except AnalysisError as e:
+            logger.error(f"Analysis failed for script {script_path}: {e}")
             return {
-                "error": f"Syntax error: {e}",
+                "error": f"Analysis error: {e}",
                 "imports": [],
                 "classes": [],
                 "methods": [],
@@ -83,9 +89,9 @@ class EnhancedScriptAnalyzer:
                 "attribute_accesses": [],
             }
         except Exception as e:
-            logger.exception(f"Error analyzing script {script_path}: {e}")
+            logger.exception(f"Unexpected error analyzing script {script_path}: {e}")
             return {
-                "error": f"Analysis error: {e}",
+                "error": f"Unexpected analysis error: {e}",
                 "imports": [],
                 "classes": [],
                 "methods": [],
@@ -219,8 +225,10 @@ class EnhancedScriptAnalyzer:
                     "keywords": len(node.keywords),
                     "line": node.lineno,
                 }
-        except Exception:
+        except AnalysisError:
             pass
+        except Exception as e:
+            logger.exception(f"Unexpected error analyzing call: {e}")
         return None
 
     def _analyze_attribute(self, node: ast.Attribute) -> dict[str, Any] | None:
@@ -231,8 +239,10 @@ class EnhancedScriptAnalyzer:
                 "attribute": node.attr,
                 "line": node.lineno,
             }
-        except Exception:
+        except AnalysisError:
             pass
+        except Exception as e:
+            logger.exception(f"Unexpected error analyzing attribute: {e}")
         return None
 
 
@@ -330,9 +340,11 @@ class EnhancedHallucinationDetector:
                 detailed_analysis,
             )
 
-
+        except (ParsingError, AnalysisError) as e:
+            logger.error(f"Analysis/Parsing error in hallucination detection: {e}")
+            return self._create_error_response(script_path, f"Detection failed: {e!s}")
         except Exception as e:
-            logger.exception(f"Error in enhanced hallucination detection: {e}")
+            logger.exception(f"Unexpected error in enhanced hallucination detection: {e}")
             return self._create_error_response(script_path, f"Detection failed: {e!s}")
 
     async def _perform_neo4j_validation(
@@ -386,8 +398,18 @@ class EnhancedHallucinationDetector:
             finally:
                 await session.close()
 
+        except QueryError as e:
+            logger.error(f"Neo4j query failed during validation: {e}")
+            return {
+                "available": False,
+                "reason": f"Query error: {e!s}",
+                "import_validations": [],
+                "class_validations": [],
+                "method_validations": [],
+                "function_validations": [],
+            }
         except Exception as e:
-            logger.exception(f"Neo4j validation error: {e}")
+            logger.exception(f"Unexpected Neo4j validation error: {e}")
             return {
                 "available": False,
                 "reason": f"Validation error: {e!s}",
@@ -454,8 +476,16 @@ class EnhancedHallucinationDetector:
                 "suggestions": list(set(suggestions)),  # Remove duplicates
             }
 
+        except QueryError as e:
+            logger.error(f"Qdrant query failed during validation: {e}")
+            return {
+                "available": False,
+                "reason": f"Query error: {e!s}",
+                "code_examples": [],
+                "suggestions": [],
+            }
         except Exception as e:
-            logger.exception(f"Qdrant validation error: {e}")
+            logger.exception(f"Unexpected Qdrant validation error: {e}")
             return {
                 "available": False,
                 "reason": f"Validation error: {e!s}",
@@ -568,8 +598,18 @@ class EnhancedHallucinationDetector:
                         },
                     )
 
+            except QueryError as e:
+                logger.error(f"Query failed validating import {module}.{name}: {e}")
+                validations.append(
+                    {
+                        "import": import_info,
+                        "exists": False,
+                        "error": str(e),
+                        "confidence": 0.0,
+                    },
+                )
             except Exception as e:
-                logger.warning(f"Error validating import {module}.{name}: {e}")
+                logger.exception(f"Unexpected error validating import {module}.{name}: {e}")
                 validations.append(
                     {
                         "import": import_info,
@@ -608,8 +648,18 @@ class EnhancedHallucinationDetector:
                     },
                 )
 
+            except QueryError as e:
+                logger.error(f"Query failed validating class {class_name}: {e}")
+                validations.append(
+                    {
+                        "class": class_info,
+                        "exists": False,
+                        "error": str(e),
+                        "confidence": 0.0,
+                    },
+                )
             except Exception as e:
-                logger.warning(f"Error validating class {class_name}: {e}")
+                logger.exception(f"Unexpected error validating class {class_name}: {e}")
                 validations.append(
                     {
                         "class": class_info,
@@ -651,8 +701,18 @@ class EnhancedHallucinationDetector:
                     },
                 )
 
+            except QueryError as e:
+                logger.error(f"Query failed validating method call {method_name}: {e}")
+                validations.append(
+                    {
+                        "method_call": call_info,
+                        "exists": False,
+                        "error": str(e),
+                        "confidence": 0.0,
+                    },
+                )
             except Exception as e:
-                logger.warning(f"Error validating method call {method_name}: {e}")
+                logger.exception(f"Unexpected error validating method call {method_name}: {e}")
                 validations.append(
                     {
                         "method_call": call_info,
@@ -691,8 +751,18 @@ class EnhancedHallucinationDetector:
                     },
                 )
 
+            except QueryError as e:
+                logger.error(f"Query failed validating function {function_name}: {e}")
+                validations.append(
+                    {
+                        "function": func_info,
+                        "exists": False,
+                        "error": str(e),
+                        "confidence": 0.0,
+                    },
+                )
             except Exception as e:
-                logger.warning(f"Error validating function {function_name}: {e}")
+                logger.exception(f"Unexpected error validating function {function_name}: {e}")
                 validations.append(
                     {
                         "function": func_info,
@@ -1008,8 +1078,18 @@ async def check_ai_script_hallucinations_enhanced(
 
         return json.dumps(result, indent=2)
 
+    except (ParsingError, AnalysisError, QueryError) as e:
+        logger.error(f"Analysis/Query error in enhanced hallucination detection: {e}")
+        return json.dumps(
+            {
+                "success": False,
+                "script_path": script_path,
+                "error": f"Enhanced detection failed: {e!s}",
+            },
+            indent=2,
+        )
     except Exception as e:
-        logger.exception(f"Error in enhanced hallucination detection: {e}")
+        logger.exception(f"Unexpected error in enhanced hallucination detection: {e}")
         return json.dumps(
             {
                 "success": False,

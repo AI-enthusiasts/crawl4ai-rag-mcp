@@ -9,6 +9,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from src.core.exceptions import QueryError
+
 logger = logging.getLogger(__name__)
 
 
@@ -931,8 +933,16 @@ async def extract_repository_code(
                 "extraction_summary": summary,
             }
 
+    except QueryError as e:
+        logger.error(f"Neo4j query failed extracting code from repository {repo_name}: {e}")
+        return {
+            "success": False,
+            "repository_name": repo_name,
+            "use_universal": use_universal,
+            "error": str(e),
+        }
     except Exception as e:
-        logger.exception(f"Error extracting code from repository {repo_name}: {e}")
+        logger.exception(f"Unexpected error extracting code from repository {repo_name}: {e}")
         return {
             "success": False,
             "repository_name": repo_name,

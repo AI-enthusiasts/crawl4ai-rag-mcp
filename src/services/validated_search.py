@@ -15,6 +15,7 @@ from typing import Any
 
 from neo4j import AsyncGraphDatabase
 
+from src.core.exceptions import DatabaseError, QueryError, SearchError
 from src.utils import create_embeddings_batch
 from src.utils.integration_helpers import (
     create_cache_key,
@@ -195,8 +196,16 @@ class ValidatedCodeSearchService:
                 },
             }
 
+        except (DatabaseError, SearchError) as e:
+            logger.error(f"Database or search error in validated code search: {e}")
+            return {
+                "success": False,
+                "query": query,
+                "error": str(e),
+                "fallback_available": not self.neo4j_enabled,
+            }
         except Exception as e:
-            logger.exception(f"Error in validated code search: {e}")
+            logger.exception(f"Unexpected error in validated code search: {e}")
             return {
                 "success": False,
                 "query": query,
@@ -233,8 +242,11 @@ class ValidatedCodeSearchService:
             )
 
 
+        except SearchError as e:
+            logger.error(f"Search operation failed: {e}")
+            return []
         except Exception as e:
-            logger.exception(f"Error in semantic search: {e}")
+            logger.exception(f"Unexpected error in semantic search: {e}")
             return []
 
     async def _validate_results_parallel(
@@ -271,8 +283,11 @@ class ValidatedCodeSearchService:
 
             return final_results
 
+        except DatabaseError as e:
+            logger.error(f"Database error in parallel validation: {e}")
+            return [self._add_empty_validation(result) for result in results]
         except Exception as e:
-            logger.exception(f"Error in parallel validation: {e}")
+            logger.exception(f"Unexpected error in parallel validation: {e}")
             return [self._add_empty_validation(result) for result in results]
 
     async def _validate_results_sequential(
@@ -292,6 +307,9 @@ class ValidatedCodeSearchService:
                 else:
                     validated_result = self._add_empty_validation(result)
                 validated_results.append(validated_result)
+            except DatabaseError as e:
+                logger.warning(f"Database error during validation: {e}")
+                validated_results.append(self._add_empty_validation(result))
             except Exception as e:
                 logger.warning(f"Validation failed for single result: {e}")
                 validated_results.append(self._add_empty_validation(result))
@@ -460,8 +478,18 @@ class ValidatedCodeSearchService:
                 "neo4j_validated": True,
             }
 
+        except DatabaseError as e:
+            logger.error(f"Neo4j validation error: {e}")
+            return {
+                "is_valid": False,
+                "confidence_score": 0.0,
+                "validation_checks": [],
+                "suggestions": [],
+                "neo4j_validated": False,
+                "error": str(e),
+            }
         except Exception as e:
-            logger.exception(f"Neo4j validation error: {e}")
+            logger.exception(f"Unexpected error in Neo4j validation: {e}")
             return {
                 "is_valid": False,
                 "confidence_score": 0.0,
@@ -507,8 +535,11 @@ class ValidatedCodeSearchService:
             result = await session.run(query, repo_name=source_id)
             record = await result.single()
             return record["exists"] if record else False
+        except QueryError as e:
+            logger.warning(f"Query error checking repository existence: {e}")
+            return False
         except Exception as e:
-            logger.warning(f"Error checking repository existence: {e}")
+            logger.warning(f"Unexpected error checking repository existence: {e}")
             return False
 
     async def _check_class_exists(
@@ -529,8 +560,11 @@ class ValidatedCodeSearchService:
             )
             record = await result.single()
             return record["exists"] if record else False
+        except QueryError as e:
+            logger.warning(f"Query error checking class existence: {e}")
+            return False
         except Exception as e:
-            logger.warning(f"Error checking class existence: {e}")
+            logger.warning(f"Unexpected error checking class existence: {e}")
             return False
 
     async def _check_method_exists(
@@ -570,8 +604,11 @@ class ValidatedCodeSearchService:
 
             record = await result.single()
             return record["exists"] if record else False
+        except QueryError as e:
+            logger.warning(f"Query error checking method existence: {e}")
+            return False
         except Exception as e:
-            logger.warning(f"Error checking method existence: {e}")
+            logger.warning(f"Unexpected error checking method existence: {e}")
             return False
 
     async def _check_function_exists(
@@ -592,8 +629,11 @@ class ValidatedCodeSearchService:
             )
             record = await result.single()
             return record["exists"] if record else False
+        except QueryError as e:
+            logger.warning(f"Query error checking function existence: {e}")
+            return False
         except Exception as e:
-            logger.warning(f"Error checking function existence: {e}")
+            logger.warning(f"Unexpected error checking function existence: {e}")
             return False
 
     async def _validate_class_structure(
@@ -608,8 +648,11 @@ class ValidatedCodeSearchService:
             # This is a placeholder for more sophisticated structure validation
             # Could check method counts, attribute presence, etc.
             return True
+        except DatabaseError as e:
+            logger.warning(f"Database error validating class structure: {e}")
+            return False
         except Exception as e:
-            logger.warning(f"Error validating class structure: {e}")
+            logger.warning(f"Unexpected error validating class structure: {e}")
             return False
 
     async def _validate_method_signature(
@@ -625,8 +668,11 @@ class ValidatedCodeSearchService:
             # This is a placeholder for method signature validation
             # Could check parameter counts, types, return types, etc.
             return True
+        except DatabaseError as e:
+            logger.warning(f"Database error validating method signature: {e}")
+            return False
         except Exception as e:
-            logger.warning(f"Error validating method signature: {e}")
+            logger.warning(f"Unexpected error validating method signature: {e}")
             return False
 
     async def _generate_suggestions(

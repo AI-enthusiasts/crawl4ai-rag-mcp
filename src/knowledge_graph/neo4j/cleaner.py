@@ -3,6 +3,8 @@
 import logging
 from typing import Any
 
+from src.core.exceptions import QueryError, RepositoryError
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,10 +42,12 @@ async def clear_repository_data(driver: Any, repo_name: str) -> None:
                 return
 
             logger.info(f"Confirmed repository '{repo_name}' exists, proceeding with cleanup")
+        except QueryError as e:
+            logger.error(f"Neo4j query failed validating repository '{repo_name}': {e}")
+            raise
         except Exception as e:
-            logger.exception(f"Failed to validate repository '{repo_name}': {e}")
-            msg = f"Repository validation failed: {e}"
-            raise Exception(msg)
+            logger.exception(f"Unexpected error validating repository '{repo_name}': {e}")
+            raise RepositoryError(f"Repository validation failed: {e}") from e
 
     # Track cleanup statistics for logging
     cleanup_stats = {
@@ -153,12 +157,16 @@ async def clear_repository_data(driver: Any, repo_name: str) -> None:
             await tx.commit()
             logger.info("Transaction committed successfully")
 
+        except QueryError as e:
+            # Rollback the transaction on any error
+            logger.error(f"Neo4j query error during cleanup transaction, rolling back: {e}")
+            await tx.rollback()
+            raise
         except Exception as e:
             # Rollback the transaction on any error
-            logger.exception(f"Error during cleanup transaction, rolling back: {e}")
+            logger.exception(f"Unexpected error during cleanup transaction, rolling back: {e}")
             await tx.rollback()
-            msg = f"Repository cleanup failed and was rolled back: {e}"
-            raise Exception(msg)
+            raise RepositoryError(f"Repository cleanup failed and was rolled back: {e}") from e
 
     # Log cleanup statistics
     total_deleted = sum(cleanup_stats.values())

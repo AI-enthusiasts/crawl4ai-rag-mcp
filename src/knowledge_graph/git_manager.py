@@ -14,6 +14,8 @@ from datetime import datetime
 from typing import Any
 from collections.abc import Callable
 
+from src.core.exceptions import GitError, RepositoryError
+
 logger = logging.getLogger(__name__)
 
 
@@ -74,9 +76,12 @@ class GitRepositoryManager:
             await self._run_git_command(cmd)
             self.logger.info(f"Repository cloned successfully to {target_dir}")
             return target_dir
+        except GitError:
+            raise
         except Exception as e:
             msg = f"Failed to clone repository: {e}"
-            raise RuntimeError(msg)
+            self.logger.error(msg)
+            raise GitError(msg) from e
     async def validate_repository_size(
         self,
         url: str,
@@ -230,11 +235,13 @@ class GitRepositoryManager:
                     self.logger.info(
                         f"GitHub API reports repository size: {info['estimated_size_mb']:.2f}MB",
                     )
+            except (OSError, IOError) as api_error:
+                self.logger.debug(f"GitHub API network error: {api_error}")
             except Exception as api_error:
-                self.logger.debug(f"GitHub API check failed: {api_error}")
+                self.logger.exception(f"Unexpected error with GitHub API: {api_error}")
 
         except Exception as e:
-            self.logger.debug(f"Could not check GitHub API: {e}")
+            self.logger.exception(f"Unexpected error checking GitHub API: {e}")
 
         return info
 
@@ -280,7 +287,7 @@ class GitRepositoryManager:
                 errors = "; ".join(info["errors"])
                 msg = f"Repository validation failed: {errors}"
                 self.logger.error(msg)
-                raise RuntimeError(msg)
+                raise RepositoryError(msg)
 
             self.logger.info(
                 f"Repository validation passed - Size: {info['estimated_size_mb']:.2f}MB, "
@@ -544,7 +551,11 @@ class GitRepositoryManager:
             info["remote_url"] = (
                 await self._run_git_command(cmd, cwd=repo_dir)
             ).strip()
-        except:
+        except GitError as e:
+            self.logger.debug(f"Failed to get remote URL: {e}")
+            info["remote_url"] = None
+        except Exception as e:
+            self.logger.exception(f"Unexpected error getting remote URL: {e}")
             info["remote_url"] = None
 
         # Get current branch
@@ -553,7 +564,11 @@ class GitRepositoryManager:
             info["current_branch"] = (
                 await self._run_git_command(cmd, cwd=repo_dir)
             ).strip()
-        except:
+        except GitError as e:
+            self.logger.debug(f"Failed to get current branch: {e}")
+            info["current_branch"] = None
+        except Exception as e:
+            self.logger.exception(f"Unexpected error getting current branch: {e}")
             info["current_branch"] = None
 
         # Get file statistics
@@ -569,7 +584,12 @@ class GitRepositoryManager:
                     ext = file.split(".")[-1].lower()
                     extensions[ext] = extensions.get(ext, 0) + 1
             info["file_extensions"] = extensions
-        except:
+        except GitError as e:
+            self.logger.debug(f"Failed to get file statistics: {e}")
+            info["file_count"] = 0
+            info["file_extensions"] = {}
+        except Exception as e:
+            self.logger.exception(f"Unexpected error getting file statistics: {e}")
             info["file_count"] = 0
             info["file_extensions"] = {}
 
@@ -580,7 +600,11 @@ class GitRepositoryManager:
             for line in result.strip().split("\n"):
                 if "size-pack:" in line:
                     info["size"] = line.split(":")[1].strip()
-        except:
+        except GitError as e:
+            self.logger.debug(f"Failed to get repository size: {e}")
+            info["size"] = "unknown"
+        except Exception as e:
+            self.logger.exception(f"Unexpected error getting repository size: {e}")
             info["size"] = "unknown"
 
         # Get contributor count
@@ -590,7 +614,11 @@ class GitRepositoryManager:
                 (await self._run_git_command(cmd, cwd=repo_dir)).strip().split("\n")
             )
             info["contributor_count"] = len({a for a in authors if a})
-        except:
+        except GitError as e:
+            self.logger.debug(f"Failed to get contributor count: {e}")
+            info["contributor_count"] = 0
+        except Exception as e:
+            self.logger.exception(f"Unexpected error getting contributor count: {e}")
             info["contributor_count"] = 0
 
         return info
@@ -609,7 +637,10 @@ class GitRepositoryManager:
             cmd = ["git", "rev-parse", "--git-dir"]
             await self._run_git_command(cmd, cwd=path)
             return True
-        except:
+        except GitError:
+            return False
+        except Exception as e:
+            self.logger.exception(f"Unexpected error checking if path is git repository: {e}")
             return False
 
     async def get_changed_files(
@@ -683,12 +714,14 @@ class GitRepositoryManager:
             if process.returncode != 0:
                 error_msg = stderr.decode("utf-8") if stderr else "Unknown error"
                 msg = f"Git command failed: {error_msg}"
-                raise RuntimeError(msg)
+                raise GitError(msg)
 
             return stdout.decode("utf-8")
-        except Exception as e:
-            self.logger.exception(f"Error running git command {' '.join(cmd)}: {e}")
+        except GitError:
             raise
+        except Exception as e:
+            self.logger.exception(f"Unexpected error running git command {' '.join(cmd)}: {e}")
+            raise GitError(f"Git command execution failed: {e}") from e
 
     async def _remove_directory(self, path: str) -> None:
         """

@@ -8,6 +8,8 @@ import logging
 from datetime import datetime
 from typing import Any
 
+from src.core.exceptions import QueryError
+
 logger = logging.getLogger(__name__)
 
 
@@ -36,8 +38,11 @@ async def update_source_summary(
             last_crawled=last_crawled,
         )
         logger.info(f"Updated source summary for {source_id}")
+    except QueryError as e:
+        logger.error(f"Failed to update source summary for {source_id}: {e}")
+        raise
     except Exception as e:
-        logger.exception(f"Error updating source summary for {source_id}: {e}")
+        logger.exception(f"Unexpected error updating source summary for {source_id}: {e}")
         raise
 
 
@@ -61,8 +66,11 @@ async def get_source_statistics(
             if source.get("source_id") == source_id:
                 return source  # type: ignore[no-any-return]
         return None
+    except QueryError as e:
+        logger.error(f"Failed to get source statistics for {source_id}: {e}")
+        raise
     except Exception as e:
-        logger.exception(f"Error getting source statistics for {source_id}: {e}")
+        logger.exception(f"Unexpected error getting source statistics for {source_id}: {e}")
         raise
 
 
@@ -79,6 +87,9 @@ async def list_all_sources(database_client: Any) -> list[dict[str, Any]]:
     try:
         sources = await database_client.get_sources()
         return sources or []
+    except QueryError as e:
+        logger.error(f"Failed to list sources: {e}")
+        raise
     except Exception as e:
-        logger.exception(f"Error listing sources: {e}")
+        logger.exception(f"Unexpected error listing sources: {e}")
         raise

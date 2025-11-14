@@ -8,6 +8,7 @@ from fastmcp import Context
 
 from src.core import MCPToolError
 from src.core.context import get_app_context
+from src.core.exceptions import CrawlError, DatabaseError, FetchError
 
 # Import will be done in the function to avoid circular imports
 from src.utils import is_sitemap, is_txt, normalize_url, parse_sitemap_content
@@ -116,8 +117,12 @@ async def smart_crawl_url(
             query,
         )
 
+    except (CrawlError, FetchError, DatabaseError) as e:
+        logger.error(f"Smart crawl operation failed: {e}")
+        msg = f"Smart crawl failed: {e!s}"
+        raise MCPToolError(msg)
     except Exception as e:
-        logger.exception(f"Error in smart_crawl_url: {e}")
+        logger.exception(f"Unexpected error in smart_crawl_url: {e}")
         msg = f"Smart crawl failed: {e!s}"
         raise MCPToolError(msg)
 
@@ -181,14 +186,37 @@ async def _crawl_sitemap(
                         match_count=5,
                     )
                     data["query_results"][q] = json.loads(rag_result)
+                except DatabaseError as e:
+                    logger.error(f"Database error during RAG query '{q}': {e}")
+                    data["query_results"][q] = {"error": str(e)}
                 except Exception as e:
                     logger.exception(f"RAG query failed for '{q}': {e}")
                     data["query_results"][q] = {"error": str(e)}
 
         return json.dumps(data)
 
+    except FetchError as e:
+        logger.error(f"Failed to fetch sitemap: {e}")
+        return json.dumps(
+            {
+                "success": False,
+                "type": "sitemap",
+                "error": str(e),
+                "url": url,
+            },
+        )
+    except CrawlError as e:
+        logger.error(f"Sitemap crawl error: {e}")
+        return json.dumps(
+            {
+                "success": False,
+                "type": "sitemap",
+                "error": str(e),
+                "url": url,
+            },
+        )
     except Exception as e:
-        logger.exception(f"Sitemap crawl error: {e}")
+        logger.exception(f"Unexpected error in sitemap crawl: {e}")
         return json.dumps(
             {
                 "success": False,
@@ -306,8 +334,28 @@ async def _crawl_text_file(
             },
         )
 
+    except CrawlError as e:
+        logger.error(f"Text file crawl error: {e}")
+        return json.dumps(
+            {
+                "success": False,
+                "type": "text_file",
+                "error": str(e),
+                "url": url,
+            },
+        )
+    except DatabaseError as e:
+        logger.error(f"Database error storing text file: {e}")
+        return json.dumps(
+            {
+                "success": False,
+                "type": "text_file",
+                "error": str(e),
+                "url": url,
+            },
+        )
     except Exception as e:
-        logger.exception(f"Text file crawl error: {e}")
+        logger.exception(f"Unexpected error in text file crawl: {e}")
         return json.dumps(
             {
                 "success": False,
@@ -380,6 +428,8 @@ async def _crawl_recursive(
                         chunk_size=chunk_size,
                     )
                     stored_count += 1
+                except DatabaseError as e:
+                    logger.error(f"Database error storing {result['url']}: {e}")
                 except Exception as e:
                     logger.exception(f"Failed to store {result['url']}: {e}")
 
@@ -404,14 +454,37 @@ async def _crawl_recursive(
                         match_count=5,
                     )
                     data["query_results"][q] = json.loads(rag_result)
+                except DatabaseError as e:
+                    logger.error(f"Database error during RAG query '{q}': {e}")
+                    data["query_results"][q] = {"error": str(e)}
                 except Exception as e:
                     logger.exception(f"RAG query failed for '{q}': {e}")
                     data["query_results"][q] = {"error": str(e)}
 
         return json.dumps(data)
 
+    except CrawlError as e:
+        logger.error(f"Recursive crawl error: {e}")
+        return json.dumps(
+            {
+                "success": False,
+                "type": "recursive",
+                "error": str(e),
+                "url": url,
+            },
+        )
+    except DatabaseError as e:
+        logger.error(f"Database error in recursive crawl: {e}")
+        return json.dumps(
+            {
+                "success": False,
+                "type": "recursive",
+                "error": str(e),
+                "url": url,
+            },
+        )
     except Exception as e:
-        logger.exception(f"Recursive crawl error: {e}")
+        logger.exception(f"Unexpected error in recursive crawl: {e}")
         return json.dumps(
             {
                 "success": False,

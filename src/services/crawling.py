@@ -18,6 +18,7 @@ from crawl4ai.utils import get_memory_stats
 from fastmcp import Context
 
 from src.core.constants import MAX_VISITED_URLS_LIMIT
+from src.core.exceptions import CrawlError, DatabaseError
 from src.core.logging import logger
 from src.core.stdout_utils import SuppressStdout
 
@@ -275,14 +276,18 @@ async def crawl_batch(
 
         return successful_results
 
+    except CrawlError as e:
+        logger.error(f"Crawl4AI error during batch crawl: {e}")
+        logger.error(f"Failed URLs: {validated_urls}")
+        # Re-raise with more context
+        msg = f"Crawling failed for {len(validated_urls)} URLs: {e}"
+        raise CrawlError(msg) from e
     except Exception as e:
         logger.error(
-            f"Crawl4AI error during batch crawl: {type(e).__name__}: {e}",
+            f"Unexpected error during batch crawl: {type(e).__name__}: {e}",
             exc_info=True,
         )
-        logger.error(
-            f"Failed URLs: {validated_urls}",
-        )
+        logger.error(f"Failed URLs: {validated_urls}")
         logger.error(
             f"Crawler config: cache_mode={crawl_config.cache_mode}, "
             f"stream={crawl_config.stream}, "
@@ -297,7 +302,7 @@ async def crawl_batch(
 
         # Re-raise with more context
         msg = f"Crawling failed for {len(validated_urls)} URLs: {e}"
-        raise ValueError(msg) from e
+        raise CrawlError(msg) from e
 
 
 async def crawl_recursive_internal_links(
@@ -502,6 +507,16 @@ async def process_urls_for_mcp(
                         "success": True,
                         "chunks_stored": len(chunks),
                         "source_id": source_id,
+                    },
+                )
+            except DatabaseError as e:
+                logger.error(f"Database error storing {result['url']}: {e}")
+                stored_results.append(
+                    {
+                        "url": result["url"],
+                        "success": False,
+                        "error": str(e),
+                        "chunks_stored": 0,
                     },
                 )
             except Exception as e:
@@ -739,6 +754,8 @@ async def crawl_urls_for_agentic_search(
                                 logger.debug(
                                     f"Stored {len(chunks)} chunks from {result.url}",
                                 )
+                        except DatabaseError as e:
+                            logger.error(f"Database error storing {result.url}: {e}")
                         except Exception as e:
                             logger.error(f"Failed to store {result.url}: {e}")
 

@@ -9,6 +9,8 @@ import logging
 import os
 from typing import Any
 
+from src.core.exceptions import QueryError, VectorStoreError
+
 logger = logging.getLogger(__name__)
 
 
@@ -52,8 +54,11 @@ async def get_available_sources(database_client: Any) -> str:
             },
             indent=2,
         )
+    except QueryError as e:
+        logger.error(f"Query failed in get_available_sources: {e}")
+        return json.dumps({"success": False, "error": str(e)}, indent=2)
     except Exception as e:
-        logger.exception(f"Error in get_available_sources: {e}")
+        logger.exception(f"Unexpected error in get_available_sources: {e}")
         return json.dumps({"success": False, "error": str(e)}, indent=2)
 
 
@@ -131,8 +136,11 @@ async def perform_rag_query(
             },
             indent=2,
         )
+    except (QueryError, VectorStoreError) as e:
+        logger.error(f"Search failed in perform_rag_query: {e}")
+        return json.dumps({"success": False, "query": query, "error": str(e)}, indent=2)
     except Exception as e:
-        logger.exception(f"Error in perform_rag_query: {e}")
+        logger.exception(f"Unexpected error in perform_rag_query: {e}")
         return json.dumps({"success": False, "query": query, "error": str(e)}, indent=2)
 
 
@@ -207,6 +215,9 @@ async def search_code_examples(
             },
             indent=2,
         )
+    except (QueryError, VectorStoreError) as e:
+        logger.error(f"Search failed in search_code_examples: {e}")
+        return json.dumps({"success": False, "query": query, "error": str(e)}, indent=2)
     except Exception as e:
-        logger.exception(f"Error in search_code_examples: {e}")
+        logger.exception(f"Unexpected error in search_code_examples: {e}")
         return json.dumps({"success": False, "query": query, "error": str(e)}, indent=2)

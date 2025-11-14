@@ -10,6 +10,7 @@ from fastmcp import Context
 
 from src.config import get_settings
 from src.core import MCPToolError
+from src.core.exceptions import FetchError, SearchError
 from src.utils.type_guards import is_valid_url
 
 from .crawling import process_urls_for_mcp
@@ -178,6 +179,12 @@ async def _search_searxng(query: str, num_results: int) -> list[dict[str, Any]]:
 
         return results
 
+    except FetchError as e:
+        logger.error(f"Failed to fetch from SearXNG: {e}")
+        return []
+    except SearchError as e:
+        logger.error(f"SearXNG search error: {e}")
+        return []
     except Exception as e:
-        logger.exception(f"SearXNG search error: {e}")
+        logger.exception(f"Unexpected error in SearXNG search: {e}")
         return []

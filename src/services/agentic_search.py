@@ -27,6 +27,7 @@ from pydantic_ai.settings import ModelSettings
 
 from src.config import get_settings
 from src.core import MCPToolError
+from src.core.exceptions import DatabaseError, LLMError
 from src.core.constants import (
     LLM_API_TIMEOUT_DEFAULT,
     MAX_RETRIES_DEFAULT,
@@ -413,14 +414,14 @@ Provide:
             result = await self.completeness_agent.run(prompt)
             return result.output
 
-        except UnexpectedModelBehavior:
+        except UnexpectedModelBehavior as e:
             # Per Pydantic AI docs: Raised when retries exhausted
-            logger.exception("Completeness evaluation failed after retries")
-            raise  # Re-raise to propagate error
+            logger.error(f"Completeness evaluation failed after retries: {e}")
+            raise LLMError("LLM completeness evaluation failed after retries") from e
 
-        except Exception:
-            logger.exception("Unexpected error in completeness evaluation")
-            raise  # Re-raise instead of returning default
+        except Exception as e:
+            logger.exception(f"Unexpected error in completeness evaluation: {e}")
+            raise LLMError("Completeness evaluation failed") from e
 
     async def _stage2_web_search(
         self,
@@ -549,14 +550,14 @@ Return a list of rankings with url, title, snippet, score, and reasoning for eac
             rankings.sort(key=lambda r: r.score, reverse=True)
             return rankings
 
-        except UnexpectedModelBehavior:
+        except UnexpectedModelBehavior as e:
             # Per Pydantic AI docs: Raised when retries exhausted
-            logger.exception("URL ranking failed after retries")
-            raise  # Re-raise to propagate error
+            logger.error(f"URL ranking failed after retries: {e}")
+            raise LLMError("LLM URL ranking failed after retries") from e
 
-        except Exception:
-            logger.exception("Unexpected error in URL ranking")
-            raise  # Re-raise instead of returning defaults
+        except Exception as e:
+            logger.exception(f"Unexpected error in URL ranking: {e}")
+            raise LLMError("URL ranking failed") from e
 
     async def _stage3_selective_crawl(
         self,
@@ -598,9 +599,13 @@ Return a list of rankings with url, title, snippet, score, and reasoning for eac
                     urls_skipped += 1
                 else:
                     urls_to_crawl.append(url)
+            except DatabaseError as e:
+                # On database error, include URL (fail open)
+                logger.warning(f"Database error checking duplicate for {url}: {e}")
+                urls_to_crawl.append(url)
             except Exception as e:
-                # On error, include URL (fail open)
-                logger.warning(f"Error checking duplicate for {url}: {e}")
+                # On unexpected error, include URL (fail open)
+                logger.warning(f"Unexpected error checking duplicate for {url}: {e}")
                 urls_to_crawl.append(url)
 
         if urls_skipped > 0:
@@ -718,14 +723,14 @@ Provide:
                 reasoning=parsed.reasoning,
             )
 
-        except UnexpectedModelBehavior:
+        except UnexpectedModelBehavior as e:
             # Per Pydantic AI docs: Raised when retries exhausted
-            logger.exception("Query refinement failed after retries")
-            raise  # Re-raise to propagate error
+            logger.error(f"Query refinement failed after retries: {e}")
+            raise LLMError("LLM query refinement failed after retries") from e
 
-        except Exception:
-            logger.exception("Unexpected error in query refinement")
-            raise  # Re-raise instead of returning fallback
+        except Exception as e:
+            logger.exception(f"Unexpected error in query refinement: {e}")
+            raise LLMError("Query refinement failed") from e
 
 
 # Singleton instance for connection pooling (per Pydantic AI best practices)
