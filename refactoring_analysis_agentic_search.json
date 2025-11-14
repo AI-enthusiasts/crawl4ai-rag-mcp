@@ -1,0 +1,748 @@
+{
+  "file_analysis": {
+    "source_file": "/home/user/crawl4ai-rag-mcp/src/services/agentic_search.py",
+    "total_lines": 807,
+    "current_size": "806 LOC (class + functions)",
+    "refactoring_target": "5 focused modules with <200 LOC each",
+    "analysis_date": "2025-11-14"
+  },
+  "modules": {
+    "config.py": {
+      "purpose": "Agent initialization, OpenAI model setup, configuration management",
+      "target_loc": "~100-120 LOC",
+      "methods": [
+        {
+          "name": "AgenticSearchService.__init__",
+          "source_lines": "64-118",
+          "loc": 55,
+          "responsibility": "Initialize Pydantic AI agents (completeness_agent, ranking_agent) and store configuration parameters",
+          "details": {
+            "creates_agents": [
+              "completeness_agent (Agent with CompletenessEvaluation output)",
+              "ranking_agent (Agent with URLRankingList output)",
+              "stores: openai_model, base_model_settings, refinement_model_settings"
+            ],
+            "stores_config": [
+              "model_name, temperature, completeness_threshold, max_iterations",
+              "max_urls_per_iteration, max_pages_per_iteration, url_score_threshold",
+              "use_search_hints, enable_url_filtering, max_urls_to_rank, max_qdrant_results"
+            ]
+          },
+          "dependencies": [
+            "pydantic_ai.Agent",
+            "pydantic_ai.models.openai.OpenAIModel",
+            "pydantic_ai.settings.ModelSettings",
+            "src.config.get_settings",
+            "src.core.constants (LLM_API_TIMEOUT_DEFAULT, MAX_RETRIES_DEFAULT)",
+            "agentic_models.CompletenessEvaluation",
+            "agentic_models.URLRankingList"
+          ],
+          "internal_calls": [],
+          "creates": "self.completeness_agent, self.ranking_agent, self.openai_model"
+        }
+      ],
+      "module_structure": {
+        "class": "AgenticSearchConfig",
+        "description": "Encapsulates all agent initialization and configuration",
+        "methods": [
+          {
+            "name": "__init__",
+            "params": "None",
+            "returns": "None",
+            "creates_attributes": [
+              "self.completeness_agent: Agent[CompletenessEvaluation]",
+              "self.ranking_agent: Agent[URLRankingList]",
+              "self.openai_model: OpenAIModel",
+              "self.base_model_settings: ModelSettings",
+              "self.refinement_model_settings: ModelSettings",
+              "Configuration parameters (model_name, temperature, thresholds, etc.)"
+            ]
+          }
+        ]
+      },
+      "imports_needed": [
+        "logging",
+        "from pydantic_ai import Agent",
+        "from pydantic_ai.models.openai import OpenAIModel",
+        "from pydantic_ai.settings import ModelSettings",
+        "from src.config import get_settings",
+        "from src.core.constants import LLM_API_TIMEOUT_DEFAULT, MAX_RETRIES_DEFAULT",
+        "from .agentic_models import CompletenessEvaluation, URLRankingList"
+      ],
+      "exports": [
+        "AgenticSearchConfig class"
+      ]
+    },
+    "evaluator.py": {
+      "purpose": "Evaluate local knowledge completeness using LLM and RAG",
+      "target_loc": "~120-150 LOC",
+      "methods": [
+        {
+          "name": "_stage1_local_check",
+          "source_lines": "303-369",
+          "loc": 67,
+          "responsibility": "Query Qdrant for relevant documents and evaluate completeness",
+          "details": {
+            "execution_flow": [
+              "Get database client from app context",
+              "Query Qdrant using perform_rag_query with max_qdrant_results",
+              "Parse JSON response and create RAGResult objects",
+              "Call _evaluate_completeness with results",
+              "Record iteration in search_history (unless is_recheck=True)"
+            ],
+            "queries_qdrant": true,
+            "calls_llm": true,
+            "updates_search_history": true
+          },
+          "dependencies": [
+            "src.core.context.get_app_context",
+            "src.core.MCPToolError",
+            "src.database.perform_rag_query",
+            "agentic_models.RAGResult, ActionType",
+            "_evaluate_completeness (internal method)",
+            "logging"
+          ],
+          "internal_calls": [
+            "_evaluate_completeness(query, rag_results)"
+          ],
+          "returns": "tuple[CompletenessEvaluation, list[RAGResult]]",
+          "parameters": [
+            "ctx: Context",
+            "query: str",
+            "iteration: int",
+            "search_history: list[SearchIteration]",
+            "is_recheck: bool = False"
+          ]
+        },
+        {
+          "name": "_evaluate_completeness",
+          "source_lines": "371-424",
+          "loc": 54,
+          "responsibility": "Use LLM to evaluate if retrieved information is sufficient",
+          "details": {
+            "llm_operation": true,
+            "structured_output": "CompletenessEvaluation",
+            "evaluation_criteria": [
+              "0.0 = No relevant information",
+              "0.5 = Partial information, significant gaps",
+              "0.8 = Most information present, minor gaps",
+              "1.0 = Complete and comprehensive"
+            ],
+            "formats_results": "Truncates to first 500 chars, shows top 5 results",
+            "error_handling": "UnexpectedModelBehavior → LLMError, catches all exceptions"
+          },
+          "dependencies": [
+            "pydantic_ai.exceptions.UnexpectedModelBehavior",
+            "src.core.exceptions.LLMError",
+            "logging",
+            "self.completeness_agent (from config)"
+          ],
+          "internal_calls": [],
+          "returns": "CompletenessEvaluation",
+          "parameters": [
+            "query: str",
+            "results: list[RAGResult]"
+          ]
+        }
+      ],
+      "module_structure": {
+        "class": "CompletionEvaluator",
+        "description": "Handles local knowledge checking and completeness evaluation",
+        "dependencies_from_config": [
+          "completeness_agent",
+          "max_qdrant_results"
+        ],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": "config: AgenticSearchConfig",
+            "stores": "self.completeness_agent, self.max_qdrant_results"
+          },
+          {
+            "name": "stage1_local_check",
+            "params": "ctx, query, iteration, search_history, is_recheck=False",
+            "returns": "tuple[CompletenessEvaluation, list[RAGResult]]"
+          },
+          {
+            "name": "evaluate_completeness",
+            "params": "query, results",
+            "returns": "CompletenessEvaluation"
+          }
+        ]
+      },
+      "imports_needed": [
+        "json",
+        "logging",
+        "from typing import Any",
+        "from fastmcp import Context",
+        "from pydantic_ai.exceptions import UnexpectedModelBehavior",
+        "from src.core import MCPToolError",
+        "from src.core.context import get_app_context",
+        "from src.core.exceptions import LLMError",
+        "from src.database import perform_rag_query",
+        "from .agentic_models import RAGResult, CompletenessEvaluation, ActionType, SearchIteration"
+      ],
+      "exports": [
+        "CompletionEvaluator class"
+      ]
+    },
+    "ranker.py": {
+      "purpose": "Web search and URL ranking using LLM",
+      "target_loc": "~140-170 LOC",
+      "methods": [
+        {
+          "name": "_stage2_web_search",
+          "source_lines": "426-499",
+          "loc": 74,
+          "responsibility": "Execute web search and filter URLs by relevance score",
+          "details": {
+            "execution_flow": [
+              "Call _search_searxng with query, get 20 results",
+              "If no results, return empty list and record iteration",
+              "Limit search results to max_urls_to_rank (optimization 3)",
+              "Call _rank_urls with query, gaps, and limited results",
+              "Filter URLs with score >= url_threshold",
+              "Limit to max_urls",
+              "Record iteration in search_history"
+            ],
+            "external_search": "_search_searxng",
+            "llm_ranking": "_rank_urls",
+            "returns_urls": true,
+            "updates_search_history": true,
+            "optimization": "Limits URLs before ranking to reduce LLM tokens"
+          },
+          "dependencies": [
+            "src.services.search._search_searxng",
+            "_rank_urls (internal method)",
+            "logging",
+            "agentic_models.ActionType, SearchIteration"
+          ],
+          "internal_calls": [
+            "_search_searxng(query, num_results=20)",
+            "_rank_urls(query, gaps, search_results)"
+          ],
+          "returns": "list[str] (URLs)",
+          "parameters": [
+            "query: str",
+            "gaps: list[str]",
+            "max_urls: int",
+            "url_threshold: float",
+            "iteration: int",
+            "search_history: list[SearchIteration]"
+          ]
+        },
+        {
+          "name": "_rank_urls",
+          "source_lines": "501-560",
+          "loc": 60,
+          "responsibility": "Use LLM to rank URLs by relevance to query and gaps",
+          "details": {
+            "llm_operation": true,
+            "structured_output": "URLRankingList → list[URLRanking]",
+            "scoring": "0.0-1.0, strict (mostly <0.7)",
+            "formats_for_llm": [
+              "Title, URL, snippet (truncated to 200 chars)",
+              "Knowledge gaps formatted as list"
+            ],
+            "sorts_results": "Descending by score",
+            "error_handling": "UnexpectedModelBehavior → LLMError"
+          },
+          "dependencies": [
+            "pydantic_ai.exceptions.UnexpectedModelBehavior",
+            "src.core.exceptions.LLMError",
+            "logging",
+            "typing.Any",
+            "self.ranking_agent (from config)"
+          ],
+          "internal_calls": [],
+          "returns": "list[URLRanking]",
+          "parameters": [
+            "query: str",
+            "gaps: list[str]",
+            "search_results: list[dict[str, Any]]"
+          ]
+        }
+      ],
+      "module_structure": {
+        "class": "URLRanker",
+        "description": "Handles web search and URL relevance ranking",
+        "dependencies_from_config": [
+          "ranking_agent",
+          "max_urls_to_rank"
+        ],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": "config: AgenticSearchConfig",
+            "stores": "self.ranking_agent, self.max_urls_to_rank"
+          },
+          {
+            "name": "stage2_web_search",
+            "params": "query, gaps, max_urls, url_threshold, iteration, search_history",
+            "returns": "list[str]"
+          },
+          {
+            "name": "rank_urls",
+            "params": "query, gaps, search_results",
+            "returns": "list[URLRanking]"
+          }
+        ]
+      },
+      "imports_needed": [
+        "logging",
+        "from typing import Any",
+        "from pydantic_ai.exceptions import UnexpectedModelBehavior",
+        "from src.core.exceptions import LLMError",
+        "from src.services.search import _search_searxng",
+        "from .agentic_models import URLRanking, URLRankingList, ActionType, SearchIteration"
+      ],
+      "exports": [
+        "URLRanker class"
+      ]
+    },
+    "crawler.py": {
+      "purpose": "Selective URL crawling and indexing with duplicate detection",
+      "target_loc": "~100-120 LOC",
+      "methods": [
+        {
+          "name": "_stage3_selective_crawl",
+          "source_lines": "562-656",
+          "loc": 95,
+          "responsibility": "Crawl promising URLs with smart filtering and store in Qdrant",
+          "details": {
+            "execution_flow": [
+              "Get database client from app context",
+              "For each URL: check if already in Qdrant (url_exists)",
+              "Skip duplicates (with logging and fail-open strategy)",
+              "Call crawl_urls_for_agentic_search with filtered URLs",
+              "Extract result metrics (urls_crawled, urls_stored, chunks_stored, urls_filtered)",
+              "Record iteration in search_history",
+              "Note: Search hints not yet implemented"
+            ],
+            "duplicate_detection": "Uses database_client.url_exists(url)",
+            "fail_open": true,
+            "calls_crawl_service": "crawl_urls_for_agentic_search",
+            "stores_in_qdrant": true,
+            "updates_search_history": true
+          },
+          "dependencies": [
+            "src.core.context.get_app_context",
+            "src.core.exceptions.DatabaseError",
+            "src.services.crawling.crawl_urls_for_agentic_search",
+            "logging",
+            "agentic_models.ActionType, SearchIteration"
+          ],
+          "internal_calls": [
+            "database_client.url_exists(url) for each URL",
+            "crawl_urls_for_agentic_search(ctx, urls, max_pages, enable_url_filtering)"
+          ],
+          "returns": "int (number of URLs stored)",
+          "parameters": [
+            "ctx: Context",
+            "urls: list[str]",
+            "query: str",
+            "use_hints: bool",
+            "iteration: int",
+            "search_history: list[SearchIteration]"
+          ]
+        }
+      ],
+      "module_structure": {
+        "class": "SelectiveCrawler",
+        "description": "Handles URL crawling with deduplication and Qdrant storage",
+        "dependencies_from_config": [
+          "max_pages_per_iteration",
+          "enable_url_filtering"
+        ],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": "config: AgenticSearchConfig",
+            "stores": "self.max_pages_per_iteration, self.enable_url_filtering"
+          },
+          {
+            "name": "stage3_selective_crawl",
+            "params": "ctx, urls, query, use_hints, iteration, search_history",
+            "returns": "int"
+          }
+        ]
+      },
+      "imports_needed": [
+        "logging",
+        "from fastmcp import Context",
+        "from src.core.context import get_app_context",
+        "from src.core.exceptions import DatabaseError",
+        "from src.services.crawling import crawl_urls_for_agentic_search",
+        "from .agentic_models import ActionType, SearchIteration"
+      ],
+      "exports": [
+        "SelectiveCrawler class"
+      ]
+    },
+    "orchestrator.py": {
+      "purpose": "Main execution orchestration and query refinement",
+      "target_loc": "~200-250 LOC",
+      "methods": [
+        {
+          "name": "execute_search",
+          "source_lines": "120-301",
+          "loc": 182,
+          "responsibility": "Orchestrate full agentic search pipeline with iterative refinement",
+          "details": {
+            "execution_flow": [
+              "Extract configuration overrides or use defaults",
+              "Initialize search_history, current_query, iteration counter",
+              "WHILE iteration < max_iter:",
+              "  Increment iteration",
+              "  STAGE 1: Local knowledge check (_stage1_local_check)",
+              "  IF completeness >= threshold: RETURN SUCCESS",
+              "  STAGE 2: Web search (_stage2_web_search)",
+              "  IF no promising URLs:",
+              "    STAGE 4: Query refinement (if iteration < max_iter)",
+              "    continue",
+              "  Save previous_score for optimization",
+              "  STAGE 3: Selective crawling (_stage3_selective_crawl)",
+              "  OPTIMIZATION 1: Skip re-check if no URLs stored",
+              "  OPTIMIZATION 2: Skip refinement if score improved significantly",
+              "  STAGE 4: Query refinement",
+              "RETURN max_iterations_reached or error"
+            ],
+            "orchestrates_stages": [
+              "1. Local knowledge check",
+              "2. Web search & ranking",
+              "3. Selective crawling",
+              "4. Query refinement"
+            ],
+            "optimizations": [
+              "Skip re-check if urls_stored == 0",
+              "Skip refinement if score improvement >= threshold",
+              "Limit URLs before ranking"
+            ],
+            "returns_on_success": "AgenticSearchResult with COMPLETE status",
+            "returns_on_failure": "AgenticSearchResult with ERROR/MAX_ITERATIONS_REACHED status",
+            "error_handling": "Catches all exceptions, returns error result"
+          },
+          "dependencies": [
+            "fastmcp.Context",
+            "src.core.MCPToolError",
+            "src.core.constants.SCORE_IMPROVEMENT_THRESHOLD",
+            "logging",
+            "_stage1_local_check, _stage2_web_search, _stage3_selective_crawl, _stage4_query_refinement",
+            "agentic_models.AgenticSearchResult, SearchStatus"
+          ],
+          "internal_calls": [
+            "_stage1_local_check(ctx, current_query, iteration, search_history)",
+            "_stage2_web_search(current_query, evaluation.gaps, max_urls, url_threshold, iteration, search_history)",
+            "_stage3_selective_crawl(ctx, promising_urls, current_query, use_hints, iteration, search_history)",
+            "_stage4_query_refinement(query, current_query, evaluation.gaps)"
+          ],
+          "returns": "AgenticSearchResult",
+          "parameters": [
+            "ctx: Context",
+            "query: str",
+            "completeness_threshold: float | None = None",
+            "max_iterations: int | None = None",
+            "max_urls_per_iteration: int | None = None",
+            "url_score_threshold: float | None = None",
+            "use_search_hints: bool | None = None"
+          ]
+        },
+        {
+          "name": "_stage4_query_refinement",
+          "source_lines": "658-733",
+          "loc": 76,
+          "responsibility": "Generate refined search queries based on knowledge gaps",
+          "details": {
+            "llm_operation": true,
+            "creates_inline_model": "QueryRefinementResponse (BaseModel)",
+            "creates_temporary_agent": true,
+            "inline_model_fields": [
+              "refined_queries: list[str] (1-3 items)",
+              "reasoning: str (explanation)"
+            ],
+            "returns_wrapper": "QueryRefinement with original_query, current_query, refined_queries, reasoning",
+            "error_handling": "UnexpectedModelBehavior → LLMError, catches all exceptions"
+          },
+          "dependencies": [
+            "pydantic.BaseModel, Field",
+            "pydantic_ai import Agent",
+            "pydantic_ai.exceptions.UnexpectedModelBehavior",
+            "src.core.constants.MAX_RETRIES_DEFAULT",
+            "src.core.exceptions.LLMError",
+            "logging",
+            "self.openai_model, self.refinement_model_settings (from config)"
+          ],
+          "internal_calls": [],
+          "returns": "QueryRefinement",
+          "parameters": [
+            "original_query: str",
+            "current_query: str",
+            "gaps: list[str]"
+          ]
+        }
+      ],
+      "module_structure": {
+        "class": "SearchOrchestrator",
+        "description": "Orchestrates entire agentic search pipeline",
+        "dependencies_from_config": [
+          "completeness_threshold, max_iterations, max_urls_per_iteration",
+          "url_score_threshold, use_search_hints",
+          "openai_model, refinement_model_settings"
+        ],
+        "composed_dependencies": [
+          "CompletionEvaluator (evaluator)",
+          "URLRanker (ranker)",
+          "SelectiveCrawler (crawler)"
+        ],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": "config: AgenticSearchConfig, evaluator, ranker, crawler",
+            "stores": "All config parameters and component references"
+          },
+          {
+            "name": "execute_search",
+            "params": "ctx, query, completeness_threshold, max_iterations, max_urls_per_iteration, url_score_threshold, use_search_hints",
+            "returns": "AgenticSearchResult"
+          },
+          {
+            "name": "_stage4_query_refinement",
+            "params": "original_query, current_query, gaps",
+            "returns": "QueryRefinement"
+          }
+        ]
+      },
+      "imports_needed": [
+        "logging",
+        "from pydantic import BaseModel, Field",
+        "from fastmcp import Context",
+        "from pydantic_ai import Agent",
+        "from pydantic_ai.exceptions import UnexpectedModelBehavior",
+        "from src.core import MCPToolError",
+        "from src.core.constants import SCORE_IMPROVEMENT_THRESHOLD, MAX_RETRIES_DEFAULT",
+        "from src.core.exceptions import LLMError",
+        "from .agentic_models import AgenticSearchResult, SearchStatus, QueryRefinement",
+        "from .config import AgenticSearchConfig",
+        "from .evaluator import CompletionEvaluator",
+        "from .ranker import URLRanker",
+        "from .crawler import SelectiveCrawler"
+      ],
+      "exports": [
+        "SearchOrchestrator class"
+      ]
+    }
+  },
+  "module_level_functions": {
+    "get_agentic_search_service": {
+      "source_lines": "740-752",
+      "loc": 13,
+      "purpose": "Factory function for singleton instance (connection pooling)",
+      "target_location": "In main.py or __init__.py of services package",
+      "description": "Creates and caches AgenticSearchService instance (all 5 modules composed)",
+      "parameters": "None",
+      "returns": "AgenticSearchService",
+      "dependencies": [
+        "Global _agentic_search_service state",
+        "AgenticSearchService class"
+      ]
+    },
+    "agentic_search_impl": {
+      "source_lines": "755-806",
+      "loc": 52,
+      "purpose": "MCP tool entry point",
+      "target_location": "In main.py or tools.py for MCP registration",
+      "description": "Entry point for MCP tool, calls get_agentic_search_service().execute_search()",
+      "error_handling": "Checks agentic_search_enabled setting, catches all exceptions",
+      "parameters": [
+        "ctx: Context",
+        "query: str",
+        "completeness_threshold: float | None = None",
+        "max_iterations: int | None = None",
+        "max_urls_per_iteration: int | None = None",
+        "url_score_threshold: float | None = None",
+        "use_search_hints: bool | None = None"
+      ],
+      "returns": "str (JSON result)",
+      "dependencies": [
+        "settings.agentic_search_enabled",
+        "get_agentic_search_service()",
+        "logging, MCPToolError"
+      ]
+    }
+  },
+  "module_composition": {
+    "new_agentic_search.py": {
+      "purpose": "Main module that composes all sub-modules",
+      "content": [
+        "Import all sub-module classes",
+        "Define AgenticSearchService as composition of all 5 modules",
+        "Define get_agentic_search_service() singleton factory",
+        "Define agentic_search_impl() MCP entry point",
+        "Maintain backward compatibility with existing API"
+      ],
+      "structure": "~80-100 LOC"
+    }
+  },
+  "dependency_graph": {
+    "config.py": {
+      "external_dependencies": [
+        "pydantic_ai",
+        "src.config",
+        "src.core.constants",
+        "agentic_models"
+      ],
+      "internal_module_dependencies": []
+    },
+    "evaluator.py": {
+      "external_dependencies": [
+        "pydantic_ai.exceptions",
+        "src.core",
+        "src.core.exceptions",
+        "src.core.context",
+        "src.database",
+        "agentic_models"
+      ],
+      "internal_module_dependencies": [
+        "config.py (receives config)"
+      ]
+    },
+    "ranker.py": {
+      "external_dependencies": [
+        "pydantic_ai.exceptions",
+        "src.core.exceptions",
+        "src.services.search",
+        "agentic_models"
+      ],
+      "internal_module_dependencies": [
+        "config.py (receives config)"
+      ]
+    },
+    "crawler.py": {
+      "external_dependencies": [
+        "src.core.context",
+        "src.core.exceptions",
+        "src.services.crawling",
+        "agentic_models"
+      ],
+      "internal_module_dependencies": [
+        "config.py (receives config)"
+      ]
+    },
+    "orchestrator.py": {
+      "external_dependencies": [
+        "pydantic",
+        "pydantic_ai",
+        "src.core",
+        "src.core.exceptions",
+        "src.core.constants",
+        "agentic_models"
+      ],
+      "internal_module_dependencies": [
+        "config.py (receives config)",
+        "evaluator.py (CompletionEvaluator)",
+        "ranker.py (URLRanker)",
+        "crawler.py (SelectiveCrawler)"
+      ]
+    }
+  },
+  "migration_strategy": {
+    "phase_1_setup": [
+      "Create new src/services/agentic_search/ directory",
+      "Create __init__.py in new directory",
+      "Create config.py with AgenticSearchConfig class"
+    ],
+    "phase_2_modules": [
+      "Create evaluator.py with CompletionEvaluator class",
+      "Create ranker.py with URLRanker class",
+      "Create crawler.py with SelectiveCrawler class",
+      "Create orchestrator.py with SearchOrchestrator class"
+    ],
+    "phase_3_composition": [
+      "Create main agentic_search.py that composes all modules",
+      "Define AgenticSearchService as wrapper/factory",
+      "Update get_agentic_search_service() and agentic_search_impl()",
+      "Maintain backward compatibility"
+    ],
+    "phase_4_cleanup": [
+      "Move agentic_models.py to same directory if not already there",
+      "Update imports in tools.py and main.py",
+      "Run tests to verify compatibility",
+      "Update documentation",
+      "Delete old agentic_search.py (after backward compat verified)"
+    ]
+  },
+  "class_composition": {
+    "AgenticSearchService": {
+      "new_structure": "Composition of sub-components",
+      "components": [
+        {
+          "name": "config",
+          "type": "AgenticSearchConfig",
+          "initialization": "Created once in __init__"
+        },
+        {
+          "name": "evaluator",
+          "type": "CompletionEvaluator",
+          "initialization": "Created with config"
+        },
+        {
+          "name": "ranker",
+          "type": "URLRanker",
+          "initialization": "Created with config"
+        },
+        {
+          "name": "crawler",
+          "type": "SelectiveCrawler",
+          "initialization": "Created with config"
+        },
+        {
+          "name": "orchestrator",
+          "type": "SearchOrchestrator",
+          "initialization": "Created with config + components"
+        }
+      ],
+      "public_methods": [
+        "execute_search(ctx, query, ...) - Delegates to orchestrator"
+      ]
+    }
+  },
+  "estimated_metrics": {
+    "current_file": {
+      "total_lines": 807,
+      "class_lines": 750,
+      "function_lines": 57
+    },
+    "refactored_modules": {
+      "config.py": "~110 LOC",
+      "evaluator.py": "~130 LOC",
+      "ranker.py": "~150 LOC",
+      "crawler.py": "~110 LOC",
+      "orchestrator.py": "~200 LOC",
+      "agentic_search.py": "~80 LOC (composition)",
+      "total": "~780 LOC (similar total, but much better organized)"
+    },
+    "improvement": {
+      "max_file_size": "From 807 LOC → max 200 LOC per module",
+      "cohesion": "Each module has single responsibility",
+      "testability": "Each component can be tested independently",
+      "reusability": "Components can be reused in other contexts"
+    }
+  },
+  "testing_strategy": {
+    "unit_tests": [
+      "tests/unit/services/agentic_search/test_config.py - Agent initialization",
+      "tests/unit/services/agentic_search/test_evaluator.py - Completeness evaluation",
+      "tests/unit/services/agentic_search/test_ranker.py - URL ranking",
+      "tests/unit/services/agentic_search/test_crawler.py - Crawling logic",
+      "tests/unit/services/agentic_search/test_orchestrator.py - Main pipeline"
+    ],
+    "integration_tests": [
+      "tests/integration/services/test_agentic_search_integration.py - Full pipeline"
+    ],
+    "backward_compatibility": [
+      "Ensure AgenticSearchService API unchanged",
+      "Ensure get_agentic_search_service() works identically",
+      "Ensure agentic_search_impl() produces same results"
+    ]
+  }
+}
