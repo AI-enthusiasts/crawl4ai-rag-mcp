@@ -5,6 +5,7 @@ CRUD operations for documents and sources in Qdrant vector database.
 All functions are standalone and accept QdrantClient as first parameter.
 """
 
+import logging
 import sys
 import uuid
 from datetime import UTC
@@ -12,6 +13,10 @@ from typing import Any
 
 from qdrant_client import AsyncQdrantClient, models
 from qdrant_client.models import FieldCondition, Filter, MatchValue, PointIdsList, PointStruct
+
+from src.core.exceptions import QueryError, VectorStoreError
+
+logger = logging.getLogger(__name__)
 
 # Constants
 CRAWLED_PAGES = "crawled_pages"
@@ -45,8 +50,10 @@ async def add_documents(
     for url in unique_urls:
         try:
             await delete_documents_by_url(client, [url])
+        except (QueryError, VectorStoreError) as e:
+            logger.error(f"Failed to delete existing documents for {url}: {e}")
         except Exception as e:
-            print(f"Error deleting documents from Qdrant: {e}")
+            logger.exception(f"Unexpected error deleting documents from Qdrant: {e}")
 
     # Process documents in batches
     for i in range(0, len(urls), BATCH_SIZE):
@@ -111,8 +118,11 @@ async def add_documents(
                 collection_name=CODE_EXAMPLES,
                 points=points,
             )
+        except VectorStoreError as e:
+            logger.error(f"Failed to upsert code examples to Qdrant: {e}")
+            raise
         except Exception as e:
-            print(f"Error upserting code examples to Qdrant: {e}")
+            logger.exception(f"Unexpected error upserting code examples to Qdrant: {e}")
             raise
 
 
@@ -300,8 +310,11 @@ async def update_source(
             payload=updated_payload,
             points=[point_id],
         )
+    except QueryError as e:
+        logger.error(f"Failed to update source: {e}")
+        raise
     except Exception as e:
-        print(f"Error updating source: {e}", file=sys.stderr)
+        logger.exception(f"Unexpected error updating source: {e}")
         raise
 
 
@@ -361,8 +374,11 @@ async def get_sources(client: AsyncQdrantClient) -> list[dict[str, Any]]:
 
         return all_sources
 
+    except QueryError as e:
+        logger.error(f"Failed to get sources: {e}")
+        return []
     except Exception as e:
-        print(f"Error getting sources: {e}", file=sys.stderr)
+        logger.exception(f"Unexpected error getting sources: {e}")
         return []
 
 
@@ -426,6 +442,16 @@ async def update_source_info(
                     timestamp,
                     point_id,
                 )
+        except QueryError:
+            # Source doesn't exist, create new one
+            await _create_new_source(
+                client,
+                source_id,
+                summary,
+                word_count,
+                timestamp,
+                point_id,
+            )
         except Exception:
             # Source doesn't exist, create new one
             await _create_new_source(
@@ -437,8 +463,11 @@ async def update_source_info(
                 point_id,
             )
 
+    except QueryError as e:
+        logger.error(f"Failed to update source info: {e}")
+        raise
     except Exception as e:
-        print(f"Error updating source info: {e}", file=sys.stderr)
+        logger.exception(f"Unexpected error updating source info: {e}")
         raise
 
 
@@ -495,6 +524,9 @@ async def _create_new_source(
             collection_name=SOURCES,
             points=points,
         )
+    except VectorStoreError as e:
+        logger.error(f"Failed to create new source: {e}")
+        raise
     except Exception as e:
-        print(f"Error creating new source: {e}", file=sys.stderr)
+        logger.exception(f"Unexpected error creating new source: {e}")
         raise

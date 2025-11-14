@@ -9,6 +9,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from src.core.exceptions import ParsingError, AnalysisError
+
 from .base import CodeAnalyzer
 
 logger = logging.getLogger(__name__)
@@ -151,8 +153,11 @@ class JavaScriptAnalyzer(CodeAnalyzer):
                 "dependencies": dependencies,
             }
 
+        except (ParsingError, AnalysisError) as e:
+            logger.error(f"Analysis failed for {file_path}: {e}")
+            return self._empty_result(file_path, repo_path)
         except Exception as e:
-            logger.exception(f"Error analyzing {file_path}: {e}")
+            logger.exception(f"Unexpected error analyzing {file_path}: {e}")
             return self._empty_result(file_path, repo_path)
 
     def _empty_result(self, file_path: str, repo_path: str) -> dict[str, Any]:

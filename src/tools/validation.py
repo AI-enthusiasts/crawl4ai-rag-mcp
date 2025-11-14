@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from fastmcp import FastMCP
 
 from src.core import MCPToolError, track_request
+from src.core.exceptions import DatabaseError, KnowledgeGraphError, ValidationError
 from src.core.context import get_app_context
 from src.utils.validation import validate_script_path
 
@@ -97,8 +98,10 @@ def register_validation_tools(mcp: "FastMCP") -> None:
             try:
                 # Method exists in QdrantAdapter, added to Protocol
                 await app_ctx.database_client.delete_repository_code_examples(repo_name)
+            except DatabaseError as cleanup_error:
+                logger.warning(f"Database error during cleanup: {cleanup_error}")
             except Exception as cleanup_error:
-                logger.warning(f"Error during cleanup: {cleanup_error}")
+                logger.warning(f"Unexpected error during cleanup: {cleanup_error}")
 
             # Extract code examples from Neo4j
             from src.knowledge_graph.code_extractor import extract_repository_code
@@ -205,8 +208,28 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
 
+        except DatabaseError as e:
+            logger.error(f"Database error in extract_and_index_repository_code: {e}")
+            return json.dumps(
+                {
+                    "success": False,
+                    "repository_name": repo_name,
+                    "error": f"Database error: {e!s}",
+                },
+                indent=2,
+            )
+        except KnowledgeGraphError as e:
+            logger.error(f"Knowledge graph error in extract_and_index_repository_code: {e}")
+            return json.dumps(
+                {
+                    "success": False,
+                    "repository_name": repo_name,
+                    "error": f"Knowledge graph error: {e!s}",
+                },
+                indent=2,
+            )
         except Exception as e:
-            logger.exception(f"Error in extract_and_index_repository_code tool: {e}")
+            logger.exception(f"Unexpected error in extract_and_index_repository_code tool: {e}")
             return json.dumps(
                 {
                     "success": False,
@@ -303,8 +326,28 @@ def register_validation_tools(mcp: "FastMCP") -> None:
 
             return json.dumps(result, indent=2)
 
+        except DatabaseError as e:
+            logger.error(f"Database error in smart_code_search: {e}")
+            return json.dumps(
+                {
+                    "success": False,
+                    "query": query,
+                    "error": f"Database error: {e!s}",
+                },
+                indent=2,
+            )
+        except ValidationError as e:
+            logger.error(f"Validation error in smart_code_search: {e}")
+            return json.dumps(
+                {
+                    "success": False,
+                    "query": query,
+                    "error": f"Validation error: {e!s}",
+                },
+                indent=2,
+            )
         except Exception as e:
-            logger.exception(f"Error in smart_code_search tool: {e}")
+            logger.exception(f"Unexpected error in smart_code_search tool: {e}")
             return json.dumps(
                 {
                     "success": False,
@@ -396,10 +439,22 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 script_path=actual_path,
             )
 
-        except Exception as e:
-            logger.exception(f"Error in enhanced hallucination detection tool: {e}")
+        except ValidationError as e:
+            logger.error(f"Validation error in hallucination detection: {e}")
             msg = f"Enhanced hallucination check failed: {e!s}"
-            raise MCPToolError(msg)
+            raise MCPToolError(msg) from e
+        except DatabaseError as e:
+            logger.error(f"Database error in hallucination detection: {e}")
+            msg = f"Enhanced hallucination check failed: {e!s}"
+            raise MCPToolError(msg) from e
+        except KnowledgeGraphError as e:
+            logger.error(f"Knowledge graph error in hallucination detection: {e}")
+            msg = f"Enhanced hallucination check failed: {e!s}"
+            raise MCPToolError(msg) from e
+        except Exception as e:
+            logger.exception(f"Unexpected error in enhanced hallucination detection tool: {e}")
+            msg = f"Enhanced hallucination check failed: {e!s}"
+            raise MCPToolError(msg) from e
 
     @mcp.tool()
     @track_request("get_script_analysis_info")

@@ -12,6 +12,8 @@ from urllib.parse import urlparse
 
 from fastmcp import Context
 
+from src.core.exceptions import GitError, RepositoryError, QueryError
+
 logger = logging.getLogger(__name__)
 
 
@@ -61,8 +63,11 @@ def validate_github_url(url: str) -> dict[str, Any]:
             repo = repo[:-4]
 
         return {"valid": True, "owner": owner, "repo": repo}
-    except Exception as e:
+    except (ValueError, AttributeError) as e:
         return {"valid": False, "error": f"Invalid URL format: {e!s}"}
+    except Exception as e:
+        logger.exception(f"Unexpected error validating GitHub URL: {e}")
+        return {"valid": False, "error": f"URL validation failed: {e!s}"}
 
 
 async def parse_github_repository(repo_extractor: Any, repo_url: str) -> str:
@@ -166,8 +171,28 @@ async def parse_github_repository(repo_extractor: Any, repo_url: str) -> str:
             indent=2,
         )
 
+    except (GitError, RepositoryError) as e:
+        logger.error(f"Repository operation failed for {repo_url}: {e}")
+        return json.dumps(
+            {
+                "success": False,
+                "repo_url": repo_url,
+                "error": f"Repository parsing failed: {e!s}",
+            },
+            indent=2,
+        )
+    except QueryError as e:
+        logger.error(f"Neo4j query failed for {repo_url}: {e}")
+        return json.dumps(
+            {
+                "success": False,
+                "repo_url": repo_url,
+                "error": f"Database query failed: {e!s}",
+            },
+            indent=2,
+        )
     except Exception as e:
-        logger.exception(f"Error parsing repository {repo_url}: {e}")
+        logger.exception(f"Unexpected error parsing repository {repo_url}: {e}")
         return json.dumps(
             {
                 "success": False,
@@ -287,8 +312,24 @@ async def parse_github_repository_with_branch(
                 },
             )
 
+    except (GitError, RepositoryError) as e:
+        logger.error(f"Repository/Git operation failed: {e}")
+        return json.dumps(
+            {
+                "error": "Failed to parse repository branch",
+                "details": str(e),
+            },
+        )
+    except QueryError as e:
+        logger.error(f"Neo4j query failed: {e}")
+        return json.dumps(
+            {
+                "error": "Database query failed",
+                "details": str(e),
+            },
+        )
     except Exception as e:
-        logger.exception(f"Error parsing repository branch: {e}")
+        logger.exception(f"Unexpected error parsing repository branch: {e}")
         return json.dumps(
             {
                 "error": "Failed to parse repository branch",
@@ -406,8 +447,16 @@ async def get_repository_metadata_from_neo4j(ctx: Context, repo_name: str) -> st
                 indent=2,
             )
 
+    except QueryError as e:
+        logger.error(f"Neo4j query failed getting repository metadata: {e}")
+        return json.dumps(
+            {
+                "error": "Database query failed",
+                "details": str(e),
+            },
+        )
     except Exception as e:
-        logger.exception(f"Error getting repository metadata: {e}")
+        logger.exception(f"Unexpected error getting repository metadata: {e}")
         return json.dumps(
             {
                 "error": "Failed to get repository metadata",
@@ -471,8 +520,16 @@ async def update_repository_in_neo4j(ctx: Context, repo_url: str) -> str:
             },
         )
 
+    except (GitError, RepositoryError) as e:
+        logger.error(f"Repository/Git operation failed during update: {e}")
+        return json.dumps(
+            {
+                "error": "Failed to update repository",
+                "details": str(e),
+            },
+        )
     except Exception as e:
-        logger.exception(f"Error updating repository: {e}")
+        logger.exception(f"Unexpected error updating repository: {e}")
         return json.dumps(
             {
                 "error": "Failed to update repository",

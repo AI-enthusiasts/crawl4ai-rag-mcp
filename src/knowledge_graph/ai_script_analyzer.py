@@ -13,6 +13,8 @@ import ast
 import logging
 from dataclasses import dataclass, field
 
+from src.core.exceptions import ParsingError
+
 logger = logging.getLogger(__name__)
 
 
@@ -122,8 +124,20 @@ class AIScriptAnalyzer:
 
             return result
 
+        except (SyntaxError, ValueError) as e:
+            error_msg = f"Python parsing error in script {script_path}: {e!s}"
+            logger.error(error_msg)
+            result = AnalysisResult(file_path=script_path)
+            result.errors.append(error_msg)
+            return result
+        except ParsingError as e:
+            error_msg = f"Failed to parse script {script_path}: {e!s}"
+            logger.error(error_msg)
+            result = AnalysisResult(file_path=script_path)
+            result.errors.append(error_msg)
+            return result
         except Exception as e:
-            error_msg = f"Failed to analyze script {script_path}: {e!s}"
+            error_msg = f"Unexpected error analyzing script {script_path}: {e!s}"
             logger.exception(error_msg)
             result = AnalysisResult(file_path=script_path)
             result.errors.append(error_msg)

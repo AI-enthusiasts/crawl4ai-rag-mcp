@@ -8,6 +8,8 @@ import json
 import logging
 from typing import Any
 
+from src.core.exceptions import QueryError
+
 logger = logging.getLogger(__name__)
 
 
@@ -298,6 +300,15 @@ async def handle_query_command(session: Any, command: str, cypher_query: str) ->
                     "total_results": count,
                     "limited": count >= 20,
                 },
+            },
+            indent=2,
+        )
+    except QueryError as e:
+        return json.dumps(
+            {
+                "success": False,
+                "command": command,
+                "error": f"Neo4j query failed: {e!s}",
             },
             indent=2,
         )

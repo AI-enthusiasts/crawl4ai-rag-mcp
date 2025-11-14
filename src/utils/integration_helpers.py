@@ -14,6 +14,7 @@ from functools import wraps
 from typing import Any
 
 from src.config import get_settings
+from src.core.exceptions import DatabaseError, ValidationError
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -177,8 +178,14 @@ class BatchProcessor:
         async with self._semaphore:
             try:
                 return await processor_func(item, *args, **kwargs)
+            except ValidationError as e:
+                logger.warning(f"Validation error processing item: {e}")
+                return e
+            except DatabaseError as e:
+                logger.warning(f"Database error processing item: {e}")
+                return e
             except Exception as e:
-                logger.warning(f"Error processing item: {e}")
+                logger.warning(f"Unexpected error processing item: {e}")
                 return e
 
 
@@ -309,6 +316,14 @@ def performance_monitor(func: Callable[..., Any]) -> Callable[..., Any]:
             logger.debug(f"{function_name} executed in {execution_time:.3f}s")
             return result
 
+        except ValidationError as e:
+            execution_time = time.time() - start_time
+            logger.error(f"{function_name} validation error after {execution_time:.3f}s: {e}")
+            raise
+        except DatabaseError as e:
+            execution_time = time.time() - start_time
+            logger.error(f"{function_name} database error after {execution_time:.3f}s: {e}")
+            raise
         except Exception as e:
             execution_time = time.time() - start_time
             logger.exception(f"{function_name} failed after {execution_time:.3f}s: {e}")
@@ -348,6 +363,8 @@ class IntegrationHealthMonitor:
             finally:
                 await session.close()
 
+        except DatabaseError as e:
+            return {"status": "error", "reason": f"Database error: {e!s}"}
         except Exception as e:
             return {"status": "error", "reason": str(e)}
 
@@ -369,6 +386,8 @@ class IntegrationHealthMonitor:
                 }
             return {"status": "unhealthy", "reason": "Could not retrieve collections"}
 
+        except DatabaseError as e:
+            return {"status": "error", "reason": f"Database error: {e!s}"}
         except Exception as e:
             return {"status": "error", "reason": str(e)}
 

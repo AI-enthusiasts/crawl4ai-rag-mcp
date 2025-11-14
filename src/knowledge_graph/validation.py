@@ -10,6 +10,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+from src.core.exceptions import ParsingError, AnalysisError, QueryError
+
 logger = logging.getLogger(__name__)
 
 
@@ -88,7 +90,17 @@ async def check_ai_script_hallucinations(
         # Read the script content
         try:
             script_content = script_file.read_text(encoding="utf-8")
+        except (OSError, IOError, UnicodeDecodeError) as e:
+            return json.dumps(
+                {
+                    "success": False,
+                    "script_path": script_path,
+                    "error": f"Failed to read script: {e!s}",
+                },
+                indent=2,
+            )
         except Exception as e:
+            logger.exception(f"Unexpected error reading script: {e}")
             return json.dumps(
                 {
                     "success": False,
@@ -151,8 +163,28 @@ async def check_ai_script_hallucinations(
             indent=2,
         )
 
+    except (ParsingError, AnalysisError) as e:
+        logger.error(f"Analysis/Parsing error checking script: {e}")
+        return json.dumps(
+            {
+                "success": False,
+                "script_path": script_path,
+                "error": f"Hallucination check failed: {e!s}",
+            },
+            indent=2,
+        )
+    except QueryError as e:
+        logger.error(f"Neo4j query failed: {e}")
+        return json.dumps(
+            {
+                "success": False,
+                "script_path": script_path,
+                "error": f"Database query failed: {e!s}",
+            },
+            indent=2,
+        )
     except Exception as e:
-        logger.exception(f"Error checking script hallucinations: {e}")
+        logger.exception(f"Unexpected error checking script hallucinations: {e}")
         return json.dumps(
             {
                 "success": False,

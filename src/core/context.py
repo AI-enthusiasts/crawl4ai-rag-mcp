@@ -10,6 +10,11 @@ from fastmcp import FastMCP
 from sentence_transformers import CrossEncoder
 
 from src.config import get_settings
+from src.core.exceptions import (
+    ConfigurationError,
+    DatabaseError,
+    KnowledgeGraphError,
+)
 from src.database.base import VectorDatabase
 from src.database.factory import create_and_initialize_database
 
@@ -83,8 +88,11 @@ async def initialize_global_context() -> "Crawl4AIContext":
         if settings.use_reranking:
             try:
                 reranking_model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+            except ImportError as e:
+                logger.error(f"Reranking model dependencies not available: {e}")
+                reranking_model = None
             except Exception as e:
-                logger.error(f"Failed to load reranking model: {e}")
+                logger.error(f"Unexpected error loading reranking model: {e}")
                 reranking_model = None
 
         # Initialize Neo4j components if configured and enabled
@@ -122,9 +130,21 @@ async def initialize_global_context() -> "Crawl4AIContext":
                         await repo_extractor.initialize()
                         logger.info("✓ Repository extractor initialized")
 
+                    except KnowledgeGraphError as e:
+                        logger.error(
+                            f"Knowledge graph error initializing Neo4j: {format_neo4j_error(e)}",
+                        )
+                        knowledge_validator = None
+                        repo_extractor = None
+                    except DatabaseError as e:
+                        logger.error(
+                            f"Database error initializing Neo4j: {format_neo4j_error(e)}",
+                        )
+                        knowledge_validator = None
+                        repo_extractor = None
                     except Exception as e:
                         logger.error(
-                            f"Failed to initialize Neo4j components: {format_neo4j_error(e)}",
+                            f"Unexpected error initializing Neo4j components: {format_neo4j_error(e)}",
                         )
                         knowledge_validator = None
                         repo_extractor = None
@@ -191,15 +211,19 @@ async def cleanup_global_context() -> None:
         try:
             await _app_context.knowledge_validator.close()
             logger.info("✓ Knowledge graph validator closed")
+        except KnowledgeGraphError as e:
+            logger.error(f"Knowledge graph error closing validator: {e}", exc_info=True)
         except Exception as e:
-            logger.error(f"Error closing knowledge validator: {e}", exc_info=True)
+            logger.error(f"Unexpected error closing knowledge validator: {e}", exc_info=True)
 
     if _app_context.repo_extractor:
         try:
             await _app_context.repo_extractor.close()
             logger.info("✓ Repository extractor closed")
+        except KnowledgeGraphError as e:
+            logger.error(f"Knowledge graph error closing extractor: {e}", exc_info=True)
         except Exception as e:
-            logger.error(f"Error closing repository extractor: {e}", exc_info=True)
+            logger.error(f"Unexpected error closing repository extractor: {e}", exc_info=True)
 
     _app_context = None
     logger.info("✓ Global application context cleanup completed")

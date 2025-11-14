@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from fastmcp import FastMCP
 
 from src.core import MCPToolError, track_request
+from src.core.exceptions import DatabaseError
 from src.core.context import get_app_context
 from src.database import (
     get_available_sources,
@@ -153,10 +154,14 @@ def register_rag_tools(mcp: "FastMCP") -> None:
         """
         try:
             return await get_available_sources_wrapper(ctx)
-        except Exception as e:
-            logger.exception(f"Error in get_available_sources tool: {e}")
+        except DatabaseError as e:
+            logger.error(f"Database error getting sources: {e}")
             msg = f"Failed to get sources: {e!s}"
-            raise MCPToolError(msg)
+            raise MCPToolError(msg) from e
+        except Exception as e:
+            logger.exception(f"Unexpected error in get_available_sources tool: {e}")
+            msg = f"Failed to get sources: {e!s}"
+            raise MCPToolError(msg) from e
 
     @mcp.tool()
     @track_request("perform_rag_query")
@@ -188,10 +193,14 @@ def register_rag_tools(mcp: "FastMCP") -> None:
                 source=source,
                 match_count=match_count,
             )
-        except Exception as e:
-            logger.exception(f"Error in perform_rag_query tool: {e}")
+        except DatabaseError as e:
+            logger.error(f"Database error in RAG query: {e}")
             msg = f"RAG query failed: {e!s}"
-            raise MCPToolError(msg)
+            raise MCPToolError(msg) from e
+        except Exception as e:
+            logger.exception(f"Unexpected error in perform_rag_query tool: {e}")
+            msg = f"RAG query failed: {e!s}"
+            raise MCPToolError(msg) from e
 
     @mcp.tool()
     @track_request("search_code_examples")
@@ -225,7 +234,11 @@ def register_rag_tools(mcp: "FastMCP") -> None:
                 source_id=source_id,
                 match_count=match_count,
             )
-        except Exception as e:
-            logger.exception(f"Error in search_code_examples tool: {e}")
+        except DatabaseError as e:
+            logger.error(f"Database error in code example search: {e}")
             msg = f"Code example search failed: {e!s}"
-            raise MCPToolError(msg)
+            raise MCPToolError(msg) from e
+        except Exception as e:
+            logger.exception(f"Unexpected error in search_code_examples tool: {e}")
+            msg = f"Code example search failed: {e!s}"
+            raise MCPToolError(msg) from e

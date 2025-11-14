@@ -18,6 +18,8 @@ Functions in this module operate on Neo4j driver instances and handle:
 import logging
 from typing import Any
 
+from src.core.exceptions import QueryError
+
 logger = logging.getLogger(__name__)
 
 
@@ -463,8 +465,13 @@ async def process_modules_in_batches(
                 logger.info(f"Batch {batch_start//batch_size + 1} completed: "
                            f"{batch_nodes} nodes, {batch_rels} relationships")
 
+            except QueryError as e:
+                logger.error(f"Neo4j query error in batch {batch_start//batch_size + 1}: {e}")
+                logger.warning("Attempting to continue with next batch...")
+                # Continue with next batch on error
+                continue
             except Exception as e:
-                logger.exception(f"Error processing batch {batch_start//batch_size + 1}: {e}")
+                logger.exception(f"Unexpected error processing batch {batch_start//batch_size + 1}: {e}")
                 logger.warning("Attempting to continue with next batch...")
                 # Continue with next batch on error
                 continue

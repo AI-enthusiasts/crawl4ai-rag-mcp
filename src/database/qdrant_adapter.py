@@ -5,6 +5,7 @@ Uses Qdrant vector database for similarity search.
 Delegates operations to modular qdrant package functions.
 """
 
+import logging
 import os
 import sys
 from typing import Any
@@ -14,6 +15,9 @@ from qdrant_client.models import Distance, VectorParams
 
 # Import qdrant package modules
 from . import qdrant
+from src.core.exceptions import ConnectionError, VectorStoreError
+
+logger = logging.getLogger(__name__)
 
 
 class QdrantAdapter:
@@ -52,18 +56,35 @@ class QdrantAdapter:
         for collection_name, vector_size in collections:
             try:
                 await self.client.get_collection(collection_name)
-            except Exception:
+            except ConnectionError:
                 # Collection doesn't exist, create it
                 try:
                     await self.client.create_collection(
                         collection_name=collection_name,
                         vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
                     )
+                except VectorStoreError as create_error:
+                    logger.warning(
+                        f"Could not create collection {collection_name}: {create_error}",
+                    )
                 except Exception as create_error:
-                    # Log error but continue - collection might already exist
-                    print(
-                        f"Warning: Could not create collection {collection_name}: {create_error}",
-                        file=sys.stderr,
+                    logger.exception(
+                        f"Unexpected error creating collection {collection_name}: {create_error}",
+                    )
+            except Exception:
+                # Collection doesn't exist or other error, try to create it
+                try:
+                    await self.client.create_collection(
+                        collection_name=collection_name,
+                        vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+                    )
+                except VectorStoreError as create_error:
+                    logger.warning(
+                        f"Could not create collection {collection_name}: {create_error}",
+                    )
+                except Exception as create_error:
+                    logger.exception(
+                        f"Unexpected error creating collection {collection_name}: {create_error}",
                     )
 
     # Document operations - delegate to qdrant.operations

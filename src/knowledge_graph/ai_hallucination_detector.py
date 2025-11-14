@@ -13,8 +13,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from src.knowledge_graph.ai_script_analyzer import AIScriptAnalyzer
 from dotenv import load_dotenv
+
+from src.core.exceptions import ParsingError, AnalysisError, QueryError
+from src.knowledge_graph.ai_script_analyzer import AIScriptAnalyzer
 from src.knowledge_graph.hallucination_reporter import HallucinationReporter
 from src.knowledge_graph.knowledge_graph_validator import KnowledgeGraphValidator
 
@@ -121,8 +123,11 @@ class AIHallucinationDetector:
             logger.info("Hallucination detection completed successfully")
             return report
 
+        except (ParsingError, AnalysisError, QueryError) as e:
+            logger.error(f"Analysis/Query error during hallucination detection: {e!s}")
+            raise
         except Exception as e:
-            logger.exception(f"Error during hallucination detection: {e!s}")
+            logger.exception(f"Unexpected error during hallucination detection: {e!s}")
             raise
 
     async def batch_detect(self, script_paths: list[str],
@@ -151,8 +156,12 @@ class AIHallucinationDetector:
                 )
                 results.append(result)
 
+            except (ParsingError, AnalysisError, QueryError) as e:
+                logger.error(f"Analysis/Query error processing {script_path}: {e!s}")
+                # Continue with other scripts
+                continue
             except Exception as e:
-                logger.exception(f"Failed to process {script_path}: {e!s}")
+                logger.exception(f"Unexpected error processing {script_path}: {e!s}")
                 # Continue with other scripts
                 continue
 
@@ -324,8 +333,12 @@ Examples:
         logger.info("Detection interrupted by user")
         sys.exit(1)
 
+    except (ParsingError, AnalysisError, QueryError) as e:
+        logger.error(f"Analysis/Query error - detection failed: {e!s}")
+        sys.exit(1)
+
     except Exception as e:
-        logger.exception(f"Detection failed: {e!s}")
+        logger.exception(f"Unexpected error - detection failed: {e!s}")
         sys.exit(1)
 
     finally:

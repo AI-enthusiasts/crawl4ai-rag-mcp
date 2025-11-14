@@ -8,6 +8,8 @@ from typing import Any
 import openai
 from anyio.to_thread import run_sync as run_in_thread
 
+from src.core.exceptions import EmbeddingError, LLMError
+
 
 def _get_embedding_dimensions(model: str) -> int:
     """
@@ -61,10 +63,10 @@ def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
                 input=texts,
             )
             return [item.embedding for item in response.data]
-        except Exception as e:
+        except EmbeddingError as e:
             if retry < max_retries - 1:
                 logger.error(
-                    "Error creating batch embeddings (attempt %d/%d): %s",
+                    "Embedding error (attempt %d/%d): %s",
                     retry + 1,
                     max_retries,
                     str(e),
@@ -91,15 +93,56 @@ def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
                         )
                         embeddings.append(individual_response.data[0].embedding)
                         successful_count += 1
-                    except Exception as individual_error:
+                    except EmbeddingError as individual_error:
                         logger.error(
-                            "Failed to create embedding for text %d: %s",
+                            "Embedding error for text %d: %s",
                             i,
                             str(individual_error),
                         )
                         # Add zero embedding as fallback
                         dimensions = _get_embedding_dimensions(model)
                         embeddings.append([0.0] * dimensions)
+                    except Exception as individual_error:
+                        logger.error(
+                            "Unexpected error creating embedding for text %d: %s",
+                            i,
+                            str(individual_error),
+                        )
+                        # Add zero embedding as fallback
+                        dimensions = _get_embedding_dimensions(model)
+                        embeddings.append([0.0] * dimensions)
+
+                logger.info(
+                    "Successfully created %d/%d embeddings individually",
+                    successful_count,
+                    len(texts),
+                )
+                return embeddings
+        except Exception as e:
+            if retry < max_retries - 1:
+                logger.error(
+                    "Error creating batch embeddings (attempt %d/%d): %s",
+                    retry + 1,
+                    max_retries,
+                    str(e),
+                )
+                logger.info("Retrying in %s seconds...", retry_delay)
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                logger.error(
+                    "Failed to create batch embeddings after %d attempts: %s",
+                    max_retries,
+                    str(e),
+                )
+                # Try creating embeddings one by one as fallback
+                logger.info("Attempting to create embeddings individually...")
+                embeddings: list[list[float]] = []
+                successful_count = 0
+
+                for i, text in enumerate(texts):
+                    # This block is now handled above in the EmbeddingError catch
+                    pass
 
                 logger.info(
                     "Successfully created %d/%d embeddings individually",
@@ -132,8 +175,14 @@ def create_embedding(text: str) -> list[float]:
         model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
         dimensions = _get_embedding_dimensions(model)
         return [0.0] * dimensions
+    except EmbeddingError as e:
+        logger.error("Embedding error creating single embedding: %s", str(e))
+        # Return empty embedding with dynamic dimensions
+        model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+        dimensions = _get_embedding_dimensions(model)
+        return [0.0] * dimensions
     except Exception as e:
-        logger.error("Error creating embedding: %s", str(e))
+        logger.error("Unexpected error creating embedding: %s", str(e))
         # Return empty embedding with dynamic dimensions
         model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
         dimensions = _get_embedding_dimensions(model)
@@ -247,10 +296,15 @@ Please give a short succinct context to situate this chunk within the overall do
         # Combine the context with the original chunk
         return f"{context}\n---\n{chunk}"
 
-
+    except LLMError as e:
+        logger.error(
+            "LLM error generating contextual embedding: %s. Using original chunk instead.",
+            str(e),
+        )
+        return chunk
     except Exception as e:
         logger.error(
-            "Error generating contextual embedding: %s. Using original chunk instead.",
+            "Unexpected error generating contextual embedding: %s. Using original chunk instead.",
             str(e),
         )
         return chunk
@@ -344,9 +398,25 @@ async def add_documents_to_database(
                         contextual_contents[index] = contextual_text
                         embeddings[index] = embedding
                         successful_contextual_count += 1
+                    except LLMError as e:
+                        logger.warning(
+                            f"LLM error generating contextual embedding for chunk {index}: {e}. Using original content.",
+                        )
+                        # Keep original content and generate standard embedding
+                        embedding = create_embedding(contents[index])
+                        embeddings[index] = embedding
+                        failed_contextual_count += 1
+                    except EmbeddingError as e:
+                        logger.warning(
+                            f"Embedding error for chunk {index}: {e}. Using original content.",
+                        )
+                        # Keep original content and generate standard embedding
+                        embedding = create_embedding(contents[index])
+                        embeddings[index] = embedding
+                        failed_contextual_count += 1
                     except Exception as e:
                         logger.warning(
-                            f"Failed to generate contextual embedding for chunk {index}: {e}. Using original content.",
+                            f"Unexpected error generating contextual embedding for chunk {index}: {e}. Using original content.",
                         )
                         # Keep original content and generate standard embedding
                         embedding = create_embedding(contents[index])
@@ -366,9 +436,37 @@ async def add_documents_to_database(
                     f"Contextual embedding processing: {successful_contextual_count} successful, {failed_contextual_count} failed",
                 )
 
+            except LLMError as e:
+                logger.error(
+                    f"LLM error during contextual embedding processing: {e}. Falling back to standard embeddings.",
+                )
+                # Fall back to standard embedding generation for all
+
+                embeddings = []
+                for i in range(0, len(contents), batch_size):
+                    batch_texts = contents[i : i + batch_size]
+                    # Run in thread to avoid blocking event loop
+                    batch_embeddings = await run_in_thread(
+                        create_embeddings_batch, batch_texts,
+                    )
+                    embeddings.extend(batch_embeddings)
+            except EmbeddingError as e:
+                logger.error(
+                    f"Embedding error during contextual embedding processing: {e}. Falling back to standard embeddings.",
+                )
+                # Fall back to standard embedding generation for all
+
+                embeddings = []
+                for i in range(0, len(contents), batch_size):
+                    batch_texts = contents[i : i + batch_size]
+                    # Run in thread to avoid blocking event loop
+                    batch_embeddings = await run_in_thread(
+                        create_embeddings_batch, batch_texts,
+                    )
+                    embeddings.extend(batch_embeddings)
             except Exception as e:
                 logger.error(
-                    f"Error during contextual embedding processing: {e}. Falling back to standard embeddings.",
+                    f"Unexpected error during contextual embedding processing: {e}. Falling back to standard embeddings.",
                 )
                 # Fall back to standard embedding generation for all
 
@@ -605,8 +703,12 @@ async def _add_web_sources_to_database(
                 else:
                     logger.warning("Database adapter does not support adding sources")
 
+            except EmbeddingError as e:
+                logger.warning(f"Embedding error adding web source {source_id}: {e}")
             except Exception as e:
-                logger.warning(f"Failed to add web source {source_id}: {e}")
+                logger.warning(f"Unexpected error adding web source {source_id}: {e}")
 
+    except EmbeddingError as e:
+        logger.error(f"Embedding error adding web sources to database: {e}")
     except Exception as e:
-        logger.error(f"Error adding web sources to database: {e}")
+        logger.error(f"Unexpected error adding web sources to database: {e}")

@@ -10,6 +10,8 @@ import os
 
 from neo4j import AsyncGraphDatabase
 
+from src.core.exceptions import QueryError
+
 from .handlers import (
     handle_class_command,
     handle_classes_command,
@@ -128,8 +130,17 @@ async def query_knowledge_graph(command: str) -> str:
                 indent=2,
             )
 
+    except QueryError as e:
+        logger.error(f"Neo4j query failed: {e}")
+        return json.dumps(
+            {
+                "success": False,
+                "error": f"Knowledge graph query failed: {e!s}",
+            },
+            indent=2,
+        )
     except Exception as e:
-        logger.exception(f"Error in query_knowledge_graph: {e}")
+        logger.exception(f"Unexpected error in query_knowledge_graph: {e}")
         return json.dumps(
             {
                 "success": False,

@@ -23,6 +23,8 @@ from collections.abc import Callable
 from dotenv import load_dotenv
 from neo4j import AsyncGraphDatabase, AsyncDriver
 
+from src.core.exceptions import GitError, ParsingError, AnalysisError, RepositoryError
+
 # Import analyzer components for multi-language support
 from .analyzers import Neo4jCodeAnalyzer
 from .analyzers.factory import AnalyzerFactory
@@ -138,8 +140,11 @@ class DirectNeo4jExtractor:
                 return True, info
 
             return is_valid, info
+        except RepositoryError as e:
+            logger.error(f"Repository validation failed: {e}")
+            return False, {"errors": [str(e)]}
         except Exception as e:
-            logger.exception(f"Error during validation: {e}")
+            logger.exception(f"Unexpected error during validation: {e}")
             return False, {"errors": [str(e)]}
 
     async def clone_repo(self, repo_url: str, target_dir: str, branch: str | None = None, force: bool = False) -> str:
@@ -177,6 +182,9 @@ class DirectNeo4jExtractor:
             except RuntimeError:
                 # Re-raise validation errors
                 raise
+            except GitError as e:
+                logger.error(f"Git operation failed: {e}")
+                raise
             except Exception as e:
                 logger.warning(f"GitRepositoryManager failed, falling back to subprocess: {e}")
 
@@ -201,9 +209,14 @@ class DirectNeo4jExtractor:
             cmd.extend(["--branch", branch])
         cmd.extend([repo_url, target_dir])
 
-        subprocess.run(cmd, check=True)
-        logger.info("Repository cloned successfully")
-        return target_dir
+        try:
+            subprocess.run(cmd, check=True)
+            logger.info("Repository cloned successfully")
+            return target_dir
+        except subprocess.CalledProcessError as e:
+            msg = f"Git clone failed: {e}"
+            logger.error(msg)
+            raise GitError(msg) from e
 
     async def get_repository_metadata(self, repo_dir: str) -> dict[str, Any]:
         """Extract Git repository metadata using GitRepositoryManager"""
@@ -236,8 +249,11 @@ class DirectNeo4jExtractor:
 
                 logger.info(f"Successfully extracted Git metadata: {len(metadata['branches'])} branches, "
                           f"{len(metadata['tags'])} tags, {len(metadata['recent_commits'])} commits")
+            except GitError as e:
+                logger.error(f"Git operation failed during metadata extraction: {e}")
+                logger.warning("Continuing without Git metadata")
             except Exception as e:
-                logger.error(f"Failed to extract Git metadata: {e}", exc_info=True)
+                logger.exception(f"Unexpected error extracting Git metadata: {e}")
                 logger.warning("Continuing without Git metadata")
         else:
             logger.warning("GitRepositoryManager not available - skipping Git metadata extraction")
@@ -443,6 +459,8 @@ class DirectNeo4jExtractor:
                 except Exception as e:
                     logger.warning(f"Cleanup failed: {e}. Directory may remain at {temp_dir}")
                     # Don't fail the whole process due to cleanup issues
+                except GitError as e:
+                    logger.error(f"Git-related cleanup failed: {e}")
 
 
     async def analyze_local_repository(self, local_path: str, repo_name: str) -> None:
@@ -547,8 +565,10 @@ class DirectNeo4jExtractor:
 
                     logger.info(f"Collected metadata: {len(branches)} branches, {len(commits)} commits")
 
+                except GitError as e:
+                    logger.error(f"Git operation failed during metadata collection: {e}")
                 except Exception as e:
-                    logger.warning(f"Failed to collect Git metadata: {e}")
+                    logger.exception(f"Unexpected error collecting Git metadata: {e}")
 
             # Create Neo4j graph
             logger.info("Creating Neo4j graph...")
@@ -556,8 +576,11 @@ class DirectNeo4jExtractor:
 
             logger.info(f"Analysis complete for local repository: {repo_name}")
 
+        except (GitError, ParsingError, AnalysisError, RepositoryError) as e:
+            logger.error(f"Analysis failed for local repository {local_path}: {e}")
+            raise
         except Exception as e:
-            logger.exception(f"Error analyzing local repository {local_path}: {e}")
+            logger.exception(f"Unexpected error analyzing local repository {local_path}: {e}")
             raise
     async def _create_graph(self, repo_name: str, modules_data: list[dict[str, Any]], git_metadata: dict[str, Any] | None = None) -> None:
         """Delegate to neo4j.create_graph"""
