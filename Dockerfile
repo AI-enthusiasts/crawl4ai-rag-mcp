@@ -127,6 +127,7 @@ LABEL org.opencontainers.image.version="0.1.0"
 # Environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8051
+ENV PYTHONPATH=/app
 
 # Switch to non-root user
 USER appuser
