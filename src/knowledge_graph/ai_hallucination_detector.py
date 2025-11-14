@@ -11,11 +11,12 @@ import logging
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
-from ai_script_analyzer import AIScriptAnalyzer
+from src.knowledge_graph.ai_script_analyzer import AIScriptAnalyzer
 from dotenv import load_dotenv
-from hallucination_reporter import HallucinationReporter
-from knowledge_graph_validator import KnowledgeGraphValidator
+from src.knowledge_graph.hallucination_reporter import HallucinationReporter
+from src.knowledge_graph.knowledge_graph_validator import KnowledgeGraphValidator
 
 # Configure logging
 logging.basicConfig(
@@ -34,12 +35,12 @@ class AIHallucinationDetector:
         self.reporter = HallucinationReporter()
         self.analyzer = AIScriptAnalyzer()
 
-    async def initialize(self):
+    async def initialize(self) -> None:
         """Initialize connections and components"""
         await self.validator.initialize()
         logger.info("AI Hallucination Detector initialized successfully")
 
-    async def close(self):
+    async def close(self) -> None:
         """Close connections"""
         await self.validator.close()
 
@@ -47,7 +48,7 @@ class AIHallucinationDetector:
                                   output_dir: str | None = None,
                                   save_json: bool = True,
                                   save_markdown: bool = True,
-                                  print_summary: bool = True) -> dict:
+                                  print_summary: bool = True) -> dict[str, Any]:
         """
         Main detection function that analyzes a script and generates reports
 
@@ -125,7 +126,7 @@ class AIHallucinationDetector:
             raise
 
     async def batch_detect(self, script_paths: list[str],
-                          output_dir: str | None = None) -> list[dict]:
+                          output_dir: str | None = None) -> list[dict[str, Any]]:
         """
         Detect hallucinations in multiple scripts
 
@@ -160,7 +161,7 @@ class AIHallucinationDetector:
 
         return results
 
-    def _print_batch_summary(self, results: list[dict]):
+    def _print_batch_summary(self, results: list[dict[str, Any]]) -> None:
         """Print summary of batch processing results"""
         if not results:
             print("No scripts were successfully processed.")
@@ -201,7 +202,7 @@ class AIHallucinationDetector:
         print("="*80)
 
 
-async def main():
+async def main() -> None:
     """Command-line interface for the AI Hallucination Detector"""
     parser = argparse.ArgumentParser(
         description="Detect AI coding assistant hallucinations in Python scripts",

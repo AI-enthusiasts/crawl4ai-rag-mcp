@@ -7,6 +7,7 @@ repository method information.
 
 import logging
 from dataclasses import dataclass, field
+from typing import Any, Callable
 
 from ..ai_script_analyzer import MethodCall
 from . import ValidationResult, ValidationStatus
@@ -28,15 +29,15 @@ class MethodValidation:
     validation: ValidationResult
     expected_params: list[str] = field(default_factory=list)
     actual_params: list[str] = field(default_factory=list)
-    parameter_validation: ValidationResult = None
+    parameter_validation: ValidationResult | None = None
 
 
 async def validate_method_calls(
     method_calls: list[MethodCall],
-    find_method,
-    find_similar_methods,
-    validate_parameters,
-    is_from_knowledge_graph,
+    find_method: Callable[..., Any],
+    find_similar_methods: Callable[..., Any],
+    validate_parameters: Callable[..., Any],
+    is_from_knowledge_graph: Callable[..., Any],
     knowledge_graph_modules: set[str],
 ) -> list[MethodValidation]:
     """
@@ -71,10 +72,10 @@ async def validate_method_calls(
 
 async def validate_single_method_call(
     method_call: MethodCall,
-    find_method,
-    find_similar_methods,
-    validate_parameters,
-    is_from_knowledge_graph,
+    find_method: Callable[..., Any],
+    find_similar_methods: Callable[..., Any],
+    validate_parameters: Callable[..., Any],
+    is_from_knowledge_graph: Callable[..., Any],
     knowledge_graph_modules: set[str],
 ) -> MethodValidation:
     """

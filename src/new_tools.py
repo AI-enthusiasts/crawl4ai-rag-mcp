@@ -1,5 +1,13 @@
-from src.core import track_request
+import logging
+from typing import Any
+
+from fastmcp import Context
+
+from src.core import get_app_context, track_request
+from src.database import get_available_sources, perform_rag_query
 from src.main import mcp
+
+logger = logging.getLogger(__name__)
 
 
 @mcp.tool()
@@ -153,7 +161,7 @@ async def parse_local_repository(
 async def analyze_code_cross_language(
     ctx: Context,
     query: str,
-    languages: list[str] | None = None,
+    languages: list[str] | str | None = None,
     match_count: int = 10,
     source_filter: str | None = None,
     include_file_context: bool = True,
@@ -260,7 +268,7 @@ async def analyze_code_cross_language(
             )
 
         # Organize results by language
-        results_by_language = {}
+        results_by_language: dict[str, list[dict[str, Any]]] = {}
 
         for result in rag_data.get("results", []):
             # Extract language information from metadata or URL

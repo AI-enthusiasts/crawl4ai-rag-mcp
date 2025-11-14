@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 async def create_graph(
     driver: Any,
     repo_name: str,
-    modules_data: list[dict],
-    git_metadata: dict | None = None,
+    modules_data: list[dict[str, Any]],
+    git_metadata: dict[str, Any] | None = None,
 ) -> None:
     """Create all nodes and relationships in Neo4j.
 
@@ -411,7 +411,7 @@ async def create_graph(
 async def process_modules_in_batches(
     driver: Any,
     repo_name: str,
-    modules_data: list[dict],
+    modules_data: list[dict[str, Any]],
     batch_size: int | None = None,
     batch_timeout_seconds: int = 120,
 ) -> tuple[int, int]:
@@ -476,7 +476,7 @@ async def process_batch_transaction(
     driver: Any,
     tx: Any,
     repo_name: str,
-    batch: list[dict],
+    batch: list[dict[str, Any]],
     batch_start: int,
     total_modules: int,
 ) -> tuple[int, int]:

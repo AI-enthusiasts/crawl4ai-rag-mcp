@@ -5,10 +5,10 @@ Search operations for documents in Qdrant vector database.
 All functions are standalone and accept QdrantClient as first parameter.
 """
 
-from typing import Any
+from typing import Any, Sequence, cast
 
 from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import FieldCondition, Filter, MatchValue
+from qdrant_client.models import Condition, FieldCondition, Filter, MatchValue
 
 # Constants
 CRAWLED_PAGES = "crawled_pages"
@@ -45,7 +45,7 @@ async def search_documents(
     # Create filter if conditions exist
     search_filter = None
     if filter_conditions:
-        search_filter = Filter(must=filter_conditions)
+        search_filter = Filter(must=cast(Sequence[Condition], filter_conditions))
 
     # Perform search
     results = await client.search(
@@ -58,6 +58,8 @@ async def search_documents(
     # Format results
     formatted_results = []
     for result in results:
+        if result.payload is None:
+            continue
         doc = result.payload.copy()
         doc["similarity"] = result.score  # Interface expects "similarity"
         doc["id"] = result.id
@@ -91,7 +93,7 @@ async def search_documents_by_keyword(
             ),
         )
 
-    search_filter = Filter(must=filter_conditions)
+    search_filter = Filter(must=cast(Sequence[Condition], filter_conditions))
 
     # Use scroll to find matching documents
     points, _ = await client.scroll(
@@ -103,6 +105,8 @@ async def search_documents_by_keyword(
     # Format results
     formatted_results = []
     for point in points[:match_count]:
+        if point.payload is None:
+            continue
         doc = point.payload.copy()
         doc["id"] = point.id
         formatted_results.append(doc)
@@ -131,7 +135,7 @@ async def search(
         List of matching documents with similarity scores
     """
     # Generate embedding for the query
-    from utils import create_embedding
+    from src.utils import create_embedding
 
     query_embedding = create_embedding(query)
 

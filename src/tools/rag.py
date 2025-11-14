@@ -16,13 +16,13 @@ from fastmcp import Context
 if TYPE_CHECKING:
     from fastmcp import FastMCP
 
-from core import MCPToolError, track_request
-from core.context import get_app_context
-from database import (
+from src.core import MCPToolError, track_request
+from src.core.context import get_app_context
+from src.database import (
     get_available_sources,
     perform_rag_query,
 )
-from database import (
+from src.database import (
     search_code_examples as search_code_examples_db,
 )
 
@@ -51,7 +51,7 @@ async def get_available_sources_wrapper(ctx: Context) -> str:
             indent=2,
         )
 
-    return await get_available_sources(app_ctx.database_client)  # type: ignore[no-any-return]
+    return await get_available_sources(app_ctx.database_client)
 
 
 async def perform_rag_query_wrapper(
@@ -81,7 +81,7 @@ async def perform_rag_query_wrapper(
             indent=2,
         )
 
-    return await perform_rag_query(  # type: ignore[no-any-return]
+    return await perform_rag_query(
         app_ctx.database_client,
         query=query,
         source=source,
@@ -116,7 +116,7 @@ async def search_code_examples_wrapper(
             indent=2,
         )
 
-    return await search_code_examples_db(  # type: ignore[no-any-return]
+    return await search_code_examples_db(
         app_ctx.database_client,
         query=query,
         source_id=source_id,
@@ -132,7 +132,7 @@ def register_rag_tools(mcp: "FastMCP") -> None:
         mcp: FastMCP instance to register tools with
     """
 
-    @mcp.tool()  # type: ignore[misc]
+    @mcp.tool()
     @track_request("get_available_sources")
     async def get_available_sources(ctx: Context) -> str:
         """
@@ -158,7 +158,7 @@ def register_rag_tools(mcp: "FastMCP") -> None:
             msg = f"Failed to get sources: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()  # type: ignore[misc]
+    @mcp.tool()
     @track_request("perform_rag_query")
     async def perform_rag_query(
         ctx: Context,
@@ -193,7 +193,7 @@ def register_rag_tools(mcp: "FastMCP") -> None:
             msg = f"RAG query failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()  # type: ignore[misc]
+    @mcp.tool()
     @track_request("search_code_examples")
     async def search_code_examples(
         ctx: Context,

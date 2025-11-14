@@ -5,7 +5,7 @@ from xml.etree import ElementTree as ET
 
 import httpx
 
-from core.logging import logger
+from src.core.logging import logger
 
 
 def is_sitemap(url: str) -> bool:

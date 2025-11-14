@@ -10,7 +10,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from knowledge_graph_validator import (
+from src.knowledge_graph.knowledge_graph_validator import (
     ScriptValidationResult,
     ValidationStatus,
 )

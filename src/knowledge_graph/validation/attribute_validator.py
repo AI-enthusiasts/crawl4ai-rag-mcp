@@ -7,6 +7,7 @@ repository attribute information.
 
 import logging
 from dataclasses import dataclass
+from typing import Any, Callable
 
 from ..ai_script_analyzer import AttributeAccess
 from . import ValidationResult, ValidationStatus
@@ -31,9 +32,9 @@ class AttributeValidation:
 
 async def validate_attribute_accesses(
     attribute_accesses: list[AttributeAccess],
-    find_attribute,
-    find_method,
-    is_from_knowledge_graph,
+    find_attribute: Callable[..., Any],
+    find_method: Callable[..., Any],
+    is_from_knowledge_graph: Callable[..., Any],
     knowledge_graph_modules: set[str],
 ) -> list[AttributeValidation]:
     """
@@ -66,9 +67,9 @@ async def validate_attribute_accesses(
 
 async def validate_single_attribute_access(
     attr_access: AttributeAccess,
-    find_attribute,
-    find_method,
-    is_from_knowledge_graph,
+    find_attribute: Callable[..., Any],
+    find_method: Callable[..., Any],
+    is_from_knowledge_graph: Callable[..., Any],
     knowledge_graph_modules: set[str],
 ) -> AttributeValidation:
     """

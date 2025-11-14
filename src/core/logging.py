@@ -12,7 +12,7 @@ request_id_ctx: ContextVar[str | None] = ContextVar("request_id", default=None)
 class RequestIdFilter(logging.Filter):
     """Logging filter that adds request_id to log records."""
 
-    def filter(self, record):
+    def filter(self, record: logging.LogRecord) -> bool:
         """Add request_id to the log record if available."""
         request_id = request_id_ctx.get()
         record.request_id = f"[{request_id}] " if request_id else ""

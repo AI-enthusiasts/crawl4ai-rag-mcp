@@ -7,6 +7,7 @@ repository information.
 
 import logging
 from dataclasses import dataclass, field
+from typing import Any, Callable
 
 from ..ai_script_analyzer import ImportInfo
 from . import ValidationResult, ValidationStatus
@@ -28,8 +29,8 @@ class ImportValidation:
 
 async def validate_imports(
     imports: list[ImportInfo],
-    find_modules,
-    get_module_contents,
+    find_modules: Callable[..., Any],
+    get_module_contents: Callable[..., Any],
     module_cache: dict[str, list[str]],
     knowledge_graph_modules: set[str],
 ) -> list[ImportValidation]:
@@ -63,8 +64,8 @@ async def validate_imports(
 
 async def validate_single_import(
     import_info: ImportInfo,
-    find_modules,
-    get_module_contents,
+    find_modules: Callable[..., Any],
+    get_module_contents: Callable[..., Any],
     module_cache: dict[str, list[str]],
     knowledge_graph_modules: set[str],
 ) -> ImportValidation:

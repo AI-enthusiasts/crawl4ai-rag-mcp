@@ -18,9 +18,10 @@ import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
+from collections.abc import Callable
 
 from dotenv import load_dotenv
-from neo4j import AsyncGraphDatabase
+from neo4j import AsyncGraphDatabase, AsyncDriver
 
 # Import analyzer components for multi-language support
 from .analyzers import Neo4jCodeAnalyzer
@@ -48,10 +49,10 @@ class DirectNeo4jExtractor:
         self.neo4j_uri = neo4j_uri
         self.neo4j_user = neo4j_user
         self.neo4j_password = neo4j_password
-        self.driver = None
+        self.driver: AsyncDriver | None = None
         self.analyzer = Neo4jCodeAnalyzer()
         # Initialize GitRepositoryManager for Git metadata collection
-        self.git_manager = GitRepositoryManager()
+        self.git_manager: GitRepositoryManager = GitRepositoryManager()
         # Initialize analyzer factory for multi-language support
         self.analyzer_factory = AnalyzerFactory()
         # Transaction batching configuration
@@ -69,7 +70,7 @@ class DirectNeo4jExtractor:
         logger.info(f"Repository limits - Max size: {self.repo_max_size_mb}MB, Max files: {self.repo_max_file_count}, "
                    f"Min free space: {self.repo_min_free_space_gb}GB, Allow override: {self.repo_allow_size_override}")
 
-    async def initialize(self):
+    async def initialize(self) -> None:
         """Initialize Neo4j connection"""
         logger.info("Initializing Neo4j connection...")
 
@@ -97,16 +98,16 @@ class DirectNeo4jExtractor:
         #     await session.run("MATCH (n) DETACH DELETE n")
         logger.info("Neo4j connection initialized successfully")
 
-    async def clear_repository_data(self, repo_name: str):
+    async def clear_repository_data(self, repo_name: str) -> None:
         """Delegate to neo4j.clear_repository_data"""
         await clear_repository_data(self.driver, repo_name)
 
-    async def close(self):
+    async def close(self) -> None:
         """Close Neo4j connection"""
         if self.driver:
             await self.driver.close()
 
-    async def validate_before_processing(self, repo_url: str) -> tuple[bool, dict]:
+    async def validate_before_processing(self, repo_url: str) -> tuple[bool, dict[str, Any]]:
         """
         Validate repository before processing.
 
@@ -183,7 +184,7 @@ class DirectNeo4jExtractor:
         if os.path.exists(target_dir):
             logger.info(f"Removing existing directory: {target_dir}")
             try:
-                def handle_remove_readonly(func, path, exc):
+                def handle_remove_readonly(func: Callable[[str], None], path: str, exc: Any) -> None:
                     try:
                         if os.path.exists(path):
                             os.chmod(path, 0o777)
@@ -204,9 +205,9 @@ class DirectNeo4jExtractor:
         logger.info("Repository cloned successfully")
         return target_dir
 
-    async def get_repository_metadata(self, repo_dir: str) -> dict:
+    async def get_repository_metadata(self, repo_dir: str) -> dict[str, Any]:
         """Extract Git repository metadata using GitRepositoryManager"""
-        metadata = {
+        metadata: dict[str, Any] = {
             "branches": [],
             "tags": [],
             "recent_commits": [],
@@ -266,7 +267,7 @@ class DirectNeo4jExtractor:
 
     def get_code_files(self, repo_path: str) -> dict[str, list[Path]]:
         """Get all supported code files, organized by language"""
-        code_files = {
+        code_files: dict[str, list[Path]] = {
             "python": [],
             "javascript": [],
             "typescript": [],
@@ -312,7 +313,7 @@ class DirectNeo4jExtractor:
 
         return code_files
 
-    async def analyze_repository(self, repo_url: str, temp_dir: str | None = None, branch: str | None = None, force: bool = False):
+    async def analyze_repository(self, repo_url: str, temp_dir: str | None = None, branch: str | None = None, force: bool = False) -> None:
         """Analyze repository and create nodes/relationships in Neo4j
 
         Args:
@@ -429,7 +430,7 @@ class DirectNeo4jExtractor:
             if os.path.exists(temp_dir):
                 logger.info(f"Cleaning up temporary directory: {temp_dir}")
                 try:
-                    def handle_remove_readonly(func, path, exc):
+                    def handle_remove_readonly(func: Callable[[str], None], path: str, exc: Any) -> None:
                         try:
                             if os.path.exists(path):
                                 os.chmod(path, 0o777)
@@ -444,7 +445,7 @@ class DirectNeo4jExtractor:
                     # Don't fail the whole process due to cleanup issues
 
 
-    async def analyze_local_repository(self, local_path: str, repo_name: str):
+    async def analyze_local_repository(self, local_path: str, repo_name: str) -> None:
         """
         Analyze a local Git repository without cloning.
 
@@ -477,7 +478,7 @@ class DirectNeo4jExtractor:
             project_modules = set()
             for file_path in code_files.get("python", []):
                 module_name = self.analyzer._get_importable_module_name(
-                    Path(file_path), repo_path, Path(file_path).relative_to(repo_path),
+                    Path(file_path), repo_path, str(Path(file_path).relative_to(repo_path)),
                 )
                 if module_name and not module_name.startswith("test") and "__pycache__" not in module_name:
                     project_modules.add(module_name.split(".")[0])
@@ -508,9 +509,9 @@ class DirectNeo4jExtractor:
                             )
                         else:
                             # Use appropriate analyzer for other languages
-                            module_data = analyzer.analyze_file(
-                                file_path_obj, repo_path,
-                            )
+                            module_data = await analyzer.analyze_file(
+                                str(file_path_obj), str(repo_path),
+                            ) if analyzer else None
 
                         if module_data:
                             # Add language information
@@ -558,15 +559,16 @@ class DirectNeo4jExtractor:
         except Exception as e:
             logger.exception(f"Error analyzing local repository {local_path}: {e}")
             raise
-    async def _create_graph(self, repo_name: str, modules_data: list[dict], git_metadata: dict | None = None):
+    async def _create_graph(self, repo_name: str, modules_data: list[dict[str, Any]], git_metadata: dict[str, Any] | None = None) -> None:
         """Delegate to neo4j.create_graph"""
         await create_graph(self.driver, repo_name, modules_data, git_metadata)
-    async def search_graph(self, query_type: str, **kwargs):
+
+    async def search_graph(self, query_type: str, **kwargs: Any) -> list[dict[str, Any]] | None:
         """Delegate to neo4j.search_graph"""
         return await search_graph(self.driver, query_type, **kwargs)
 
 
-async def main():
+async def main() -> None:
     """Example usage"""
     load_dotenv()
 
@@ -589,21 +591,24 @@ async def main():
 
         # Which files import from models?
         results = await extractor.search_graph("files_importing", target="models")
-        print(f"\\nFiles importing from 'models': {len(results)}")
-        for result in results[:3]:
-            print(f"- {result['file']} imports {result['imports']}")
+        if results:
+            print(f"\\nFiles importing from 'models': {len(results)}")
+            for result in results[:3]:
+                print(f"- {result['file']} imports {result['imports']}")
 
         # What classes are in a specific file?
         results = await extractor.search_graph("classes_in_file", file_path="pydantic_ai/models/openai.py")
-        print(f"\\nClasses in openai.py: {len(results)}")
-        for result in results:
-            print(f"- {result['class_name']}")
+        if results:
+            print(f"\\nClasses in openai.py: {len(results)}")
+            for result in results:
+                print(f"- {result['class_name']}")
 
         # What methods does OpenAIModel have?
         results = await extractor.search_graph("methods_of_class", class_name="OpenAIModel")
-        print(f"\\nMethods of OpenAIModel: {len(results)}")
-        for result in results[:5]:
-            print(f"- {result['method_name']}({', '.join(result['args'])})")
+        if results:
+            print(f"\\nMethods of OpenAIModel: {len(results)}")
+            for result in results[:5]:
+                print(f"- {result['method_name']}({', '.join(result['args'])})")
 
     finally:
         await extractor.close()

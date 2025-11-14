@@ -1,11 +1,12 @@
 """Neo4j repository cleanup operations"""
 
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-async def clear_repository_data(driver, repo_name: str):
+async def clear_repository_data(driver: Any, repo_name: str) -> None:
     """Clear all data for a specific repository with production-ready error handling and transaction management.
 
     This method uses a single Neo4j transaction to ensure atomicity - either all cleanup operations

@@ -13,7 +13,7 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Any
 
-from config import get_settings
+from src.config import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()

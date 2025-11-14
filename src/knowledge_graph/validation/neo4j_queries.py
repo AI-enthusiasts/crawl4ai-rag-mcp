@@ -89,7 +89,7 @@ async def get_module_contents(driver: Any, module_name: str) -> tuple[list[str],
         record = await result.single()
 
         if record:
-            repo_name = record["repo_name"]
+            repo_name: str | None = str(record["repo_name"])
         else:
             # Fallback to repository name matching
             repo_query = """
@@ -163,7 +163,7 @@ async def find_repository_for_module(
         record = await result.single()
 
         if record:
-            repo_name = record["repo_name"]
+            repo_name: str | None = str(record["repo_name"])
         else:
             # Fallback to repository name matching
             query = """
@@ -186,7 +186,7 @@ async def find_repository_for_module(
             result = await session.run(query, module_name=module_name)
             record = await result.single()
 
-            repo_name = record["repo_name"] if record else None
+            repo_name = str(record["repo_name"]) if record else None
 
         repo_cache[module_name] = repo_name
         return repo_name

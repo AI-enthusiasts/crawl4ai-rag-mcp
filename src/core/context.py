@@ -9,9 +9,9 @@ from crawl4ai import BrowserConfig, MemoryAdaptiveDispatcher
 from fastmcp import FastMCP
 from sentence_transformers import CrossEncoder
 
-from config import get_settings
-from database.base import VectorDatabase
-from database.factory import create_and_initialize_database
+from src.config import get_settings
+from src.database.base import VectorDatabase
+from src.database.factory import create_and_initialize_database
 
 from .logging import logger
 
@@ -93,10 +93,10 @@ async def initialize_global_context() -> "Crawl4AIContext":
 
         if settings.use_knowledge_graph:
             try:
-                from knowledge_graph.knowledge_graph_validator import (
+                from src.knowledge_graph.knowledge_graph_validator import (
                     KnowledgeGraphValidator,
                 )
-                from knowledge_graph.parse_repo_into_neo4j import DirectNeo4jExtractor
+                from src.knowledge_graph.parse_repo_into_neo4j import DirectNeo4jExtractor
 
                 neo4j_uri = settings.neo4j_uri
                 neo4j_user = settings.neo4j_username

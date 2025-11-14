@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class Neo4jCodeAnalyzer:
     """Analyzes code for direct Neo4j insertion"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # External modules to ignore
         self.external_modules = {
             # Python standard library
@@ -45,7 +45,7 @@ class Neo4jCodeAnalyzer:
             "cryptography", "bcrypt", "passlib", "jwt", "authlib", "oauthlib",
         }
 
-    def analyze_python_file(self, file_path: Path, repo_root: Path, project_modules: set[str]) -> dict[str, Any]:
+    def analyze_python_file(self, file_path: Path, repo_root: Path, project_modules: set[str]) -> dict[str, Any] | None:
         """Extract structure for direct Neo4j insertion"""
         try:
             with open(file_path, encoding="utf-8") as f:
@@ -391,7 +391,7 @@ class Neo4jCodeAnalyzer:
             logger.debug(f"Error checking attrs decorator: {e}")
         return False
 
-    def _is_class_var_annotation(self, annotation_node) -> bool:
+    def _is_class_var_annotation(self, annotation_node: Any) -> bool:
         """
         Check if an annotation is a ClassVar type.
         Handles patterns like ClassVar[int], typing.ClassVar[str], etc.
@@ -408,7 +408,7 @@ class Neo4jCodeAnalyzer:
 
     def _extract_init_attributes(self, class_node: ast.ClassDef) -> list[dict[str, Any]]:
         """Extract attributes from __init__ method"""
-        attributes = []
+        attributes: list[dict[str, Any]] = []
 
         # Find __init__ method
         init_method = None
@@ -491,20 +491,20 @@ class Neo4jCodeAnalyzer:
 
         return attributes
 
-    def _extract_slots(self, slots_node) -> list[str]:
+    def _extract_slots(self, slots_node: Any) -> list[str]:
         """Extract slot names from __slots__ definition"""
-        slots = []
+        slots: list[str] = []
 
         try:
             if isinstance(slots_node, (ast.List, ast.Tuple)):
                 for elt in slots_node.elts:
                     if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
                         slots.append(elt.value)
-                    elif isinstance(elt, ast.Str):  # Python < 3.8 compatibility
+                    elif isinstance(elt, ast.Str) and isinstance(elt.s, str):  # Python < 3.8 compatibility
                         slots.append(elt.s)
             elif isinstance(slots_node, ast.Constant) and isinstance(slots_node.value, str):
                 slots.append(slots_node.value)
-            elif isinstance(slots_node, ast.Str):  # Python < 3.8 compatibility
+            elif isinstance(slots_node, ast.Str) and isinstance(slots_node.s, str):  # Python < 3.8 compatibility
                 slots.append(slots_node.s)
 
         except Exception as e:
@@ -512,7 +512,7 @@ class Neo4jCodeAnalyzer:
 
         return slots
 
-    def _infer_type_from_value(self, value_node) -> str:
+    def _infer_type_from_value(self, value_node: Any) -> str:
         """Attempt to infer type from assignment value with enhanced patterns"""
         try:
             if isinstance(value_node, ast.Constant):
@@ -630,7 +630,7 @@ class Neo4jCodeAnalyzer:
         skip_dirs = {"src", "lib", "source", "python", "pkg", "packages"}
 
         # Find the first directory that's not in skip_dirs
-        filtered_parts = []
+        filtered_parts: list[str] = []
         for part in path_parts:
             if part.lower() not in skip_dirs or filtered_parts:  # Once we start including, include everything
                 filtered_parts.append(part)
@@ -641,9 +641,9 @@ class Neo4jCodeAnalyzer:
         # Final fallback: use the default
         return default_module
 
-    def _extract_function_parameters(self, func_node):
+    def _extract_function_parameters(self, func_node: Any) -> list[dict[str, Any]]:
         """Comprehensive parameter extraction from function definition"""
-        params = []
+        params: list[dict[str, Any]] = []
 
         # Regular positional arguments
         for i, arg in enumerate(func_node.args.args):
@@ -708,7 +708,7 @@ class Neo4jCodeAnalyzer:
 
         return params
 
-    def _get_default_value(self, default_node):
+    def _get_default_value(self, default_node: Any) -> str:
         """Extract default value from AST node"""
         try:
             if isinstance(default_node, ast.Constant):
@@ -725,7 +725,7 @@ class Neo4jCodeAnalyzer:
         except Exception:
             return "..."
 
-    def _get_name(self, node):
+    def _get_name(self, node: Any) -> str:
         """Extract name from AST node, handling complex types safely"""
         if node is None:
             return "Any"
@@ -760,7 +760,7 @@ class Neo4jCodeAnalyzer:
             if isinstance(node, ast.Constant):
                 return str(node.value)
             if isinstance(node, ast.Str):  # Python < 3.8
-                return f'"{node.s}"'
+                return f'"{node.s!r}"'
             if isinstance(node, ast.Tuple):
                 elts = [self._get_name(elt) for elt in node.elts]
                 return f"({', '.join(elts)})"

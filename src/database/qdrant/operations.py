@@ -169,6 +169,8 @@ async def get_documents_by_url(client: AsyncQdrantClient, url: str) -> list[dict
     # Format and sort by chunk number
     results = []
     for point in points:
+        if point.payload is None:
+            continue
         doc = point.payload.copy()
         doc["id"] = point.id
         results.append(doc)
@@ -254,6 +256,8 @@ async def search_sources(
     # Format results
     formatted_results = []
     for result in results:
+        if result.payload is None:
+            continue
         doc = result.payload.copy()
         doc["similarity"] = result.score  # Interface expects "similarity"
         doc["id"] = result.id
@@ -284,7 +288,10 @@ async def update_source(
 
         # Update payload
         existing_point = existing_points[0]
-        updated_payload = existing_point.payload.copy()
+        if existing_point.payload is None:
+            updated_payload: dict[str, Any] = {}
+        else:
+            updated_payload = existing_point.payload.copy()
         updated_payload.update(updates)
 
         # Update the point
@@ -327,6 +334,8 @@ async def get_sources(client: AsyncQdrantClient) -> list[dict[str, Any]]:
 
             # Format each source
             for point in points:
+                if point.payload is None:
+                    continue
                 source_data = {
                     "source_id": point.payload.get(
                         "source_id",
@@ -390,7 +399,10 @@ async def update_source_info(
             if existing_points:
                 # Update existing source
                 existing_point = existing_points[0]
-                updated_payload = existing_point.payload.copy()
+                if existing_point.payload is None:
+                    updated_payload: dict[str, Any] = {}
+                else:
+                    updated_payload = existing_point.payload.copy()
                 updated_payload.update(
                     {
                         "summary": summary,

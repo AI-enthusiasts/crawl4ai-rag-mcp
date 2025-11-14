@@ -4,7 +4,7 @@ from typing import Any
 
 from sentence_transformers import CrossEncoder
 
-from core.logging import logger
+from src.core.logging import logger
 
 
 def rerank_results(

@@ -6,11 +6,11 @@ import logging
 import httpx
 from fastmcp import Context
 
-from core import MCPToolError
-from core.context import get_app_context
+from src.core import MCPToolError
+from src.core.context import get_app_context
 
 # Import will be done in the function to avoid circular imports
-from utils import is_sitemap, is_txt, normalize_url, parse_sitemap_content
+from src.utils import is_sitemap, is_txt, normalize_url, parse_sitemap_content
 
 from .crawling import (
     crawl_markdown_file,
@@ -48,7 +48,7 @@ async def _perform_rag_query_with_context(
             indent=2,
         )
 
-    from database.rag_queries import perform_rag_query
+    from src.database.rag_queries import perform_rag_query
 
     return await perform_rag_query(
         app_ctx.database_client,
@@ -208,7 +208,7 @@ async def _crawl_text_file(
     """Crawl a text file directly."""
     try:
         # Get the app context to access the browser config
-        from core.context import get_app_context
+        from src.core.context import get_app_context
 
         app_ctx = get_app_context()
 
@@ -260,9 +260,9 @@ async def _crawl_text_file(
                 },
             )
 
-        from utils import add_documents_to_database
-        from utils.text_processing import smart_chunk_markdown
-        from utils.url_helpers import extract_domain_from_url
+        from src.utils import add_documents_to_database
+        from src.utils.text_processing import smart_chunk_markdown
+        from src.utils.url_helpers import extract_domain_from_url
 
         result = crawl_results[0]
         chunks = smart_chunk_markdown(result["markdown"], chunk_size=chunk_size)
@@ -329,7 +329,7 @@ async def _crawl_recursive(
     """Crawl a regular URL recursively."""
     try:
         # Get the app context to access the browser config
-        from core.context import get_app_context
+        from src.core.context import get_app_context
 
         app_ctx = get_app_context()
 

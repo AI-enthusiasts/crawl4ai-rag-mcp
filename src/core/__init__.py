@@ -18,6 +18,7 @@ from .context import (
     Crawl4AIContext,
     cleanup_global_context,
     crawl4ai_lifespan,
+    get_app_context,
     initialize_global_context,
 )
 from .decorators import track_request
@@ -33,6 +34,7 @@ __all__ = [
     "cleanup_global_context",
     "configure_logging",
     "crawl4ai_lifespan",
+    "get_app_context",
     "initialize_global_context",
     "logger",
     "track_request",

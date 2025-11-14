@@ -421,10 +421,10 @@ class GoAnalyzer(CodeAnalyzer):
 
     def _extract_exports(
         self,
-        structs: list[dict],
-        interfaces: list[dict],
-        functions: list[dict],
-        types: list[dict],
+        structs: list[dict[str, Any]],
+        interfaces: list[dict[str, Any]],
+        functions: list[dict[str, Any]],
+        types: list[dict[str, Any]],
     ) -> list[str]:
         """
         Extract exported symbols (capitalized names in Go).

@@ -83,7 +83,7 @@ class AnalysisResult:
 class AIScriptAnalyzer:
     """Analyzes AI-generated Python scripts for validation against knowledge graph"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.import_map: dict[str, str] = {}  # alias -> actual_module_name
         self.variable_types: dict[str, str] = {}  # variable_name -> class_type
         self.context_manager_vars: dict[str, tuple[int, int, str]] = {}  # var_name -> (start_line, end_line, type)
@@ -103,8 +103,8 @@ class AIScriptAnalyzer:
             self.context_manager_vars.clear()
 
             # Track processed nodes to avoid duplicates
-            self.processed_calls = set()
-            self.method_call_attributes = set()
+            self.processed_calls: set[int] = set()
+            self.method_call_attributes: set[int] = set()
 
             # First pass: collect imports and build import map
             for node in ast.walk(tree):
@@ -129,7 +129,7 @@ class AIScriptAnalyzer:
             result.errors.append(error_msg)
             return result
 
-    def _extract_imports(self, node: ast.AST, result: AnalysisResult):
+    def _extract_imports(self, node: ast.AST, result: AnalysisResult) -> None:
         """Extract import information and build import mapping"""
         line_num = getattr(node, "lineno", 0)
 
@@ -169,7 +169,7 @@ class AIScriptAnalyzer:
                 else:
                     self.import_map[alias_name] = import_name
 
-    def _analyze_node(self, node: ast.AST, result: AnalysisResult):
+    def _analyze_node(self, node: ast.AST, result: AnalysisResult) -> None:
         """Analyze individual AST nodes for usage patterns"""
         getattr(node, "lineno", 0)
 
@@ -225,7 +225,7 @@ class AIScriptAnalyzer:
                 return
             self._extract_attribute_access(node, result)
 
-    def _extract_class_instantiation(self, node: ast.Assign, result: AnalysisResult):
+    def _extract_class_instantiation(self, node: ast.Assign, result: AnalysisResult) -> None:
         """Extract class instantiation from assignment"""
         target = node.targets[0]
         call = node.value
@@ -259,7 +259,7 @@ class AIScriptAnalyzer:
                 # Track variable type for later method call analysis
                 self.variable_types[var_name] = full_class_name or class_name
 
-    def _extract_method_call(self, node: ast.Call, result: AnalysisResult):
+    def _extract_method_call(self, node: ast.Call, result: AnalysisResult) -> None:
         """Extract method call information"""
         if isinstance(node.func, ast.Attribute):
             line_num = getattr(node, "lineno", 0)
@@ -286,7 +286,7 @@ class AIScriptAnalyzer:
 
                 result.method_calls.append(method_call)
 
-    def _extract_function_call(self, node: ast.Call, result: AnalysisResult):
+    def _extract_function_call(self, node: ast.Call, result: AnalysisResult) -> None:
         """Extract function call information"""
         if isinstance(node.func, ast.Name):
             line_num = getattr(node, "lineno", 0)
@@ -311,7 +311,7 @@ class AIScriptAnalyzer:
 
             result.function_calls.append(function_call)
 
-    def _extract_attribute_access(self, node: ast.Attribute, result: AnalysisResult):
+    def _extract_attribute_access(self, node: ast.Attribute, result: AnalysisResult) -> None:
         """Extract attribute access information"""
         line_num = getattr(node, "lineno", 0)
 
@@ -328,7 +328,7 @@ class AIScriptAnalyzer:
 
             result.attribute_accesses.append(attribute_access)
 
-    def _infer_object_types(self, result: AnalysisResult):
+    def _infer_object_types(self, result: AnalysisResult) -> None:
         """Update object types for method calls and attribute accesses"""
         for method_call in result.method_calls:
             if not method_call.object_type:
@@ -406,7 +406,7 @@ class AIScriptAnalyzer:
 
         return False
 
-    def _extract_nested_class_instantiation(self, node: ast.Call, result: AnalysisResult):
+    def _extract_nested_class_instantiation(self, node: ast.Call, result: AnalysisResult) -> None:
         """Extract class instantiation that's not in direct assignment (e.g., as parameter)"""
         line_num = getattr(node, "lineno", 0)
 
@@ -436,14 +436,14 @@ class AIScriptAnalyzer:
 
             result.class_instantiations.append(instantiation)
 
-    def _track_method_result_assignment(self, call_node: ast.Call, var_name: str):
+    def _track_method_result_assignment(self, call_node: ast.Call, var_name: str) -> None:
         """Track when a variable is assigned the result of a method call"""
         if isinstance(call_node.func, ast.Attribute):
             # For now, we'll use a generic type hint for method results
             # In a more sophisticated system, we could look up the return type
             self.variable_types[var_name] = "method_result"
 
-    def _handle_async_with(self, node: ast.AsyncWith, result: AnalysisResult):
+    def _handle_async_with(self, node: ast.AsyncWith, result: AnalysisResult) -> None:
         """Handle async with statements and track context manager variables"""
         for item in node.items:
             if item.optional_vars and isinstance(item.optional_vars, ast.Name):
@@ -471,7 +471,7 @@ class AIScriptAnalyzer:
                         # This is the actual return type, not a generic placeholder
                         self.context_manager_vars[var_name] = (start_line, end_line, "pydantic_ai.StreamedRunResult")
 
-    def _handle_with(self, node: ast.With, result: AnalysisResult):
+    def _handle_with(self, node: ast.With, result: AnalysisResult) -> None:
         """Handle regular with statements and track context manager variables"""
         for item in node.items:
             if item.optional_vars and isinstance(item.optional_vars, ast.Name):

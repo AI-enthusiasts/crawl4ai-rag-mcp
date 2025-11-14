@@ -40,7 +40,7 @@ def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
     Returns:
         List of embeddings (each embedding is a list of floats)
     """
-    from core.logging import logger
+    from src.core.logging import logger
 
     if not texts:
         return []
@@ -122,7 +122,7 @@ def create_embedding(text: str) -> list[float]:
     Returns:
         List of floats representing the embedding
     """
-    from core.logging import logger
+    from src.core.logging import logger
 
     try:
         embeddings = create_embeddings_batch([text])
@@ -155,7 +155,7 @@ def generate_contextual_embedding(
     Returns:
         The contextual text that situates the chunk within the document
     """
-    from core.logging import logger
+    from src.core.logging import logger
 
     # Use environment variables for configuration with validation
     model_choice = os.getenv("CONTEXTUAL_EMBEDDING_MODEL", "gpt-4o-mini")
@@ -305,7 +305,7 @@ async def add_documents_to_database(
     """
     from concurrent.futures import as_completed
 
-    from core.logging import logger
+    from src.core.logging import logger
 
     # Check if we should use contextual embeddings
     use_contextual_embeddings = (
@@ -538,7 +538,7 @@ async def _add_web_sources_to_database(
         url_to_full_document: Map of URLs to full documents
         contents: List of chunk contents for counting
     """
-    from core.logging import logger
+    from src.core.logging import logger
 
     try:
         # Group by source_id to create source summaries

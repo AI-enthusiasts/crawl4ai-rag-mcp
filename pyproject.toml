@@ -12,7 +12,7 @@ dependencies = [
     "openai==1.71.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
-    "pydantic-ai>=0.0.14",  # Pydantic AI for agent framework
+    "pydantic-ai>=0.0.14", # Pydantic AI for agent framework
     "dotenv==0.9.9",
     "sentence-transformers>=4.1.0",
     "neo4j>=5.28.1",
@@ -38,6 +38,9 @@ dependencies = [
     "types-requests>=2.31.0",
     "types-psutil>=5.9.0",
     "types-docker>=6.0.0",
+    "types-passlib>=1.7.7.20250602",
+    "types-jinja2>=2.11.9",
+    "types-python-jose>=3.5.0.20250531",
 ]
 
 [project.scripts]
@@ -251,13 +254,13 @@ precision = 2
 directory = "htmlcov"
 
 # ========================================
-# MYPY CONFIGURATION
+# MYPY CONFIGURATION (STRICT MODE)
 # ========================================
 [tool.mypy]
-python_version = "3.11"
-mypy_path = "$MYPY_CONFIG_FILE_DIR/stubs"
+python_version = "3.12"
+mypy_path = "stubs"
 
-# Warning flags
+# Warning flags - ALL enabled
 warn_return_any = true
 warn_unused_configs = true
 warn_redundant_casts = true
@@ -266,23 +269,55 @@ warn_no_return = true
 warn_unreachable = true
 strict_equality = true
 
-# Type checking enforcement (Phase 1: Critical)
+# Strict type checking - NO exceptions
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 disallow_untyped_decorators = true
+disallow_untyped_calls = true
+disallow_any_unimported = false  # Would break pydantic-ai
 check_untyped_defs = true
+disallow_any_generics = true
+disallow_subclassing_any = true
 
-# Import handling
+# Import handling - STRICT (no ignore_missing_imports)
 no_implicit_optional = true
-ignore_missing_imports = true  # TODO: Phase 3 - replace with per-module overrides
+warn_incomplete_stub = true
 
-# Per-module overrides for tests (more granular than ignore_errors)
+# Strict mode for core modules
+[[tool.mypy.overrides]]
+module = [
+    "src.config.*",
+    "src.core.*",
+    "src.database.base",
+    "src.database.factory",
+]
+strict = true
+
+# Tests can be slightly more relaxed (but still typed)
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
-disallow_untyped_calls = false
 disallow_untyped_decorators = false
+
+# Exclude test/experimental scripts
+[[tool.mypy.overrides]]
+module = "src.knowledge_graph.test_script"
+ignore_errors = true
+
+# Files with external library API compatibility issues
+[[tool.mypy.overrides]]
+module = [
+    "src.services.crawling",
+    "src.services.agentic_search",
+    "src.services.validated_search",
+    "src.utils.embeddings",
+    "src.database.qdrant_adapter",
+    "src.core.context",
+]
+# Still check types but allow some flexibility for external APIs
+disallow_untyped_calls = false
+warn_return_any = false
 
 # ========================================
 # BANDIT CONFIGURATION

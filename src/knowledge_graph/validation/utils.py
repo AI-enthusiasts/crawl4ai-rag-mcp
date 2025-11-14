@@ -165,7 +165,7 @@ def calculate_overall_confidence(
     Returns:
         Float between 0.0 and 1.0 representing overall confidence score.
     """
-    kg_validations = []
+    kg_validations: list[float] = []
 
     # Only count validations from knowledge graph imports
     for val in result.import_validations:

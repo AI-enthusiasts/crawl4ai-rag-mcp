@@ -18,9 +18,9 @@ from fastmcp import Context
 if TYPE_CHECKING:
     from fastmcp import FastMCP
 
-from core import MCPToolError, track_request
-from core.context import get_app_context
-from utils.validation import validate_script_path
+from src.core import MCPToolError, track_request
+from src.core.context import get_app_context
+from src.utils.validation import validate_script_path
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
         mcp: FastMCP instance to register tools with
     """
 
-    @mcp.tool()  # type: ignore[misc]
+    @mcp.tool()
     @track_request("extract_and_index_repository_code")
     async def extract_and_index_repository_code(
         ctx: Context,
@@ -101,7 +101,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 logger.warning(f"Error during cleanup: {cleanup_error}")
 
             # Extract code examples from Neo4j
-            from knowledge_graph.code_extractor import extract_repository_code
+            from src.knowledge_graph.code_extractor import extract_repository_code
 
             extraction_result = await extract_repository_code(
                 app_ctx.repo_extractor, repo_name,
@@ -124,7 +124,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 )
 
             # Generate embeddings for code examples
-            from utils import create_embeddings_batch
+            from src.utils import create_embeddings_batch
 
             embedding_texts = [example["embedding_text"] for example in code_examples]
             logger.info(
@@ -216,7 +216,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
 
-    @mcp.tool()  # type: ignore[misc]
+    @mcp.tool()
     @track_request("smart_code_search")
     async def smart_code_search(
         ctx: Context,
@@ -268,7 +268,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 )
 
             # Initialize validated search service
-            from services.validated_search import ValidatedCodeSearchService
+            from src.services.validated_search import ValidatedCodeSearchService
 
             neo4j_driver = None
             if hasattr(app_ctx, "repo_extractor") and app_ctx.repo_extractor:
@@ -314,7 +314,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
 
-    @mcp.tool()  # type: ignore[misc]
+    @mcp.tool()
     @track_request("check_ai_script_hallucinations_enhanced")
     async def check_ai_script_hallucinations_enhanced(
         ctx: Context,
@@ -384,7 +384,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 neo4j_driver = getattr(app_ctx.repo_extractor, "driver", None)
 
             # Use enhanced hallucination detection
-            from knowledge_graph.enhanced_validation import (
+            from src.knowledge_graph.enhanced_validation import (
                 check_ai_script_hallucinations_enhanced as check_ai_script_hallucinations_enhanced_impl,
             )
 
@@ -401,7 +401,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
             msg = f"Enhanced hallucination check failed: {e!s}"
             raise MCPToolError(msg)
 
-    @mcp.tool()  # type: ignore[misc]
+    @mcp.tool()
     @track_request("get_script_analysis_info")
     async def get_script_analysis_info(ctx: Context) -> str:
         """

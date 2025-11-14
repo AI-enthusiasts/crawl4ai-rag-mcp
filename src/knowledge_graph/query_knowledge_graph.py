@@ -9,9 +9,10 @@ Useful for debugging hallucination detection and understanding graph contents.
 import argparse
 import asyncio
 import os
+from typing import Any
 
 from dotenv import load_dotenv
-from neo4j import AsyncGraphDatabase
+from neo4j import AsyncGraphDatabase, AsyncDriver
 
 
 class KnowledgeGraphQuerier:
@@ -21,9 +22,9 @@ class KnowledgeGraphQuerier:
         self.neo4j_uri = neo4j_uri
         self.neo4j_user = neo4j_user
         self.neo4j_password = neo4j_password
-        self.driver = None
+        self.driver: AsyncDriver | None = None
 
-    async def initialize(self):
+    async def initialize(self) -> None:
         """Initialize Neo4j connection"""
         # Import notification suppression (available in neo4j>=5.21.0)
         try:
@@ -43,16 +44,18 @@ class KnowledgeGraphQuerier:
                 auth=(self.neo4j_user, self.neo4j_password),
             )
         print("🔗 Connected to Neo4j knowledge graph")
-    async def close(self):
+
+    async def close(self) -> None:
         """Close Neo4j connection"""
         if self.driver:
             await self.driver.close()
 
-    async def list_repositories(self):
+    async def list_repositories(self) -> list[str]:
         """List all repositories in the knowledge graph"""
         print("\n📚 Repositories in Knowledge Graph:")
         print("=" * 50)
 
+        assert self.driver is not None
         async with self.driver.session() as session:
             query = "MATCH (r:Repository) RETURN r.name as name ORDER BY r.name"
             result = await session.run(query)
@@ -69,11 +72,12 @@ class KnowledgeGraphQuerier:
 
         return repos
 
-    async def explore_repository(self, repo_name: str):
+    async def explore_repository(self, repo_name: str) -> None:
         """Get overview of a specific repository"""
         print(f"\n🔍 Exploring Repository: {repo_name}")
         print("=" * 60)
 
+        assert self.driver is not None
         async with self.driver.session() as session:
             # Get file count
             files_query = """
@@ -81,7 +85,8 @@ class KnowledgeGraphQuerier:
             RETURN count(f) as file_count
             """
             result = await session.run(files_query, repo_name=repo_name)
-            file_count = (await result.single())["file_count"]
+            file_record = await result.single()
+            file_count = file_record["file_count"] if file_record else 0
 
             # Get class count
             classes_query = """
@@ -89,7 +94,8 @@ class KnowledgeGraphQuerier:
             RETURN count(DISTINCT c) as class_count
             """
             result = await session.run(classes_query, repo_name=repo_name)
-            class_count = (await result.single())["class_count"]
+            class_record = await result.single()
+            class_count = class_record["class_count"] if class_record else 0
 
             # Get function count
             functions_query = """
@@ -97,18 +103,20 @@ class KnowledgeGraphQuerier:
             RETURN count(DISTINCT func) as function_count
             """
             result = await session.run(functions_query, repo_name=repo_name)
-            function_count = (await result.single())["function_count"]
+            function_record = await result.single()
+            function_count = function_record["function_count"] if function_record else 0
 
             print(f"📄 Files: {file_count}")
             print(f"🏗️  Classes: {class_count}")
             print(f"⚙️  Functions: {function_count}")
 
-    async def list_classes(self, repo_name: str | None = None, limit: int = 20):
+    async def list_classes(self, repo_name: str | None = None, limit: int = 20) -> list[dict[str, Any]]:
         """List classes in the knowledge graph"""
         title = f"Classes in {repo_name}" if repo_name else "All Classes"
         print(f"\n🏗️  {title} (limit {limit}):")
         print("=" * 50)
 
+        assert self.driver is not None
         async with self.driver.session() as session:
             if repo_name:
                 query = """
@@ -142,11 +150,12 @@ class KnowledgeGraphQuerier:
 
         return classes
 
-    async def explore_class(self, class_name: str):
+    async def explore_class(self, class_name: str) -> dict[str, Any] | None:
         """Get detailed information about a specific class"""
         print(f"\n🔍 Exploring Class: {class_name}")
         print("=" * 60)
 
+        assert self.driver is not None
         async with self.driver.session() as session:
             # Find the class
             class_query = """
@@ -221,7 +230,7 @@ class KnowledgeGraphQuerier:
 
         return {"methods": methods, "attributes": attributes}
 
-    async def search_method(self, method_name: str, class_name: str | None = None):
+    async def search_method(self, method_name: str, class_name: str | None = None) -> list[dict[str, Any]]:
         """Search for methods by name"""
         title = f"Method '{method_name}'"
         if class_name:
@@ -230,6 +239,7 @@ class KnowledgeGraphQuerier:
         print(f"\n🔍 Searching for {title}:")
         print("=" * 60)
 
+        assert self.driver is not None
         async with self.driver.session() as session:
             if class_name:
                 query = """
@@ -274,24 +284,25 @@ class KnowledgeGraphQuerier:
 
         return methods
 
-    async def run_custom_query(self, query: str):
+    async def run_custom_query(self, query: str) -> list[dict[str, Any]] | None:
         """Run a custom Cypher query"""
         print("\n🔍 Running Custom Query:")
         print("=" * 60)
         print(f"Query: {query}")
         print("-" * 60)
 
+        assert self.driver is not None
         async with self.driver.session() as session:
             try:
                 result = await session.run(query)
 
-                records = []
+                records: list[dict[str, Any]] = []
                 async for record in result:
-                    records.append(dict(record))
+                    records.append(record.data())
 
                 if records:
-                    for i, record in enumerate(records, 1):
-                        print(f"{i:2d}. {record}")
+                    for i, rec in enumerate(records, 1):
+                        print(f"{i:2d}. {rec}")
                         if i >= 20:  # Limit output
                             print(f"... and {len(records) - 20} more records")
                             break
@@ -305,7 +316,7 @@ class KnowledgeGraphQuerier:
                 return None
 
 
-async def interactive_mode(querier: KnowledgeGraphQuerier):
+async def interactive_mode(querier: KnowledgeGraphQuerier) -> None:
     """Interactive exploration mode"""
     print("\n🚀 Welcome to Knowledge Graph Explorer!")
     print("Available commands:")
@@ -358,7 +369,7 @@ async def interactive_mode(querier: KnowledgeGraphQuerier):
             print(f"❌ Error: {e!s}")
 
 
-async def main():
+async def main() -> None:
     """Main function with CLI argument support"""
     parser = argparse.ArgumentParser(description="Query the knowledge graph")
     parser.add_argument("--repos", action="store_true", help="List repositories")

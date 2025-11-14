@@ -15,8 +15,8 @@ from typing import Any
 
 from neo4j import AsyncGraphDatabase
 
-from utils import create_embeddings_batch
-from utils.integration_helpers import (
+from src.utils import create_embeddings_batch
+from src.utils.integration_helpers import (
     create_cache_key,
     get_performance_optimizer,
     performance_monitor,
@@ -744,7 +744,7 @@ class ValidatedCodeSearchService:
 
     async def get_health_status(self) -> dict[str, Any]:
         """Get health status of the validated search service."""
-        from utils.integration_helpers import validate_integration_health
+        from src.utils.integration_helpers import validate_integration_health
 
         return await validate_integration_health(
             database_client=self.database_client,

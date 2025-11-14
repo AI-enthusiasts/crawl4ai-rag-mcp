@@ -1,7 +1,9 @@
 """Neo4j query operations for repository graph"""
 
+from typing import Any
 
-async def search_graph(driver, query_type: str, **kwargs):
+
+async def search_graph(driver: Any, query_type: str, **kwargs: Any) -> list[dict[str, Any]] | None:
     """Search the Neo4j graph directly
 
     Args:
