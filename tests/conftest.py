@@ -19,6 +19,12 @@ import pytest
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
+# Create module alias for backward compatibility with tests
+# Tests import from 'crawl4ai_mcp', but the actual module is 'src'
+import src as crawl4ai_mcp_module
+
+sys.modules["crawl4ai_mcp"] = crawl4ai_mcp_module
+
 # Set test environment variables BEFORE any imports
 os.environ["OPENAI_API_KEY"] = "test-key-for-mocks"
 os.environ["VECTOR_DATABASE"] = "qdrant"
