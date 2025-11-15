@@ -58,11 +58,14 @@ from src.services.smart_crawl import smart_crawl_url
 # We need to import from the parent module with specific file reference
 import sys
 import importlib.util
+from pathlib import Path
 
 # Load validation.py module directly to avoid package conflict
+# Use relative path resolution to work in both dev and Docker environments
+_validation_path = Path(__file__).parent / "knowledge_graph" / "validation.py"
 _validation_spec = importlib.util.spec_from_file_location(
     "src.knowledge_graph._validation_module",
-    "/home/user/crawl4ai-rag-mcp/src/knowledge_graph/validation.py"
+    str(_validation_path)
 )
 if _validation_spec and _validation_spec.loader:
     _validation_module = importlib.util.module_from_spec(_validation_spec)
