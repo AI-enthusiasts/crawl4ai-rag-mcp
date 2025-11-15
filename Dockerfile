@@ -38,19 +38,14 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 COPY pyproject.toml .
 COPY README.md .
 
-# Create minimal src structure for installation
-RUN mkdir src
-COPY src/__init__.py src/
-COPY src/main.py src/
+# Copy ALL source code BEFORE installation (critical for proper package structure)
+COPY src/ ./src/
 
 # Install dependencies with cache mount
 # UV will use the pytorch-cpu index configured in pyproject.toml
-# Use regular install (not editable) so package is properly built into site-packages
+# Regular install (not editable) to build complete package into site-packages
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system .
-
-# Copy the rest of the source code (includes knowledge_graph module)
-COPY src/ ./src/
 
 # Run crawl4ai-setup if available
 RUN crawl4ai-setup || echo "crawl4ai-setup not required"
@@ -108,12 +103,12 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     useradd -m -u 1000 -s /bin/bash appuser
 
-# Copy Python packages from builder
+# Copy Python packages from builder (includes full src package in site-packages)
 COPY --from=builder --chown=appuser:appuser /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder --chown=appuser:appuser /usr/local/bin /usr/local/bin
 
-# Copy application code (includes knowledge_graph module)
-COPY --from=builder --chown=appuser:appuser /build/src ./src
+# Note: src/ is already in site-packages from builder installation
+# No need to copy /build/src separately
 
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/data /app/logs /app/analysis_scripts /app/repos \
@@ -142,5 +137,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 # Expose the port
 EXPOSE ${PORT}
 
-# Set the entrypoint
-ENTRYPOINT ["python", "src/main.py"]
+# Set the entrypoint - run as module from installed package in site-packages
+ENTRYPOINT ["python", "-m", "src.main"]
