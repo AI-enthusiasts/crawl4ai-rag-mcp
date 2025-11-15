@@ -72,10 +72,10 @@ class AgenticSearchService:
         self.crawler = crawler
 
         # Per Pydantic AI docs: Use ModelSettings for timeout and temperature
-        # Create OpenAI model instance with API key
+        # Create OpenAI model instance
+        # API key is automatically read from OPENAI_API_KEY environment variable
         model = OpenAIModel(
             model_name=settings.model_choice,
-            api_key=settings.openai_api_key,
         )
 
         # Shared model settings for all agents
@@ -324,7 +324,7 @@ Provide:
 
         try:
             # Create a temporary model for this response
-            # Per Pydantic AI docs: Can create Agent with any Pydantic model as output_type
+            # Per Pydantic AI docs: Can create Agent with any Pydantic model as result_type
             class QueryRefinementResponse(BaseModel):
                 """Response model for query refinement."""
 
@@ -339,11 +339,11 @@ Provide:
                 )
 
             # Create temporary agent with inline response model
-            # Per Pydantic AI docs: Create Agent instance with specific output_type
+            # Per Pydantic AI docs: Create Agent instance with specific result_type
             refinement_agent = Agent(
                 model=self.openai_model,
-                output_type=QueryRefinementResponse,
-                output_retries=MAX_RETRIES_DEFAULT,
+                result_type=QueryRefinementResponse,
+                result_retries=MAX_RETRIES_DEFAULT,
                 model_settings=self.refinement_model_settings,
             )
 

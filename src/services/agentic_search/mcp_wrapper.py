@@ -11,28 +11,12 @@ from fastmcp import Context
 from src.config import get_settings
 from src.core import MCPToolError
 
-from .orchestrator import AgenticSearchService
-
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# Singleton instance for connection pooling (per Pydantic AI best practices)
-_agentic_search_service: AgenticSearchService | None = None
-
-
-def get_agentic_search_service() -> AgenticSearchService:
-    """Get singleton instance of AgenticSearchService.
-
-    Per Pydantic AI docs: Reuse Agent instances to benefit from connection pooling.
-    Creating new agents for every request wastes resources and degrades performance.
-
-    Returns:
-        Singleton AgenticSearchService instance with cached Pydantic AI agents
-    """
-    global _agentic_search_service
-    if _agentic_search_service is None:
-        _agentic_search_service = AgenticSearchService()
-    return _agentic_search_service
+# Import singleton from parent module (avoid duplication)
+# Per Pydantic AI docs: Reuse Agent instances to benefit from connection pooling
+from . import get_agentic_search_service
 
 
 async def agentic_search_impl(
