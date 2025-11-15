@@ -9,12 +9,21 @@ Tests ensure:
 
 import asyncio
 from typing import Any
+from unittest.mock import MagicMock
 
 import psutil
 import pytest
 
 # Mark all tests in this module as integration tests
 pytestmark = pytest.mark.integration
+
+
+class MockContext:
+    """Mock MCP Context for testing"""
+
+    def __init__(self):
+        self.request_context = MagicMock()
+        self.request_context.lifespan_context = MagicMock()
 
 
 @pytest.mark.asyncio
@@ -26,10 +35,10 @@ async def test_mcp_concurrent_rag_queries() -> None:
     the event loop.
     """
     from src.database import perform_rag_query
-    from src.database.factory import get_database_client
+    from src.database.factory import create_database_client
 
     # Initialize database client
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     # Create 10 concurrent RAG query tasks
     query_count = 10
@@ -74,12 +83,15 @@ async def test_no_chrome_process_leak() -> None:
     try:
         from src.services import process_urls_for_mcp
 
+        # Create mock context
+        ctx = MockContext()
+
         # Perform multiple crawl operations
         # Using example.com which should complete quickly
         test_urls = ["https://example.com"] * 3
 
         for url in test_urls:
-            await process_urls_for_mcp([url], return_raw_markdown=True)
+            await process_urls_for_mcp(ctx, [url], return_raw_markdown=True)
             await asyncio.sleep(0.5)  # Small delay between operations
 
         # Give processes time to clean up
@@ -111,9 +123,9 @@ async def test_concurrent_database_operations() -> None:
     This test ensures the database adapters handle concurrent writes and reads
     correctly without corruption or blocking issues.
     """
-    from src.database.factory import get_database_client
+    from src.database.factory import create_database_client
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     # Create concurrent read operations
     # These should not block each other
@@ -149,9 +161,9 @@ async def test_memory_stability_under_load() -> None:
     print(f"Initial memory: {initial_memory_mb:.2f} MB")
 
     # Perform multiple operations
-    from src.database.factory import get_database_client
+    from src.database.factory import create_database_client
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     for i in range(20):
         # Perform lightweight operations
@@ -197,9 +209,9 @@ async def test_event_loop_not_blocked() -> None:
 
     async def mock_operation() -> None:
         """Simulate a database operation."""
-        from src.database.factory import get_database_client
+        from src.database.factory import create_database_client
 
-        db_client = get_database_client()
+        db_client = create_database_client()
         await db_client.get_all_sources()
 
     # Run heartbeat alongside mock operation
