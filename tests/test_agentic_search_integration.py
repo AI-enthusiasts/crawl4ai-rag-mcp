@@ -25,7 +25,15 @@ from fastmcp import Context
 
 from config import get_settings, reset_settings
 from core.context import Crawl4AIContext, initialize_global_context
-from services.agentic_search import AgenticSearchService, agentic_search_impl
+from services.agentic_search import (
+    AgenticSearchConfig,
+    AgenticSearchService,
+    SelectiveCrawler,
+    LocalKnowledgeEvaluator,
+    URLRanker,
+    agentic_search_impl,
+    get_agentic_search_service,
+)
 
 # Mark all tests as integration tests
 pytestmark = pytest.mark.integration
@@ -89,17 +97,36 @@ class TestAgenticSearchService:
     @pytest.mark.asyncio
     async def test_service_initialization(self, test_settings):
         """Test that service initializes correctly with Pydantic AI agents."""
-        service = AgenticSearchService()
+        # Force settings reload to pick up test environment variables
+        reset_settings()
 
-        # Verify Pydantic AI agents are initialized
-        assert service.completeness_agent is not None
-        assert service.ranking_agent is not None
+        # Create components
+        config = AgenticSearchConfig()
+        evaluator = LocalKnowledgeEvaluator(config)
+        ranker = URLRanker(config)
+        crawler = SelectiveCrawler(config)
+
+        # Create service
+        service = AgenticSearchService(
+            evaluator=evaluator,
+            ranker=ranker,
+            crawler=crawler,
+            config=config,
+        )
+
+        # Verify components are set
+        assert service.evaluator is not None
+        assert service.ranker is not None
+        assert service.crawler is not None
         assert service.openai_model is not None
-        assert service.model_name == test_settings.model_choice
-        assert service.temperature == test_settings.agentic_search_llm_temperature
+
+        # Get fresh settings after reload
+        current_settings = get_settings()
+        assert service.model_name == current_settings.model_choice
+        assert service.temperature == current_settings.agentic_search_llm_temperature
         assert (
             service.completeness_threshold
-            == test_settings.agentic_search_completeness_threshold
+            == current_settings.agentic_search_completeness_threshold
         )
 
     @pytest.mark.asyncio
@@ -111,13 +138,18 @@ class TestAgenticSearchService:
 
         Cost: ~$0.0001 USD per call with gpt-4.1-nano
         """
-        service = AgenticSearchService()
+        # Force settings reload
+        reset_settings()
+
+        # Create components
+        config = AgenticSearchConfig()
+        evaluator = LocalKnowledgeEvaluator(config)
 
         # Test with empty results - should score low
         from services.agentic_models import RAGResult
 
         empty_results = []
-        evaluation = await service._evaluate_completeness(
+        evaluation = await evaluator._evaluate_completeness(
             query="What is Python?", results=empty_results
         )
 
@@ -144,7 +176,7 @@ class TestAgenticSearchService:
             ),
         ]
 
-        evaluation_with_results = await service._evaluate_completeness(
+        evaluation_with_results = await evaluator._evaluate_completeness(
             query="What is Python?", results=mock_results
         )
 
@@ -161,7 +193,12 @@ class TestAgenticSearchService:
 
         Cost: ~$0.0002 USD per call with gpt-4.1-nano
         """
-        service = AgenticSearchService()
+        # Force settings reload
+        reset_settings()
+
+        # Create components
+        config = AgenticSearchConfig()
+        ranker = URLRanker(config)
 
         mock_search_results = [
             {
@@ -181,7 +218,7 @@ class TestAgenticSearchService:
             },
         ]
 
-        rankings = await service._rank_urls(
+        rankings = await ranker._rank_urls(
             query="Python programming language tutorial",
             gaps=["basic syntax", "getting started"],
             search_results=mock_search_results,
@@ -207,7 +244,21 @@ class TestAgenticSearchService:
 
         Cost: ~$0.0001 USD per call with gpt-4.1-nano
         """
-        service = AgenticSearchService()
+        # Force settings reload
+        reset_settings()
+
+        # Create components
+        config = AgenticSearchConfig()
+        evaluator = LocalKnowledgeEvaluator(config)
+        ranker = URLRanker(config)
+        crawler = SelectiveCrawler(config)
+
+        service = AgenticSearchService(
+            evaluator=evaluator,
+            ranker=ranker,
+            crawler=crawler,
+            config=config,
+        )
 
         refinement = await service._stage4_query_refinement(
             original_query="What is Python?",
