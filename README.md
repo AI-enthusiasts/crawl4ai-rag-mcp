@@ -535,3 +535,38 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Crawl4AI**: [unclecode/crawl4ai](https://github.com/unclecode/crawl4ai)  
 - **SearXNG**: [searxng/searxng](https://github.com/searxng/searxng)
 - **FastMCP**: [jlowin/fastmcp](https://github.com/jlowin/fastmcp)
+
+## Development Tools
+
+### Import Verification
+
+The repository includes comprehensive import verification tests to catch refactoring issues early:
+
+```bash
+# Run import tests (fast, <1 second)
+uv run pytest tests/test_imports.py -v
+
+# Run all modules import test
+uv run python -m tests.test_imports
+```
+
+### Pre-commit Hooks
+
+Install git hooks for automatic code quality checks:
+
+```bash
+# Install hooks
+./scripts/install-hooks.sh
+
+# Hooks will run automatically on commit:
+# ✅ Import verification (blocks commit if fails)
+# ⚠️  Ruff linting (warnings only)
+
+# Skip hooks for a specific commit
+git commit --no-verify
+```
+
+The pre-commit hook ensures:
+- All modules can be imported without errors
+- No circular imports
+- Code passes basic linting checks
