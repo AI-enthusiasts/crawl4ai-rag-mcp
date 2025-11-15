@@ -97,15 +97,18 @@ def register_search_tools(mcp: "FastMCP") -> None:
         use_search_hints: bool | None = None,
     ) -> str:
         """
-        Search tool that automatically finds comprehensive answers from local knowledge base or web sources.
+        Intelligent search tool that automatically finds comprehensive answers from local knowledge base or web sources.
 
-        FAST MODE: If knowledge exists in local database, returns answer immediately from Qdrant vector storage.
-        SMART MODE: If local knowledge is missing or incomplete, automatically searches web (SearXNG),
-        intelligently selects and crawls relevant URLs, indexes new content, and returns comprehensive answer.
+        SMART MODE OPERATION:
+        1. First checks local Qdrant vector database for existing knowledge
+        2. LLM evaluates answer completeness (0.0-1.0 score)
+        3. If completeness >= threshold (default: 0.95), returns answer immediately from local storage
+        4. If incomplete, automatically searches web (SearXNG), intelligently selects and crawls relevant URLs,
+           indexes new content, and performs iterative search-crawl-evaluate cycles until answer quality
+           meets threshold or max iterations reached (default: 3)
 
-        Uses LLM to evaluate answer completeness (0.0-1.0 score, default threshold: 0.95) and automatically
-        decides whether to return local results or search web. Performs iterative search-crawl-evaluate cycles
-        until answer quality meets threshold or max iterations reached (default: 3).
+        This adaptive approach minimizes latency when knowledge exists locally, while ensuring comprehensive
+        answers through automated web research when needed.
 
         Best for: comprehensive research questions, technical documentation queries, finding up-to-date information,
         discovering content not yet in local database.

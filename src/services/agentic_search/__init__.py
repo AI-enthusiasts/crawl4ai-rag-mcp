@@ -9,7 +9,10 @@ This package implements the complete agentic search pipeline with modular design
 """
 
 from .config import AgenticSearchConfig
+from .crawler import SelectiveCrawler
+from .evaluator import LocalKnowledgeEvaluator
 from .orchestrator import AgenticSearchService
+from .ranker import URLRanker
 
 # Re-export main service and singleton for backward compatibility
 __all__ = [
@@ -31,7 +34,19 @@ def get_agentic_search_service() -> AgenticSearchService:
     """
     global _service_instance
     if _service_instance is None:
-        _service_instance = AgenticSearchService()
+        # Create modular components
+        config = AgenticSearchConfig()
+        evaluator = LocalKnowledgeEvaluator(config)
+        ranker = URLRanker(config)
+        crawler = SelectiveCrawler(config)
+
+        # Initialize service with components
+        _service_instance = AgenticSearchService(
+            evaluator=evaluator,
+            ranker=ranker,
+            crawler=crawler,
+            config=config,
+        )
     return _service_instance
 
 
