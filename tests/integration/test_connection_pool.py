@@ -18,14 +18,14 @@ async def test_connection_pool_under_load() -> None:
     Simulates sustained database operations to verify connection pool
     doesn't exhaust or leak connections.
     """
-    from src.database.factory import get_database_client
+    from src.database.factory import create_database_client
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     # Perform many sequential operations
     operation_count = 50
     for i in range(operation_count):
-        sources = await db_client.get_all_sources()
+        sources = await db_client.get_sources()
         assert isinstance(sources, list)
 
         if i % 10 == 0:
@@ -42,14 +42,14 @@ async def test_concurrent_connection_limit() -> None:
     Creates many concurrent database operations to stress test
     connection pool management.
     """
-    from src.database.factory import get_database_client
+    from src.database.factory import create_database_client
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     async def db_operation(op_id: int) -> list[str]:
         """Single database operation."""
         await asyncio.sleep(0.01 * (op_id % 3))  # Vary timing
-        return await db_client.get_all_sources()
+        return await db_client.get_sources()
 
     # Create more concurrent operations than typical pool size
     tasks = [asyncio.create_task(db_operation(i)) for i in range(20)]
@@ -70,9 +70,9 @@ async def test_connection_recovery_after_error() -> None:
 
     Verifies that after a database error, new connections can still be created.
     """
-    from src.database.factory import get_database_client
+    from src.database.factory import create_database_client
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     # First, cause an error with invalid parameters
     try:
@@ -84,7 +84,7 @@ async def test_connection_recovery_after_error() -> None:
         print(f"Expected error occurred: {type(e).__name__}")
 
     # Verify database still works after error
-    sources = await db_client.get_all_sources()
+    sources = await db_client.get_sources()
     assert isinstance(sources, list)
     print("✓ Connection pool recovered after error")
 
@@ -95,16 +95,16 @@ async def test_timeout_on_slow_operation() -> None:
 
     Edge case: Operations that exceed timeout should fail gracefully.
     """
-    from src.database.factory import get_database_client
+    from src.database.factory import create_database_client
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     async def slow_operation_with_timeout() -> Any:
         """Simulate slow operation with timeout."""
         try:
             # Use asyncio.wait_for to enforce timeout
             result = await asyncio.wait_for(
-                db_client.get_all_sources(), timeout=0.001  # Very short timeout
+                db_client.get_sources(), timeout=0.001  # Very short timeout
             )
             return result
         except asyncio.TimeoutError:
@@ -125,9 +125,9 @@ async def test_connection_cleanup_on_exception() -> None:
 
     Ensures no connection leaks when operations fail.
     """
-    from src.database.factory import get_database_client
+    from src.database.factory import create_database_client
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     # Force multiple errors
     for _ in range(5):
@@ -137,7 +137,7 @@ async def test_connection_cleanup_on_exception() -> None:
             pass  # Expected
 
     # Verify database still works (connections weren't leaked)
-    sources = await db_client.get_all_sources()
+    sources = await db_client.get_sources()
     assert isinstance(sources, list)
     print("✓ Connections cleaned up after exceptions")
 
@@ -148,12 +148,12 @@ async def test_rapid_connection_open_close() -> None:
 
     Edge case: Quickly creating/destroying connections should not leak resources.
     """
-    from src.database.factory import get_database_client
+    from src.database.factory import create_database_client
 
     # Create and use multiple clients rapidly
     for i in range(10):
-        db_client = get_database_client()
-        sources = await db_client.get_all_sources()
+        db_client = create_database_client()
+        sources = await db_client.get_sources()
         assert isinstance(sources, list)
 
         # Small delay between iterations
@@ -169,13 +169,13 @@ async def test_concurrent_read_write_operations() -> None:
 
     Ensures read/write operations don't block each other unnecessarily.
     """
-    from src.database.factory import get_database_client
+    from src.database.factory import create_database_client
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     async def read_operation(op_id: int) -> list[str]:
         await asyncio.sleep(0.01)
-        return await db_client.get_all_sources()
+        return await db_client.get_sources()
 
     async def write_operation(op_id: int) -> None:
         await asyncio.sleep(0.01)
@@ -207,14 +207,14 @@ async def test_connection_reuse_efficiency() -> None:
 
     Multiple operations should reuse connections rather than creating new ones.
     """
-    from src.database.factory import get_database_client
+    from src.database.factory import create_database_client
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     # Perform multiple operations sequentially
     # If connection pooling works, these should reuse connections
     for i in range(20):
-        sources = await db_client.get_all_sources()
+        sources = await db_client.get_sources()
         assert isinstance(sources, list)
 
     print("✓ Connection reuse verified (no errors from exhaustion)")
@@ -247,12 +247,12 @@ async def test_graceful_shutdown_with_active_connections() -> None:
 
     Simulates server shutdown scenario with active database operations.
     """
-    from src.database.factory import get_database_client
+    from src.database.factory import create_database_client
 
-    db_client = get_database_client()
+    db_client = create_database_client()
 
     # Start long-running operation
-    task = asyncio.create_task(db_client.get_all_sources())
+    task = asyncio.create_task(db_client.get_sources())
 
     # Give it time to start
     await asyncio.sleep(0.01)
@@ -266,6 +266,6 @@ async def test_graceful_shutdown_with_active_connections() -> None:
         print("✓ Active connections cancelled gracefully during shutdown")
 
     # Verify database can still be used after cancellation
-    sources = await db_client.get_all_sources()
+    sources = await db_client.get_sources()
     assert isinstance(sources, list)
     print("✓ Database operational after shutdown simulation")

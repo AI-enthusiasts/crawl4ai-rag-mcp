@@ -21,7 +21,7 @@ class MockNeo4jSession:
         self.exception = None
         self.closed = False
 
-    def run(self, query: str, parameters: dict | None = None, **kwargs):
+    async def run(self, query: str, parameters: dict | None = None, **kwargs):
         """Mock run method that returns predefined results"""
         if self.exception:
             raise self.exception
@@ -32,7 +32,7 @@ class MockNeo4jSession:
 
     async def run_async(self, query: str, parameters: dict | None = None, **kwargs):
         """Async version of run method"""
-        return self.run(query, parameters, **kwargs)
+        return await self.run(query, parameters, **kwargs)
 
     def close(self):
         """Mock close method"""
@@ -68,13 +68,13 @@ class MockNeo4jResult:
         """Return result data"""
         return self.records
 
-    def single(self):
+    async def single(self):
         """Return single record"""
         if not self.records:
             return None
         return MockNeo4jRecord(self.records[0])
 
-    def consume(self):
+    async def consume(self):
         """Mock consume method"""
         self._consumed = True
         return MagicMock(

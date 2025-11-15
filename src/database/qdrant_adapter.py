@@ -325,6 +325,11 @@ class QdrantAdapter:
         """Get all sources - delegates to qdrant.operations"""
         return await qdrant.operations.get_sources(self.client)
 
+    async def get_all_sources(self) -> list[str]:
+        """Get all source IDs - extracts source_id from get_sources()"""
+        sources = await self.get_sources()
+        return [source.get("source_id", "") for source in sources if source.get("source_id")]
+
     async def update_source_info(
         self,
         source_id: str,

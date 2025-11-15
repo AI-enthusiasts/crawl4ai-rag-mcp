@@ -753,9 +753,9 @@ class TestRepositoryAnalysis:
                 branch="develop"
             )
 
-            # Should pass branch to clone_repo
+            # Should pass branch to clone_repo (as 3rd positional argument)
             mock_clone.assert_called_once()
-            assert mock_clone.call_args[1]["branch"] == "develop"
+            assert mock_clone.call_args[0][2] == "develop"  # branch is 3rd positional arg
 
     @pytest.mark.asyncio
     async def test_analyze_repository_clears_existing_data(self, extractor, tmp_path):
