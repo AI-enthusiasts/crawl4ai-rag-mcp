@@ -5,6 +5,7 @@ reducing the need for type: ignore comments and improving type safety.
 """
 
 from typing import Any, TypeGuard
+from urllib.parse import urlparse
 
 
 def is_valid_url(url: str | None) -> TypeGuard[str]:
@@ -14,7 +15,7 @@ def is_valid_url(url: str | None) -> TypeGuard[str]:
         url: URL string to validate
 
     Returns:
-        True if URL is a non-empty string starting with http:// or https://
+        True if URL is a non-empty string with valid http/https scheme and netloc
 
     Example:
         >>> url = settings.searxng_url
@@ -23,12 +24,18 @@ def is_valid_url(url: str | None) -> TypeGuard[str]:
         >>> # mypy now knows url is str, not str | None
         >>> process_url(url)
     """
-    return (
-        url is not None
-        and isinstance(url, str)
-        and url.strip() != ""
-        and url.startswith(("http://", "https://"))
-    )
+    if url is None or not isinstance(url, str) or url.strip() == "":
+        return False
+
+    if not url.startswith(("http://", "https://")):
+        return False
+
+    try:
+        parsed = urlparse(url)
+        # Must have both scheme and netloc (hostname)
+        return bool(parsed.scheme) and bool(parsed.netloc)
+    except Exception:
+        return False
 
 
 def is_non_empty_string(value: str | None) -> TypeGuard[str]:
