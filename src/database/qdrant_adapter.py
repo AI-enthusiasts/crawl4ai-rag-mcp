@@ -343,3 +343,50 @@ class QdrantAdapter:
             summary,
             word_count,
         )
+
+    # Legacy methods for backward compatibility with old tests
+    async def store_crawled_page(
+        self,
+        url: str,
+        content: str,
+        title: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> str:
+        """Store a crawled page (legacy method for backward compatibility)."""
+        from src.utils.embeddings import create_embedding
+
+        metadata = metadata or {}
+        if title:
+            metadata["title"] = title
+
+        embedding = create_embedding(content)
+
+        await self.add_documents(
+            urls=[url],
+            chunk_numbers=[0],
+            contents=[content],
+            metadatas=[metadata],
+            embeddings=[embedding],
+        )
+
+        return url
+
+    async def search_crawled_pages(
+        self,
+        query: str,
+        match_count: int = 10,
+        source_filter: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Search crawled pages (legacy method for backward compatibility)."""
+        from src.utils.embeddings import create_embedding
+
+        query_embedding = create_embedding(query)
+
+        # Convert list source_filter to single string (take first if exists)
+        source_str = source_filter[0] if source_filter else None
+
+        return await self.search_documents(
+            query_embedding=query_embedding,
+            match_count=match_count,
+            source_filter=source_str,
+        )
