@@ -13,8 +13,8 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 
-from database.factory import create_and_initialize_database, create_database_client
-from database.qdrant_adapter import QdrantAdapter
+from src.database.factory import create_and_initialize_database, create_database_client
+from src.database.qdrant_adapter import QdrantAdapter
 from utils import add_documents_to_database, search_documents
 
 
