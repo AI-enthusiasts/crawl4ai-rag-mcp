@@ -32,7 +32,7 @@ with patch.dict(
         0,
         os.path.join(os.path.dirname(__file__), "..", "knowledge_graphs"),
     )
-    from parse_repo_into_neo4j import DirectNeo4jExtractor
+    from src.knowledge_graph.parse_repo_into_neo4j import DirectNeo4jExtractor
 
 
 class MockNeo4jTransaction:
