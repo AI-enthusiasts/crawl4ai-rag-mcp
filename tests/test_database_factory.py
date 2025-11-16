@@ -9,16 +9,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from database.factory import create_and_initialize_database, create_database_client
-from database.qdrant_adapter import QdrantAdapter
-from database.supabase_adapter import SupabaseAdapter
+from src.database.factory import create_and_initialize_database, create_database_client
+from src.database.qdrant_adapter import QdrantAdapter
+from src.database.supabase_adapter import SupabaseAdapter
 
 
 class TestDatabaseFactory:
     """Test database factory functions"""
 
     @patch.dict(os.environ, {"VECTOR_DATABASE": "supabase"})
-    @patch("database.supabase_adapter.create_client")
+    @patch("src.database.supabase_adapter.create_client")
     def test_create_supabase_client(self, mock_create_client):
         """Test creating Supabase client"""
         # Mock Supabase client
@@ -30,7 +30,6 @@ class TestDatabaseFactory:
 
         # Verify
         assert isinstance(client, SupabaseAdapter)
-        assert client.__class__.__name__ == "SupabaseAdapter"
 
     @patch.dict(
         os.environ,
@@ -43,7 +42,6 @@ class TestDatabaseFactory:
 
         # Verify
         assert isinstance(client, QdrantAdapter)
-        assert client.__class__.__name__ == "QdrantAdapter"
         assert client.url == "http://localhost:6333"
 
     @patch.dict(
@@ -65,7 +63,7 @@ class TestDatabaseFactory:
         assert client.api_key == "test-key"
 
     @patch.dict(os.environ, {"VECTOR_DATABASE": ""})
-    @patch("database.supabase_adapter.create_client")
+    @patch("src.database.supabase_adapter.create_client")
     def test_create_client_default_to_supabase(self, mock_create_client):
         """Test default to Supabase when VECTOR_DATABASE is empty"""
         # Mock Supabase client
@@ -90,7 +88,7 @@ class TestDatabaseFactory:
         assert "Supported types are: 'supabase', 'qdrant'" in str(exc_info.value)
 
     @patch.dict(os.environ, {"VECTOR_DATABASE": "SUPABASE"})
-    @patch("database.supabase_adapter.create_client")
+    @patch("src.database.supabase_adapter.create_client")
     def test_create_client_case_insensitive(self, mock_create_client):
         """Test database type is case insensitive"""
         # Mock Supabase client
@@ -105,7 +103,7 @@ class TestDatabaseFactory:
 
     @pytest.mark.asyncio
     @patch.dict(os.environ, {"VECTOR_DATABASE": "supabase"})
-    @patch("database.supabase_adapter.create_client")
+    @patch("src.database.supabase_adapter.create_client")
     async def test_create_and_initialize_database(self, mock_create_client):
         """Test create and initialize helper function"""
         # Mock Supabase client
@@ -150,7 +148,7 @@ class TestDatabaseFactory:
         # Change environment
         with patch.dict(os.environ, {"VECTOR_DATABASE": "supabase"}):
             with patch(
-                "database.supabase_adapter.create_client",
+                "src.database.supabase_adapter.create_client",
                 return_value=MagicMock(),
             ):
                 client2 = create_database_client()
