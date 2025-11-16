@@ -19,8 +19,8 @@ import pytest
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from knowledge_graph.code_extractor import CodeExample, Neo4jCodeExtractor
-from services.validated_search import ValidatedCodeSearchService
+from src.knowledge_graph.code_extractor import CodeExample, Neo4jCodeExtractor
+from src.services.validated_search import ValidatedCodeSearchService
 
 
 class TestNeo4jQdrantIntegration:
