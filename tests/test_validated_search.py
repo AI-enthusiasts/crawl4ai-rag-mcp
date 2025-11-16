@@ -14,7 +14,7 @@ import pytest
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from services.validated_search import ValidatedCodeSearchService, ValidationResult
+from src.services.validated_search import ValidatedCodeSearchService, ValidationResult
 
 
 class TestValidationResult:

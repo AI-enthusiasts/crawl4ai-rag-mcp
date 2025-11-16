@@ -7,7 +7,7 @@ without cluttering production code.
 
 from typing import Any
 
-from utils.embeddings import (
+from src.utils.embeddings import (
     add_documents_to_database,
     search_documents,
     create_embedding,

@@ -21,8 +21,8 @@ import pytest
 src_path = Path(__file__).parent.parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
-from database.factory import create_and_initialize_database
-from database.qdrant_adapter import QdrantAdapter
+from src.database.factory import create_and_initialize_database
+from src.database.qdrant_adapter import QdrantAdapter
 
 
 @pytest.mark.integration
