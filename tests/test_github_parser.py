@@ -47,7 +47,7 @@ class TestGitHubRepositoryCloning:
     @pytest.fixture
     def extractor_with_git_mock(self):
         """Create extractor with mocked git operations"""
-        with patch("parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
             mock_driver = MockNeo4jDriver()
             mock_db.driver.return_value = mock_driver
 
@@ -61,8 +61,8 @@ class TestGitHubRepositoryCloning:
 
             yield extractor
 
-    @patch("parse_repo_into_neo4j.subprocess.run")
-    @patch("parse_repo_into_neo4j.shutil.rmtree")
+    @patch("src.knowledge_graph.parse_repo_into_neo4j.subprocess.run")
+    @patch("src.knowledge_graph.parse_repo_into_neo4j.shutil.rmtree")
     def test_clone_repo_success(
         self,
         mock_rmtree,
@@ -86,7 +86,7 @@ class TestGitHubRepositoryCloning:
         assert "clone" in call_args
         assert repo_url in call_args
 
-    @patch("parse_repo_into_neo4j.subprocess.run")
+    @patch("src.knowledge_graph.parse_repo_into_neo4j.subprocess.run")
     def test_clone_repo_failure(self, mock_subprocess, extractor_with_git_mock):
         """Test repository cloning failure"""
         # Mock failed git clone
@@ -97,7 +97,7 @@ class TestGitHubRepositoryCloning:
         with pytest.raises(Exception, match="Failed to clone repository"):
             extractor_with_git_mock.clone_repo(repo_url)
 
-    @patch("parse_repo_into_neo4j.subprocess.run")
+    @patch("src.knowledge_graph.parse_repo_into_neo4j.subprocess.run")
     def test_clone_repo_network_error(self, mock_subprocess, extractor_with_git_mock):
         """Test repository cloning with network error"""
         # Mock network error during git clone
@@ -108,8 +108,8 @@ class TestGitHubRepositoryCloning:
         with pytest.raises(Exception, match="Network unreachable"):
             extractor_with_git_mock.clone_repo(repo_url)
 
-    @patch("parse_repo_into_neo4j.subprocess.run")
-    @patch("parse_repo_into_neo4j.Path.exists")
+    @patch("src.knowledge_graph.parse_repo_into_neo4j.subprocess.run")
+    @patch("src.knowledge_graph.parse_repo_into_neo4j.Path.exists")
     def test_clone_repo_cleanup_on_error(
         self,
         mock_exists,
@@ -125,7 +125,7 @@ class TestGitHubRepositoryCloning:
 
         repo_url = "https://github.com/test/repo.git"
 
-        with patch("parse_repo_into_neo4j.shutil.rmtree") as mock_rmtree:
+        with patch("src.knowledge_graph.parse_repo_into_neo4j.shutil.rmtree") as mock_rmtree:
             with pytest.raises(Exception):
                 extractor_with_git_mock.clone_repo(repo_url)
 
@@ -139,7 +139,7 @@ class TestPythonFileDiscovery:
     @pytest.fixture
     def extractor_with_fs_mock(self):
         """Create extractor with mocked filesystem operations"""
-        with patch("parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
             mock_driver = MockNeo4jDriver()
             mock_db.driver.return_value = mock_driver
 
@@ -166,7 +166,7 @@ class TestPythonFileDiscovery:
         assert any("main.py" in file for file in python_files)
         assert any("utils.py" in file for file in python_files)
 
-    @patch("parse_repo_into_neo4j.Path.rglob")
+    @patch("src.knowledge_graph.parse_repo_into_neo4j.Path.rglob")
     def test_get_python_files_complex_structure(
         self,
         mock_rglob,
@@ -192,7 +192,7 @@ class TestPythonFileDiscovery:
         assert all(file.endswith(".py") for file in python_files)
         assert "README.md" not in python_files
 
-    @patch("parse_repo_into_neo4j.Path.rglob")
+    @patch("src.knowledge_graph.parse_repo_into_neo4j.Path.rglob")
     def test_get_python_files_empty_repository(
         self,
         mock_rglob,
@@ -206,7 +206,7 @@ class TestPythonFileDiscovery:
 
         assert len(python_files) == 0
 
-    @patch("parse_repo_into_neo4j.Path.rglob")
+    @patch("src.knowledge_graph.parse_repo_into_neo4j.Path.rglob")
     def test_get_python_files_permission_error(
         self,
         mock_rglob,
@@ -226,7 +226,7 @@ class TestRepositoryAnalysis:
     @pytest.fixture
     def analysis_extractor(self):
         """Create extractor for analysis testing"""
-        with patch("parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
             mock_driver = MockNeo4jDriver()
             mock_db.driver.return_value = mock_driver
 
@@ -268,8 +268,8 @@ class TestRepositoryAnalysis:
             yield extractor
 
     @pytest.mark.asyncio
-    @patch("parse_repo_into_neo4j.subprocess.run")
-    @patch("parse_repo_into_neo4j.shutil.rmtree")
+    @patch("src.knowledge_graph.parse_repo_into_neo4j.subprocess.run")
+    @patch("src.knowledge_graph.parse_repo_into_neo4j.shutil.rmtree")
     async def test_analyze_repository_complete_workflow(
         self,
         mock_rmtree,
@@ -372,7 +372,7 @@ class TestGraphCreation:
     @pytest.fixture
     def graph_extractor(self):
         """Create extractor for graph creation testing"""
-        with patch("parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
             mock_driver = MockNeo4jDriver()
             mock_db.driver.return_value = mock_driver
 
@@ -572,7 +572,7 @@ class TestImportRelationshipMapping:
     @pytest.fixture
     def import_extractor(self):
         """Create extractor for import testing"""
-        with patch("parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
             mock_driver = MockNeo4jDriver()
             mock_db.driver.return_value = mock_driver
 
@@ -728,7 +728,7 @@ class TestErrorHandlingAndEdgeCases:
     @pytest.fixture
     def error_extractor(self):
         """Create extractor for error testing"""
-        with patch("parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
             mock_driver = MockNeo4jDriver()
             mock_db.driver.return_value = mock_driver
 
@@ -901,7 +901,7 @@ class TestPerformanceOptimization:
     @pytest.fixture
     def perf_extractor(self):
         """Create extractor for performance testing"""
-        with patch("parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
             mock_driver = MockNeo4jDriver()
             mock_db.driver.return_value = mock_driver
 
