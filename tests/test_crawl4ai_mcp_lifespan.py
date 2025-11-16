@@ -26,7 +26,7 @@ class TestLifespan:
         """Test basic lifespan initialization."""
         from fastmcp import FastMCP
 
-        from src.crawl4ai_mcp import crawl4ai_lifespan
+        from src.core.context import crawl4ai_lifespan
 
         # Mock crawler
         mock_crawler = AsyncMock()
@@ -63,7 +63,7 @@ class TestLifespan:
         """Test lifespan with reranking enabled."""
         from fastmcp import FastMCP
 
-        from src.crawl4ai_mcp import crawl4ai_lifespan
+        from src.core.context import crawl4ai_lifespan
 
         # Mock components
         mock_crawler = AsyncMock()
@@ -97,7 +97,7 @@ class TestLifespan:
         """Test lifespan with knowledge graph enabled."""
         from fastmcp import FastMCP
 
-        from src.crawl4ai_mcp import crawl4ai_lifespan
+        from src.core.context import crawl4ai_lifespan
 
         # Mock components
         mock_crawler = AsyncMock()
@@ -141,7 +141,7 @@ class TestLifespan:
         """Test lifespan when knowledge graph initialization fails."""
         from fastmcp import FastMCP
 
-        from src.crawl4ai_mcp import crawl4ai_lifespan
+        from src.core.context import crawl4ai_lifespan
 
         # Mock components
         mock_crawler = AsyncMock()
