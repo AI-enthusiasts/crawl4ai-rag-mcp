@@ -129,7 +129,7 @@ class TestKnowledgeGraphValidator:
     @pytest.fixture
     def mock_validator(self, validator_config):
         """Create a KnowledgeGraphValidator with mocked dependencies"""
-        with patch("knowledge_graph_validator.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.knowledge_graph_validator.AsyncGraphDatabase") as mock_db:
             mock_driver = MockNeo4jDriver()
             mock_db.driver.return_value = mock_driver
 
@@ -145,7 +145,7 @@ class TestKnowledgeGraphValidator:
     @pytest.mark.asyncio
     async def test_initialization(self, validator_config):
         """Test KnowledgeGraphValidator initialization"""
-        with patch("knowledge_graph_validator.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.knowledge_graph_validator.AsyncGraphDatabase") as mock_db:
             mock_driver = MockNeo4jDriver()
             mock_db.driver.return_value = mock_driver
 
@@ -179,7 +179,7 @@ class TestKnowledgeGraphValidator:
     @pytest.mark.asyncio
     async def test_initialize_connection_failure(self, validator_config):
         """Test initialization failure due to connection issues"""
-        with patch("knowledge_graph_validator.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.knowledge_graph_validator.AsyncGraphDatabase") as mock_db:
             # Simulate connection failure
             mock_db.driver.side_effect = Exception("Connection failed")
 
@@ -485,7 +485,7 @@ class TestValidationCaching:
     @pytest.fixture
     def cached_validator(self, validator_config):
         """Create validator with pre-populated caches"""
-        with patch("knowledge_graph_validator.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.knowledge_graph_validator.AsyncGraphDatabase") as mock_db:
             mock_driver = MockNeo4jDriver()
             mock_db.driver.return_value = mock_driver
 
@@ -577,7 +577,7 @@ class TestConfidenceScoring:
     @pytest.fixture
     def scoring_validator(self, validator_config):
         """Create validator for confidence scoring tests"""
-        with patch("knowledge_graph_validator.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.knowledge_graph_validator.AsyncGraphDatabase") as mock_db:
             mock_driver = MockNeo4jDriver()
             mock_db.driver.return_value = mock_driver
 
@@ -695,7 +695,7 @@ class TestHallucinationDetection:
     @pytest.fixture
     def hallucination_validator(self, validator_config):
         """Create validator for hallucination detection tests"""
-        with patch("knowledge_graph_validator.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.knowledge_graph_validator.AsyncGraphDatabase") as mock_db:
             mock_driver = MockNeo4jDriver()
             mock_db.driver.return_value = mock_driver
 
@@ -789,7 +789,7 @@ class TestEdgeCasesAndErrorHandling:
     @pytest.fixture
     def error_validator(self, validator_config):
         """Create validator for error testing"""
-        with patch("knowledge_graph_validator.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.knowledge_graph_validator.AsyncGraphDatabase") as mock_db:
             mock_driver = MockNeo4jDriver()
             mock_db.driver.return_value = mock_driver
 
