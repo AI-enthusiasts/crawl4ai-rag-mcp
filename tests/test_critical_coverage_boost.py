@@ -135,7 +135,7 @@ class TestHighImpactCoverage:
 
     def test_track_request_decorator(self):
         """Test track_request decorator functionality."""
-        from src.crawl4ai_mcp import track_request
+        from src.core.decorators import track_request
 
         # Test decorator creation
         decorator_func = track_request("test_tool")
@@ -272,7 +272,7 @@ class TestHighImpactCoverage:
     def test_rerank_results_function(self):
         """Test rerank_results helper function."""
         try:
-            from src.crawl4ai_mcp import rerank_results
+            from src.utils.reranking import rerank_results
 
             # Test basic reranking
             results = [
@@ -295,7 +295,7 @@ class TestHighImpactCoverage:
     def test_parse_sitemap_function(self):
         """Test parse_sitemap helper function."""
         try:
-            from src.crawl4ai_mcp import parse_sitemap
+            from src.utils.url_helpers import parse_sitemap
 
             # Mock XML content
             mock_xml = """<?xml version="1.0" encoding="UTF-8"?>
