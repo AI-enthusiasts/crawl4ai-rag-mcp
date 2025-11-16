@@ -10,7 +10,7 @@ import statistics
 import sys
 import time
 
-from database.factory import create_database_client
+from src.database.factory import create_database_client
 
 
 class QdrantBenchmark:

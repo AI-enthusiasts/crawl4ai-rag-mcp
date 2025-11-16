@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 from crawl4ai import AsyncWebCrawler
 
-from services.crawling import crawl_batch
+from src.services.crawling import crawl_batch
 
 
 async def test_batch_crawling():

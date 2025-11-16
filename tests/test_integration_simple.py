@@ -9,8 +9,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from dotenv import load_dotenv
 
-from database.base import VectorDatabase
-from database.factory import create_database_client
+from src.database.base import VectorDatabase
+from src.database.factory import create_database_client
 from utils import (
     add_code_examples_to_database,
     add_documents_to_database,

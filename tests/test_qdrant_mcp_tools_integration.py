@@ -18,8 +18,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import crawl4ai_mcp
 
-from database.factory import create_and_initialize_database
-from database.qdrant_adapter import QdrantAdapter
+from src.database.factory import create_and_initialize_database
+from src.database.qdrant_adapter import QdrantAdapter
 from tests.test_qdrant_config import get_qdrant_url, requires_qdrant
 
 

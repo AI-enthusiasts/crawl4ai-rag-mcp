@@ -8,7 +8,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from utils.validation import get_accessible_script_path, validate_script_path
+from src.utils.validation import get_accessible_script_path, validate_script_path
 
 
 def test_path_mapping():
