@@ -23,10 +23,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastmcp import Context
 
-from config import get_settings, reset_settings
-from core.context import Crawl4AIContext, initialize_global_context
-from core.exceptions import LLMError
-from services.agentic_search import (
+from src.config import get_settings, reset_settings
+from src.core.context import Crawl4AIContext, initialize_global_context
+from src.core.exceptions import LLMError
+from src.services.agentic_search import (
     AgenticSearchConfig,
     AgenticSearchService,
     SelectiveCrawler,
@@ -136,7 +136,7 @@ class TestAgenticSearchService:
         evaluator = LocalKnowledgeEvaluator(config)
 
         # Test with empty results - should score low
-        from services.agentic_models import RAGResult
+        from src.services.agentic_models import RAGResult
 
         empty_results = []
 
@@ -292,7 +292,7 @@ class TestAgenticSearchIntegration:
         Cost: ~$0.0005 USD per run with gpt-4.1-nano
         """
         # Ensure agentic search is enabled (test_settings fixture sets this)
-        from config import reset_settings
+        from src.config import reset_settings
         reset_settings()  # Reload settings to pick up test environment variables
 
         # Mock the web search to avoid hitting SearXNG
