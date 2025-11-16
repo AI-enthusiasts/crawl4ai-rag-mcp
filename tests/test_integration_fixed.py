@@ -14,8 +14,8 @@ import pytest
 from dotenv import load_dotenv
 
 import docker
-from database.factory import create_database_client
-from utils import (
+from src.database.factory import create_database_client
+from src.utils.database_operations import (
     add_code_examples_to_database,
     add_documents_to_database,
     search_code_examples,
@@ -79,13 +79,6 @@ class TestDatabaseIntegration:
             time.sleep(1)
         else:
             pytest.fail("Qdrant did not start properly")
-
-    async def create_supabase_db(self):
-        """Create Supabase database client"""
-        os.environ["VECTOR_DATABASE"] = "supabase"
-        client = create_database_client()
-        await client.initialize()
-        return client
 
     async def create_qdrant_db(self):
         """Create Qdrant database client"""
@@ -204,13 +197,15 @@ results = await asyncio.gather(*[fetch_data(url) for url in urls])
         assert len(url_docs) == 2
         assert all(doc["url"] == "https://example.com/doc1" for doc in url_docs)
 
-        # Test 3: Keyword search (Note: May return empty if text indexing not configured)
+        # Test 3: Keyword search
         keyword_results = await db.search_documents_by_keyword(
             keyword="machine learning",
             match_count=5,
         )
-        # For now, just verify it doesn't error
         assert isinstance(keyword_results, list)
+        # If results found, verify they contain the keyword
+        if keyword_results:
+            assert any("machine learning" in r["content"].lower() for r in keyword_results)
 
     @pytest.mark.asyncio
     async def test_qdrant_code_operations(
@@ -371,17 +366,3 @@ results = await asyncio.gather(*[fetch_data(url) for url in urls])
         after_delete = await db.get_documents_by_url("https://example.com/doc1")
         assert len(after_delete) == 0
 
-    @pytest.mark.asyncio
-    @pytest.mark.skipif(
-        os.getenv("SUPABASE_URL") is None,
-        reason="Supabase credentials not configured",
-    )
-    async def test_supabase_basic_operations(self, sample_documents):
-        """Test basic operations with Supabase (if configured)"""
-        db = await self.create_supabase_db()
-
-        # Just test that we can connect and perform a basic search
-        results = await search_documents(database=db, query="test query", match_count=5)
-
-        # Should return empty results but not error
-        assert isinstance(results, list)
