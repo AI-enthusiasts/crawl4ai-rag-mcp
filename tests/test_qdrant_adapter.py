@@ -53,10 +53,10 @@ class TestQdrantAdapter:
     async def qdrant_adapter(self, mock_qdrant_client):
         """Create Qdrant adapter with mocked client"""
         with patch(
-            "database.qdrant_adapter.QdrantClient",
+            "src.database.qdrant_adapter.AsyncQdrantClient",
             return_value=mock_qdrant_client,
         ):
-            from database.qdrant_adapter import QdrantAdapter
+            from src.database.qdrant_adapter import QdrantAdapter
 
             adapter = QdrantAdapter(url="http://localhost:6333")
             adapter.client = mock_qdrant_client
@@ -70,8 +70,8 @@ class TestQdrantAdapter:
         mock_client.get_collection.side_effect = Exception("Collection not found")
         mock_client.create_collection = AsyncMock()
 
-        with patch("database.qdrant_adapter.QdrantClient", return_value=mock_client):
-            from database.qdrant_adapter import QdrantAdapter
+        with patch("src.database.qdrant_adapter.AsyncQdrantClient", return_value=mock_client):
+            from src.database.qdrant_adapter import QdrantAdapter
 
             adapter = QdrantAdapter(url="http://localhost:6333")
             adapter.client = mock_client  # Ensure the mocked client is used
@@ -446,8 +446,8 @@ class TestQdrantAdapter:
         mock_client.get_collection.side_effect = Exception("Collection not found")
         mock_client.create_collection.side_effect = Exception("Creation failed")
 
-        with patch("database.qdrant_adapter.QdrantClient", return_value=mock_client):
-            from database.qdrant_adapter import QdrantAdapter
+        with patch("src.database.qdrant_adapter.AsyncQdrantClient", return_value=mock_client):
+            from src.database.qdrant_adapter import QdrantAdapter
 
             adapter = QdrantAdapter(url="http://localhost:6333")
 
