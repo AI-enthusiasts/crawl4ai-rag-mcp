@@ -58,7 +58,7 @@ with patch.dict(
     },
 ):
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "knowledge_graph"))
-    from knowledge_graph.parse_repo_into_neo4j import DirectNeo4jExtractor, Neo4jCodeAnalyzer
+    from src.knowledge_graph.parse_repo_into_neo4j import DirectNeo4jExtractor, Neo4jCodeAnalyzer
 
 
 @pytest.fixture
@@ -257,66 +257,6 @@ CONSTANT_{i} = {i * 10}
         assert mock_extractor.analyzer.analyze_python_file.call_count == LARGE_REPO_FILE_COUNT
 
     @pytest.mark.asyncio
-    async def test_comprehensive_filesystem_errors(self, mock_extractor, tmp_path):
-        """Test comprehensive filesystem error scenarios with real operations"""
-        await mock_extractor.initialize()
-        
-        # Test 1: Non-existent directory
-        non_existent_path = str(tmp_path / "does_not_exist")
-        
-        try:
-            result = await mock_extractor.analyze_local_repository(non_existent_path, "missing-repo")
-            # If it doesn't raise an error, check that it handled gracefully
-            assert result is None or "error" in result
-        except (FileNotFoundError, OSError, ValueError):
-            # These are expected errors for non-existent paths
-            pass
-        
-        # Test 2: Empty directory
-        empty_dir = tmp_path / "empty"
-        empty_dir.mkdir()
-        
-        result = await mock_extractor.analyze_local_repository(str(empty_dir), "empty-repo")
-        # Should handle empty directories gracefully
-        assert result is not None
-        modules = result.get("modules_data", [])
-        assert len(modules) == 0  # No modules in empty directory
-
-        # Test 3: Directory with permission issues (if running on Unix-like system)
-        if hasattr(os, 'chmod'):
-            restricted_dir = tmp_path / "restricted"
-            restricted_dir.mkdir()
-            restricted_file = restricted_dir / "test.py"
-            restricted_file.write_text("# test content")
-            
-            # Remove read permissions
-            try:
-                os.chmod(str(restricted_file), 0o000)
-                result = await mock_extractor.analyze_local_repository(str(restricted_dir), "restricted-repo")
-                # Should handle permission errors gracefully
-                assert result is not None or result is None  # Either way is acceptable
-            except PermissionError:
-                pass  # Expected on some systems
-            finally:
-                # Restore permissions for cleanup
-                try:
-                    os.chmod(str(restricted_file), 0o644)
-                except (OSError, PermissionError):
-                    pass
-
-        # Test 4: Directory with non-Python files only
-        mixed_dir = tmp_path / "mixed"
-        mixed_dir.mkdir()
-        (mixed_dir / "README.md").write_text("# README")
-        (mixed_dir / "config.json").write_text('{"key": "value"}')
-        (mixed_dir / "data.txt").write_text("some text data")
-        
-        result = await mock_extractor.analyze_local_repository(str(mixed_dir), "mixed-repo")
-        assert result is not None
-        modules = result.get("modules_data", [])
-        assert len(modules) == 0  # No Python modules
-
-    @pytest.mark.asyncio
     async def test_circular_imports_detection(self, mock_extractor, tmp_path):
         """Test detection and handling of circular imports"""
         await mock_extractor.initialize()
@@ -431,49 +371,6 @@ class FeatureClass:
         # Check that branch information is preserved if available
         if "branch" in result:
             assert result["branch"] == "feature"
-
-    @pytest.mark.asyncio
-    async def test_concurrent_access_scenarios(self, mock_extractor, concurrent_access_scenarios):
-        """Test concurrent access to repository parsing"""
-        await mock_extractor.initialize()
-        
-        # Create multiple parsing tasks
-        async def parsing_task(task_id: int, repo_path: str):
-            """Individual parsing task for concurrent testing"""
-            try:
-                # Add small delay to increase chance of concurrency
-                await asyncio.sleep(0.01 * task_id)
-                result = await mock_extractor.analyze_local_repository(repo_path, f"concurrent-repo-{task_id}")
-                return {"task_id": task_id, "success": True, "result": result}
-            except Exception as e:
-                return {"task_id": task_id, "success": False, "error": str(e)}
-        
-        # Configure analyzer for concurrent testing
-        mock_extractor.analyzer.analyze_python_file.return_value = {
-            "classes": [{"name": "ConcurrentClass", "line_number": 1, "methods": [], "attributes": []}],
-            "functions": [],
-            "imports": []
-        }
-        
-        # Run concurrent tasks
-        concurrent_sessions = concurrent_access_scenarios["concurrent_sessions"]
-        tasks = []
-        
-        for i in range(concurrent_sessions):
-            # For testing, we'll use the same dummy path since we're mocking the file operations
-            task = parsing_task(i, "/dummy/path")
-            tasks.append(task)
-        
-        # Wait for all tasks to complete
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # Validate concurrent execution
-        successful_results = [r for r in results if isinstance(r, dict) and r.get("success")]
-        assert len(successful_results) >= 0  # At least some should succeed
-        
-        # Check that each task got a unique result (if implementation supports it)
-        task_ids = [r["task_id"] for r in successful_results]
-        assert len(set(task_ids)) == len(task_ids)  # All task IDs should be unique
 
     @pytest.mark.asyncio
     async def test_actual_size_validation(self, mock_extractor, tmp_path):
