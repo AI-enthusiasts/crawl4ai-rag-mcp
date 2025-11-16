@@ -372,7 +372,7 @@ class TestServiceInitialization:
     def test_crawl4ai_context_initialization(self):
         """Test Crawl4AI context initialization"""
         # Test that the context class can be imported and initialized
-        from crawl4ai_mcp import Crawl4AIContext
+        from src.core.context import Crawl4AIContext
 
         # Should be able to create instance
         context = Crawl4AIContext()
@@ -381,7 +381,7 @@ class TestServiceInitialization:
     @patch("crawl4ai_mcp.AsyncWebCrawler")
     def test_crawler_initialization_mock(self, mock_crawler):
         """Test crawler initialization with mocking"""
-        from crawl4ai_mcp import Crawl4AIContext
+        from src.core.context import Crawl4AIContext
 
         mock_crawler_instance = Mock()
         mock_crawler.return_value = mock_crawler_instance

@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Import test doubles
 # Import MCP server components
-from crawl4ai_mcp import Crawl4AIContext
+from src.core.context import Crawl4AIContext
 from fastmcp import Context
 
 # Import Qdrant-specific modules
