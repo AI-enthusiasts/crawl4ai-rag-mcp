@@ -38,9 +38,9 @@ with patch.dict(
     # Now import our modules
     sys.path.insert(
         0,
-        os.path.join(os.path.dirname(__file__), "..", "knowledge_graphs"),
+        os.path.join(os.path.dirname(__file__), "..", "src", "knowledge_graph"),
     )
-    from parse_repo_into_neo4j import DirectNeo4jExtractor, Neo4jCodeAnalyzer
+    from src.knowledge_graph.parse_repo_into_neo4j import DirectNeo4jExtractor, Neo4jCodeAnalyzer
 
 
 class TestDirectNeo4jExtractor:
@@ -58,7 +58,7 @@ class TestDirectNeo4jExtractor:
     @pytest.fixture
     def mock_extractor(self, extractor_config):
         """Create a DirectNeo4jExtractor with mocked dependencies"""
-        with patch("parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
             mock_driver = MockNeo4jDriver()
             mock_db.driver.return_value = mock_driver
 
@@ -77,7 +77,7 @@ class TestDirectNeo4jExtractor:
     @pytest.mark.asyncio
     async def test_initialization(self, extractor_config):
         """Test DirectNeo4jExtractor initialization"""
-        with patch("parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
             mock_driver = MockNeo4jDriver()
             mock_db.driver.return_value = mock_driver
 
@@ -105,7 +105,7 @@ class TestDirectNeo4jExtractor:
     @pytest.mark.asyncio
     async def test_initialize_connection_failure(self, extractor_config):
         """Test initialization failure due to connection issues"""
-        with patch("parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
             # Simulate connection failure
             mock_db.driver.side_effect = Exception("Connection failed")
 
@@ -481,7 +481,7 @@ class TestNeo4jErrorHandling:
     @pytest.fixture
     def extractor_with_error_driver(self):
         """Create extractor with a driver that simulates various errors"""
-        with patch("parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
             mock_driver = MockNeo4jDriver()
             mock_db.driver.return_value = mock_driver
 
@@ -579,7 +579,7 @@ class TestNeo4jPerformance:
     @pytest.fixture
     def performance_extractor(self):
         """Create extractor for performance testing"""
-        with patch("parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
+        with patch("src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
             mock_driver = MockNeo4jDriver()
             mock_db.driver.return_value = mock_driver
 
