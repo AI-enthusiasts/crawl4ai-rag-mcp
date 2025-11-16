@@ -21,7 +21,7 @@ import pytest
 import sys
 sys.path.insert(0, 'src')
 
-from utils.embeddings import (
+from src.utils.embeddings import (
     add_documents_to_database,
     generate_contextual_embedding,
     process_chunk_with_context,

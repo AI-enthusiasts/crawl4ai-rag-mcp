@@ -8,7 +8,7 @@ import sys
 # Add src to Python path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
-from utils.validation import validate_urls_for_crawling
+from src.utils.validation import validate_urls_for_crawling
 
 
 async def test_scrape_with_validation():

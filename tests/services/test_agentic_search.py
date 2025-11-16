@@ -16,8 +16,8 @@ from pydantic_ai.exceptions import UnexpectedModelBehavior
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
-from core.exceptions import DatabaseError, LLMError, MCPToolError
-from services.agentic_models import (
+from src.core.exceptions import DatabaseError, LLMError, MCPToolError
+from src.services.agentic_models import (
     ActionType,
     AgenticSearchResult,
     CompletenessEvaluation,
@@ -28,7 +28,7 @@ from services.agentic_models import (
     URLRanking,
     URLRankingList,
 )
-from services.agentic_search import (
+from src.services.agentic_search import (
     AgenticSearchService,
     agentic_search_impl,
     get_agentic_search_service,

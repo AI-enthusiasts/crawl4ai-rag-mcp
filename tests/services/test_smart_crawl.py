@@ -18,8 +18,8 @@ from crawl4ai import BrowserConfig
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
-from core.exceptions import CrawlError, DatabaseError, FetchError, MCPToolError
-from services.smart_crawl import (
+from src.core.exceptions import CrawlError, DatabaseError, FetchError, MCPToolError
+from src.services.smart_crawl import (
     _crawl_recursive,
     _crawl_sitemap,
     _crawl_text_file,

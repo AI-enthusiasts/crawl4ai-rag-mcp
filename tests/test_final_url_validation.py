@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(0, "/home/krashnicov/crawl4aimcp/src")
 
-from utils.validation import validate_urls_for_crawling
+from src.utils.validation import validate_urls_for_crawling
 
 
 def test_original_error_scenario():

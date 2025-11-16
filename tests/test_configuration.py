@@ -33,7 +33,7 @@ from crawl4ai_mcp import (
     validate_script_path,
 )
 
-from database.factory import create_and_initialize_database, create_database_client
+from src.database.factory import create_and_initialize_database, create_database_client
 
 
 class TestDatabaseFactory:
