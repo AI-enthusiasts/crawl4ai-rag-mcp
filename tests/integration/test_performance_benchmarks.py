@@ -97,7 +97,7 @@ class TestThroughputBenchmarks:
         # Mock crawler for consistent results
         from unittest.mock import AsyncMock, MagicMock
 
-        from crawl4ai_mcp import crawl_batch
+        from src.services.crawling.batch import crawl_batch
 
         mock_crawler = AsyncMock()
         mock_crawler.__aenter__ = AsyncMock(return_value=mock_crawler)

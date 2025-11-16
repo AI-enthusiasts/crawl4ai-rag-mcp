@@ -538,7 +538,7 @@ Normal content continues.
 class TestProcessCodeExample:
     """Test process_code_example() function for code processing"""
 
-    @patch("crawl4ai_mcp.generate_code_example_summary")
+    @patch("src.utils.code_analysis.generate_code_example_summary")
     def test_basic_functionality(self, mock_generate):
         """Test basic code example processing"""
         mock_generate.return_value = "Test function summary"
@@ -553,7 +553,7 @@ class TestProcessCodeExample:
             "After context",
         )
 
-    @patch("crawl4ai_mcp.generate_code_example_summary")
+    @patch("src.utils.code_analysis.generate_code_example_summary")
     def test_with_different_code_types(self, mock_generate):
         """Test processing different types of code"""
         test_cases = [
@@ -573,7 +573,7 @@ class TestProcessCodeExample:
             assert result == expected_summary
             mock_generate.assert_called_with(code, "context before", "context after")
 
-    @patch("crawl4ai_mcp.generate_code_example_summary")
+    @patch("src.utils.code_analysis.generate_code_example_summary")
     def test_with_empty_contexts(self, mock_generate):
         """Test processing with empty context"""
         mock_generate.return_value = "Summary without context"
@@ -584,7 +584,7 @@ class TestProcessCodeExample:
         assert result == "Summary without context"
         mock_generate.assert_called_once_with("def func(): return True", "", "")
 
-    @patch("crawl4ai_mcp.generate_code_example_summary")
+    @patch("src.utils.code_analysis.generate_code_example_summary")
     def test_with_long_contexts(self, mock_generate):
         """Test processing with very long contexts"""
         mock_generate.return_value = "Summary with long context"
@@ -603,7 +603,7 @@ class TestProcessCodeExample:
             long_context_after,
         )
 
-    @patch("crawl4ai_mcp.generate_code_example_summary")
+    @patch("src.utils.code_analysis.generate_code_example_summary")
     def test_error_handling(self, mock_generate):
         """Test error handling in code processing"""
         mock_generate.side_effect = Exception("Generation failed")

@@ -28,7 +28,8 @@ import requests
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Import functions to test
-from crawl4ai_mcp import is_sitemap, is_txt, parse_sitemap, validate_github_url
+from src.utils.url_helpers import is_sitemap, is_txt, parse_sitemap
+from src.utils.validation import validate_github_url
 
 
 class TestIsTxt:

@@ -484,7 +484,7 @@ class TestDatabaseFactory:
         assert adapter.client is not None
 
         # Test basic operations work
-        with patch("src.utils.create_embedding") as mock_embeddings:
+        with patch("src.utils.embeddings.create_embedding") as mock_embeddings:
             mock_embeddings.return_value = [0.1] * 1536
 
             doc_id = await adapter.store_crawled_page(
@@ -497,7 +497,7 @@ class TestDatabaseFactory:
         assert doc_id is not None
 
         # Test search
-        with patch("src.utils.create_embedding") as mock_embeddings:
+        with patch("src.utils.embeddings.create_embedding") as mock_embeddings:
             mock_embeddings.return_value = [0.1] * 1536
 
             results = await adapter.search_crawled_pages(

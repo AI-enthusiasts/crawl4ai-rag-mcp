@@ -97,7 +97,7 @@ async def test_knowledge_graph_tools():
 
     try:
         # Test importing the main tools
-        from crawl4ai_mcp import validate_neo4j_connection
+        from src.utils.validation import validate_neo4j_connection
 
         validation_result = validate_neo4j_connection()
         print(f"✅ validate_neo4j_connection(): {validation_result}")

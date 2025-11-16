@@ -242,7 +242,7 @@ class TestEnvironmentConfiguration:
 class TestValidationFunctions:
     """Test configuration validation functions"""
 
-    @patch("crawl4ai_mcp.neo4j.GraphDatabase.driver")
+    @patch("neo4j.GraphDatabase.driver")
     def test_validate_neo4j_connection_success(self, mock_driver):
         """Test successful Neo4j connection validation"""
         mock_driver_instance = Mock()
@@ -260,7 +260,7 @@ class TestValidationFunctions:
             auth=("neo4j", "password"),
         )
 
-    @patch("crawl4ai_mcp.neo4j.GraphDatabase.driver")
+    @patch("neo4j.GraphDatabase.driver")
     def test_validate_neo4j_connection_failure(self, mock_driver):
         """Test Neo4j connection validation failure"""
         mock_driver.side_effect = Exception("Connection failed")
@@ -372,16 +372,16 @@ class TestServiceInitialization:
     def test_crawl4ai_context_initialization(self):
         """Test Crawl4AI context initialization"""
         # Test that the context class can be imported and initialized
-        from crawl4ai_mcp import Crawl4AIContext
+        from src.core.context import Crawl4AIContext
 
         # Should be able to create instance
         context = Crawl4AIContext()
         assert context is not None
 
-    @patch("crawl4ai_mcp.AsyncWebCrawler")
+    @patch("crawl4ai.AsyncWebCrawler")
     def test_crawler_initialization_mock(self, mock_crawler):
         """Test crawler initialization with mocking"""
-        from crawl4ai_mcp import Crawl4AIContext
+        from src.core.context import Crawl4AIContext
 
         mock_crawler_instance = Mock()
         mock_crawler.return_value = mock_crawler_instance
