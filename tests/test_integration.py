@@ -11,11 +11,13 @@ from dotenv import load_dotenv
 
 import docker
 from src.database.factory import create_database_client
-from src.utils.database_operations import (
-    add_code_examples_to_database,
+from src.utils.embeddings.documents import (
     add_documents_to_database,
-    search_code_examples,
     search_documents,
+)
+from src.utils.embeddings.code_examples import (
+    add_code_examples_to_database,
+    search_code_examples,
 )
 
 # Load environment variables

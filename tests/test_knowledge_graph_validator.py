@@ -43,7 +43,7 @@ with patch.dict(
         0,
         os.path.join(os.path.dirname(__file__), "..", "knowledge_graphs"),
     )
-    from knowledge_graph_validator import (
+    from src.knowledge_graph.knowledge_graph_validator import (
         ImportValidation,
         KnowledgeGraphValidator,
         ValidationResult,
