@@ -153,8 +153,8 @@ class TestSessionCleanup:
         mock_crawler.arun_many = AsyncMock(return_value=[mock_result])
         
         # Import the function we're testing
-        from services.crawling import crawl_batch
-        
+        from src.services.crawling.batch import crawl_batch
+
         # Call crawl_batch
         urls = ["https://example.com"]
         results = await crawl_batch(mock_crawler, urls, max_concurrent=5)
@@ -177,9 +177,9 @@ class TestSessionCleanup:
         mock_strategy.kill_session = AsyncMock()
         mock_crawler.crawler_strategy = mock_strategy
         mock_crawler.arun_many = AsyncMock(side_effect=RuntimeError("Test error"))
-        
-        from services.crawling import crawl_batch
-        
+
+        from src.services.crawling.batch import crawl_batch
+
         # Call should raise error
         with pytest.raises(ValueError, match="Crawling failed"):
             await crawl_batch(mock_crawler, ["https://example.com"], max_concurrent=5)
