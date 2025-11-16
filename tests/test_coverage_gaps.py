@@ -109,7 +109,7 @@ class TestCrawl4AIMCPTools:
         assert isinstance(result, str)
         mock_db.search_documents.assert_called_once()
 
-    @patch("src.crawl4ai_mcp.AsyncWebCrawler")
+    @patch("crawl4ai.AsyncWebCrawler")
     @patch("src.crawl4ai_mcp.get_database")
     async def test_scrape_urls_mcp_tool_basic(
         self,

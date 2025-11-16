@@ -351,7 +351,7 @@ Content with émojis 🚀 and spéciál characters."""
 class TestProcessCodeExample:
     """Test process_code_example function for code processing."""
 
-    @patch("crawl4ai_mcp.generate_code_example_summary")
+    @patch("src.utils.code_analysis.generate_code_example_summary")
     def test_process_code_example_success(self, mock_generate):
         """Test successful code example processing."""
         mock_generate.return_value = "Generated summary"
@@ -366,7 +366,7 @@ class TestProcessCodeExample:
             "Context after",
         )
 
-    @patch("crawl4ai_mcp.generate_code_example_summary")
+    @patch("src.utils.code_analysis.generate_code_example_summary")
     def test_process_code_example_with_none_context(self, mock_generate):
         """Test code example processing with None context."""
         mock_generate.return_value = "Summary with None context"
@@ -377,7 +377,7 @@ class TestProcessCodeExample:
         assert result == "Summary with None context"
         mock_generate.assert_called_once_with("print('hello')", None, None)
 
-    @patch("crawl4ai_mcp.generate_code_example_summary")
+    @patch("src.utils.code_analysis.generate_code_example_summary")
     def test_process_code_example_exception_propagation(self, mock_generate):
         """Test that exceptions from generate_code_example_summary are propagated."""
         mock_generate.side_effect = Exception("Generation failed")
