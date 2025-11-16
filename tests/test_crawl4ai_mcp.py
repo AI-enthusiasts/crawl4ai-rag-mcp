@@ -84,7 +84,7 @@ class TestScrapeUrls:
     @pytest.mark.asyncio
     @patch("utils.extract_source_summary", return_value="Test summary")
     @patch("crawl4ai_mcp.add_documents_to_database")
-    @patch("crawl4ai_mcp.crawl_batch")
+    @patch("src.services.crawling.batch.crawl_batch")
     async def test_scrape_single_url_success(
         self,
         mock_crawl_batch,
@@ -125,7 +125,7 @@ class TestScrapeUrls:
 
     @pytest.mark.asyncio
     @patch("crawl4ai_mcp.add_documents_to_database")
-    @patch("crawl4ai_mcp.crawl_batch")
+    @patch("src.services.crawling.batch.crawl_batch")
     async def test_scrape_multiple_urls(self, mock_crawl_batch, mock_add_docs):
         """Test scraping multiple URLs"""
         # Setup
@@ -172,7 +172,7 @@ class TestScrapeUrls:
         assert mock_crawl_batch.call_count == 1
 
     @pytest.mark.asyncio
-    @patch("crawl4ai_mcp.crawl_batch")
+    @patch("src.services.crawling.batch.crawl_batch")
     async def test_scrape_with_raw_markdown(self, mock_crawl_batch):
         """Test scraping with raw markdown output"""
         # Setup
@@ -233,7 +233,7 @@ class TestSmartCrawlUrl:
 
     @pytest.mark.asyncio
     @patch("crawl4ai_mcp.parse_sitemap")
-    @patch("crawl4ai_mcp.crawl_batch")
+    @patch("src.services.crawling.batch.crawl_batch")
     async def test_smart_crawl_sitemap(self, mock_crawl_batch, mock_parse_sitemap):
         """Test smart crawling of sitemap URL"""
         # Setup
@@ -378,7 +378,7 @@ class TestPerformRagQuery:
     """Test perform_rag_query MCP tool"""
 
     @pytest.mark.asyncio
-    @patch("crawl4ai_mcp.search_documents")
+    @patch("src.database.qdrant.search.search_documents")
     async def test_rag_query_basic(self, mock_search):
         """Test basic RAG query"""
         # Setup
@@ -408,7 +408,7 @@ class TestPerformRagQuery:
 
     @pytest.mark.asyncio
     @patch.dict(os.environ, {"USE_HYBRID_SEARCH": "true"})
-    @patch("crawl4ai_mcp.search_documents")
+    @patch("src.database.qdrant.search.search_documents")
     async def test_rag_query_hybrid_search(self, mock_search):
         """Test RAG query with hybrid search enabled"""
         # Setup
@@ -450,7 +450,7 @@ class TestPerformRagQuery:
 
     @pytest.mark.asyncio
     @patch.dict(os.environ, {"USE_RERANKING": "true"})
-    @patch("crawl4ai_mcp.search_documents")
+    @patch("src.database.qdrant.search.search_documents")
     async def test_rag_query_with_reranking(self, mock_search):
         """Test RAG query with reranking enabled"""
         # Setup
@@ -824,7 +824,7 @@ class TestUtilityFunctions:
         assert info["headers"] == ""
         assert info["word_count"] > 0
 
-    @patch("crawl4ai_mcp.generate_code_example_summary")
+    @patch("src.utils.code_analysis.generate_code_example_summary")
     def test_process_code_example(self, mock_generate):
         """Test code example processing"""
         mock_generate.return_value = "A hello world function"
@@ -1428,7 +1428,7 @@ class TestMCPToolIntegration:
 
     @pytest.mark.asyncio
     @patch("crawl4ai_mcp.add_documents_to_database")
-    @patch("crawl4ai_mcp.crawl_batch")
+    @patch("src.services.crawling.batch.crawl_batch")
     async def test_scrape_urls_error_handling(self, mock_crawl_batch, mock_add_docs):
         """Test scrape_urls with various error conditions"""
         # Test with exception during crawling
@@ -1453,7 +1453,7 @@ class TestMCPToolIntegration:
         assert "error" in result_json
 
     @pytest.mark.asyncio
-    @patch("crawl4ai_mcp.search_documents")
+    @patch("src.database.qdrant.search.search_documents")
     async def test_perform_rag_query_error(self, mock_search):
         """Test perform_rag_query with search error"""
         mock_search.side_effect = Exception("Search error")
@@ -1466,7 +1466,7 @@ class TestMCPToolIntegration:
 
     @pytest.mark.asyncio
     @patch("crawl4ai_mcp.parse_sitemap")
-    @patch("crawl4ai_mcp.crawl_batch")
+    @patch("src.services.crawling.batch.crawl_batch")
     async def test_smart_crawl_url_empty_sitemap(
         self,
         mock_crawl_batch,

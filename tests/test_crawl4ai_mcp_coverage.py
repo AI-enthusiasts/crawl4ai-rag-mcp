@@ -416,7 +416,7 @@ class TestSmartCrawlUrl:
         assert "LLMs.txt" in result_json["raw_markdown"]
 
     @pytest.mark.asyncio
-    @patch("crawl4ai_mcp.get_available_sources")
+    @patch("src.database.rag_queries.get_available_sources")
     async def test_get_available_sources_error(self):
         """Test get_available_sources with database error"""
         # Setup
@@ -439,8 +439,8 @@ class TestSearchIntegration:
     """Test search MCP tool with various scenarios"""
 
     @pytest.mark.asyncio
-    @patch("crawl4ai_mcp.searxng_search")
-    @patch("crawl4ai_mcp.crawl_batch")
+    @patch("src.services.search._search_searxng")
+    @patch("src.services.crawling.batch.crawl_batch")
     async def test_search_with_searxng_error(self, mock_crawl, mock_searxng):
         """Test search when SearXNG fails"""
         # Setup
@@ -460,8 +460,8 @@ class TestSearchIntegration:
         mock_crawl.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("crawl4ai_mcp.searxng_search")
-    @patch("crawl4ai_mcp.crawl_batch")
+    @patch("src.services.search._search_searxng")
+    @patch("src.services.crawling.batch.crawl_batch")
     async def test_search_return_raw_markdown(self, mock_crawl, mock_searxng):
         """Test search with raw markdown return"""
         # Setup
