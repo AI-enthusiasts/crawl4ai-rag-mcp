@@ -26,7 +26,8 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Import functions to test
-from crawl4ai_mcp import rerank_results, track_request
+from src.core.decorators import track_request
+from src.utils.reranking import rerank_results
 
 
 class TestRerankResults:

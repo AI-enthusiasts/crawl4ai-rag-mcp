@@ -296,7 +296,7 @@ class TestSearchFunction:
         ctx.request_context.lifespan_context.database_client = mock_db
 
         # Import and test
-        from crawl4ai_mcp import search
+        from src.database.qdrant.search import search
 
         with patch("crawl4ai_mcp.scrape_urls", new_callable=AsyncMock) as mock_scrape:
             mock_scrape.return_value = json.dumps(
