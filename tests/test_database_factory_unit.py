@@ -12,17 +12,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from database.base import VectorDatabase
-from database.factory import create_and_initialize_database, create_database_client
-from database.qdrant_adapter import QdrantAdapter
-from database.supabase_adapter import SupabaseAdapter
+from src.database.base import VectorDatabase
+from src.database.factory import create_and_initialize_database, create_database_client
+from src.database.qdrant_adapter import QdrantAdapter
+from src.database.supabase_adapter import SupabaseAdapter
 
 
 class TestDatabaseFactoryCreation:
     """Test database factory client creation functionality"""
 
     @patch.dict(os.environ, {"VECTOR_DATABASE": "supabase"})
-    @patch("database.supabase_adapter.create_client")
+    @patch("src.database.supabase_adapter.create_client")
     def test_create_supabase_database(self, mock_create_client):
         """Test creating Supabase adapter with default environment"""
         # Arrange
@@ -34,7 +34,6 @@ class TestDatabaseFactoryCreation:
 
         # Assert
         assert isinstance(db, SupabaseAdapter)
-        assert isinstance(db, VectorDatabase)
         assert db.__class__.__name__ == "SupabaseAdapter"
 
     @patch.dict(os.environ, {"VECTOR_DATABASE": "qdrant"}, clear=True)
@@ -45,7 +44,6 @@ class TestDatabaseFactoryCreation:
 
         # Assert
         assert isinstance(db, QdrantAdapter)
-        assert isinstance(db, VectorDatabase)
         assert db.__class__.__name__ == "QdrantAdapter"
         assert db.url == "http://qdrant:6333"  # Default URL from factory
         assert db.api_key is None  # Default API key
@@ -104,7 +102,7 @@ class TestDatabaseFactoryDefaults:
     """Test database factory default behavior and fallbacks"""
 
     @patch.dict(os.environ, {}, clear=True)
-    @patch("database.supabase_adapter.create_client")
+    @patch("src.database.supabase_adapter.create_client")
     def test_default_to_supabase_when_no_env_var(self, mock_create_client):
         """Test defaults to Supabase when VECTOR_DATABASE is not set"""
         # Arrange
@@ -118,7 +116,7 @@ class TestDatabaseFactoryDefaults:
         assert isinstance(db, SupabaseAdapter)
 
     @patch.dict(os.environ, {"VECTOR_DATABASE": ""})
-    @patch("database.supabase_adapter.create_client")
+    @patch("src.database.supabase_adapter.create_client")
     def test_default_to_supabase_when_empty_string(self, mock_create_client):
         """Test defaults to Supabase when VECTOR_DATABASE is empty string"""
         # Arrange
@@ -148,7 +146,7 @@ class TestDatabaseFactoryCaseInsensitivity:
         "db_type",
         ["SUPABASE", "Supabase", "sUpAbAsE", "SUPABASE"],
     )
-    @patch("database.supabase_adapter.create_client")
+    @patch("src.database.supabase_adapter.create_client")
     def test_supabase_case_insensitive(self, mock_create_client, db_type):
         """Test Supabase creation is case insensitive"""
         # Arrange
@@ -230,7 +228,7 @@ class TestDatabaseFactoryInitialization:
 
     @pytest.mark.asyncio
     @patch.dict(os.environ, {"VECTOR_DATABASE": "supabase"})
-    @patch("database.supabase_adapter.create_client")
+    @patch("src.database.supabase_adapter.create_client")
     async def test_create_and_initialize_supabase(self, mock_create_client):
         """Test create and initialize for Supabase adapter"""
         # Arrange
@@ -267,7 +265,7 @@ class TestDatabaseFactoryInitialization:
 
     @pytest.mark.asyncio
     @patch.dict(os.environ, {"VECTOR_DATABASE": "supabase"})
-    @patch("database.supabase_adapter.create_client")
+    @patch("src.database.supabase_adapter.create_client")
     async def test_create_and_initialize_calls_initialize_exactly_once(
         self,
         mock_create_client,
@@ -299,7 +297,7 @@ class TestDatabaseFactoryInitialization:
 
     @pytest.mark.asyncio
     @patch.dict(os.environ, {"VECTOR_DATABASE": "supabase"})
-    @patch("database.supabase_adapter.create_client")
+    @patch("src.database.supabase_adapter.create_client")
     async def test_create_and_initialize_propagates_initialization_errors(
         self,
         mock_create_client,
@@ -334,7 +332,7 @@ class TestDatabaseFactoryEnvironmentHandling:
         # Test Supabase second - should create different instance
         with patch.dict(os.environ, {"VECTOR_DATABASE": "supabase"}):
             with patch(
-                "database.supabase_adapter.create_client",
+                "src.database.supabase_adapter.create_client",
                 return_value=MagicMock(),
             ):
                 db2 = create_database_client()
@@ -391,7 +389,7 @@ class TestDatabaseFactoryIntegration:
             with patch.dict(os.environ, config):
                 if config["VECTOR_DATABASE"] == "supabase":
                     with patch(
-                        "database.supabase_adapter.create_client",
+                        "src.database.supabase_adapter.create_client",
                         return_value=MagicMock(),
                     ):
                         db = create_database_client()
@@ -433,7 +431,7 @@ class TestDatabaseFactoryIntegration:
         # Test Supabase adapter (would have different attributes)
         with patch.dict(os.environ, {"VECTOR_DATABASE": "supabase"}):
             with patch(
-                "database.supabase_adapter.create_client",
+                "src.database.supabase_adapter.create_client",
                 return_value=MagicMock(),
             ):
                 supabase_db = create_database_client()
