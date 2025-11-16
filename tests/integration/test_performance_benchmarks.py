@@ -515,7 +515,7 @@ class TestLatencyBenchmarks:
         """Benchmark cold start performance after service restart."""
 
         # Simulate cold start by creating a new client connection
-        from database.qdrant_adapter import QdrantAdapter
+        from src.database.qdrant_adapter import QdrantAdapter
 
         cold_client = QdrantAdapter(
             url="http://localhost:6333",

@@ -48,7 +48,7 @@ class TestQdrantAdapter:
     @pytest.fixture
     async def qdrant_adapter(self, mock_qdrant_client):
         """Create QdrantAdapter with mocked client"""
-        from database.qdrant_adapter import QdrantAdapter
+        from src.database.qdrant_adapter import QdrantAdapter
 
         adapter = QdrantAdapter()
         adapter.client = mock_qdrant_client
@@ -57,7 +57,7 @@ class TestQdrantAdapter:
     @pytest.mark.asyncio
     async def test_initialization_default_values(self):
         """Test QdrantAdapter initialization with default values"""
-        from database.qdrant_adapter import QdrantAdapter
+        from src.database.qdrant_adapter import QdrantAdapter
 
         with patch.dict(os.environ, {}, clear=True):
             adapter = QdrantAdapter()
@@ -73,7 +73,7 @@ class TestQdrantAdapter:
     @pytest.mark.asyncio
     async def test_initialization_with_params(self):
         """Test QdrantAdapter initialization with custom parameters"""
-        from database.qdrant_adapter import QdrantAdapter
+        from src.database.qdrant_adapter import QdrantAdapter
 
         custom_url = "http://custom:6333"
         custom_key = "test-api-key"
@@ -86,7 +86,7 @@ class TestQdrantAdapter:
     @pytest.mark.asyncio
     async def test_initialization_with_env_vars(self):
         """Test QdrantAdapter initialization with environment variables"""
-        from database.qdrant_adapter import QdrantAdapter
+        from src.database.qdrant_adapter import QdrantAdapter
 
         env_vars = {"QDRANT_URL": "http://env:6333", "QDRANT_API_KEY": "env-api-key"}
 
@@ -99,7 +99,7 @@ class TestQdrantAdapter:
     @pytest.mark.asyncio
     async def test_initialize_creates_client_and_collections(self, mock_qdrant_client):
         """Test initialize method creates client and ensures collections exist"""
-        from database.qdrant_adapter import QdrantAdapter
+        from src.database.qdrant_adapter import QdrantAdapter
 
         adapter = QdrantAdapter()
 
@@ -121,7 +121,7 @@ class TestQdrantAdapter:
     @pytest.mark.asyncio
     async def test_initialize_handles_existing_collections(self, mock_qdrant_client):
         """Test initialize gracefully handles existing collections"""
-        from database.qdrant_adapter import QdrantAdapter
+        from src.database.qdrant_adapter import QdrantAdapter
 
         adapter = QdrantAdapter()
 
@@ -144,7 +144,7 @@ class TestQdrantAdapter:
         mock_qdrant_client,
     ):
         """Test initialize handles collection creation errors gracefully"""
-        from database.qdrant_adapter import QdrantAdapter
+        from src.database.qdrant_adapter import QdrantAdapter
 
         adapter = QdrantAdapter()
 
@@ -818,7 +818,7 @@ class TestSupabaseAdapter:
     @pytest.fixture
     async def supabase_adapter(self, mock_supabase_client):
         """Create SupabaseAdapter with mocked client"""
-        from database.supabase_adapter import SupabaseAdapter
+        from src.database.supabase_adapter import SupabaseAdapter
 
         adapter = SupabaseAdapter()
         adapter.client = mock_supabase_client
@@ -827,7 +827,7 @@ class TestSupabaseAdapter:
     @pytest.mark.asyncio
     async def test_initialization_default_values(self):
         """Test SupabaseAdapter initialization"""
-        from database.supabase_adapter import SupabaseAdapter
+        from src.database.supabase_adapter import SupabaseAdapter
 
         adapter = SupabaseAdapter()
 
@@ -839,7 +839,7 @@ class TestSupabaseAdapter:
     @pytest.mark.asyncio
     async def test_initialize_success(self, mock_supabase_client):
         """Test successful initialization with environment variables"""
-        from database.supabase_adapter import SupabaseAdapter
+        from src.database.supabase_adapter import SupabaseAdapter
 
         env_vars = {
             "SUPABASE_URL": "https://test.supabase.co",
@@ -859,7 +859,7 @@ class TestSupabaseAdapter:
     @pytest.mark.asyncio
     async def test_initialize_missing_env_vars(self):
         """Test initialization fails with missing environment variables"""
-        from database.supabase_adapter import SupabaseAdapter
+        from src.database.supabase_adapter import SupabaseAdapter
 
         with patch.dict(os.environ, {}, clear=True):
             adapter = SupabaseAdapter()
@@ -873,7 +873,7 @@ class TestSupabaseAdapter:
     @pytest.mark.asyncio
     async def test_add_documents_not_initialized(self):
         """Test add_documents fails when not initialized"""
-        from database.supabase_adapter import SupabaseAdapter
+        from src.database.supabase_adapter import SupabaseAdapter
 
         adapter = SupabaseAdapter()
 
@@ -1477,7 +1477,7 @@ class TestDatabaseAdapterEdgeCases:
     @pytest.mark.asyncio
     async def test_empty_data_handling_qdrant(self):
         """Test QdrantAdapter handles empty data gracefully"""
-        from database.qdrant_adapter import QdrantAdapter
+        from src.database.qdrant_adapter import QdrantAdapter
 
         adapter = QdrantAdapter()
         adapter.client = MagicMock()
@@ -1492,7 +1492,7 @@ class TestDatabaseAdapterEdgeCases:
     @pytest.mark.asyncio
     async def test_empty_data_handling_supabase(self):
         """Test SupabaseAdapter handles empty data gracefully"""
-        from database.supabase_adapter import SupabaseAdapter
+        from src.database.supabase_adapter import SupabaseAdapter
 
         adapter = SupabaseAdapter()
         adapter.client = MagicMock()
@@ -1506,7 +1506,7 @@ class TestDatabaseAdapterEdgeCases:
     @pytest.mark.asyncio
     async def test_large_batch_processing_qdrant(self):
         """Test QdrantAdapter handles very large batches correctly"""
-        from database.qdrant_adapter import QdrantAdapter
+        from src.database.qdrant_adapter import QdrantAdapter
 
         adapter = QdrantAdapter()
         adapter.client = MagicMock()
@@ -1538,7 +1538,7 @@ class TestDatabaseAdapterEdgeCases:
     @pytest.mark.asyncio
     async def test_concurrent_operations_qdrant(self):
         """Test QdrantAdapter handles concurrent operations"""
-        from database.qdrant_adapter import QdrantAdapter
+        from src.database.qdrant_adapter import QdrantAdapter
 
         adapter = QdrantAdapter()
         adapter.client = MagicMock()
@@ -1566,7 +1566,7 @@ class TestDatabaseAdapterEdgeCases:
     @pytest.mark.asyncio
     async def test_malformed_embeddings_qdrant(self):
         """Test QdrantAdapter handles malformed embeddings"""
-        from database.qdrant_adapter import QdrantAdapter
+        from src.database.qdrant_adapter import QdrantAdapter
 
         adapter = QdrantAdapter()
         adapter.client = MagicMock()
@@ -1590,8 +1590,8 @@ class TestDatabaseAdapterEdgeCases:
     @pytest.mark.asyncio
     async def test_unicode_content_handling(self):
         """Test both adapters handle unicode content correctly"""
-        from database.qdrant_adapter import QdrantAdapter
-        from database.supabase_adapter import SupabaseAdapter
+        from src.database.qdrant_adapter import QdrantAdapter
+        from src.database.supabase_adapter import SupabaseAdapter
 
         unicode_content = "测试内容 🚀 émojis and spéciål characters"
 

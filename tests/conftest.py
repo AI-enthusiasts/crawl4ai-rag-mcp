@@ -50,7 +50,7 @@ async def get_adapter():
 
         if adapter_name == "supabase":
             # Import will be available after we create the adapter
-            from database.supabase_adapter import SupabaseAdapter
+            from src.database.supabase_adapter import SupabaseAdapter
 
             adapter = SupabaseAdapter()
             # Mock the Supabase client for testing
@@ -297,7 +297,7 @@ async def get_adapter():
 
         elif adapter_name == "qdrant":
             # Import will be available after we create the adapter
-            from database.qdrant_adapter import QdrantAdapter
+            from src.database.qdrant_adapter import QdrantAdapter
 
             adapter = QdrantAdapter(url="http://localhost:6333")
             # Mock the Qdrant client for testing - Qdrant client is SYNCHRONOUS

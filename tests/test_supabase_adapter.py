@@ -40,7 +40,7 @@ class TestSupabaseAdapter:
             "database.supabase_adapter.create_client",
             return_value=mock_supabase_client,
         ):
-            from database.supabase_adapter import SupabaseAdapter
+            from src.database.supabase_adapter import SupabaseAdapter
 
             adapter = SupabaseAdapter()
             return adapter

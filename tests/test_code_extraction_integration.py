@@ -38,7 +38,7 @@ async def test_code_extraction_integration():
         from crawl4ai import AsyncWebCrawler
         from crawl4ai_mcp import _process_multiple_urls
 
-        from database.factory import create_database_client
+        from src.database.factory import create_database_client
 
         print("✅ Successfully imported components")
 

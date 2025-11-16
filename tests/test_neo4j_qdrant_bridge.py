@@ -53,7 +53,7 @@ async def test_neo4j_qdrant_bridge():
 
     try:
         # Import components
-        from database.factory import create_database_client
+        from src.database.factory import create_database_client
         from knowledge_graph.code_extractor import extract_repository_code
         from knowledge_graphs.parse_repo_into_neo4j import RepositoryExtractor
         from utils import create_embeddings_batch

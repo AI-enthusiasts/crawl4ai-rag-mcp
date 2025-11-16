@@ -511,7 +511,7 @@ class TestQdrantDatabaseFactory:
     async def test_factory_empty_database_type(self):
         """Test factory with empty database type defaults to supabase"""
         with patch.dict(os.environ, {"VECTOR_DATABASE": ""}):
-            from database.supabase_adapter import SupabaseAdapter
+            from src.database.supabase_adapter import SupabaseAdapter
 
             client = create_database_client()
             assert isinstance(client, SupabaseAdapter)
