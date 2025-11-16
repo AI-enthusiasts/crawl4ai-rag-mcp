@@ -19,9 +19,9 @@ from src.core.context import Crawl4AIContext
 from fastmcp import Context
 
 # Import Qdrant-specific modules
-from database.factory import create_and_initialize_database, create_database_client
-from database.qdrant_adapter import QdrantAdapter
-from utils import add_documents_to_database, search_documents
+from src.database.factory import create_and_initialize_database, create_database_client
+from src.database.qdrant_adapter import QdrantAdapter
+from src.utils.embeddings.documents import add_documents_to_database, search_documents
 
 from .test_doubles import FakeQdrantClient
 
@@ -219,7 +219,7 @@ class TestQdrantCrawl4AiIntegration:
     @pytest.mark.asyncio
     async def test_create_and_initialize_database_qdrant(self):
         """Test the complete database creation and initialization flow for Qdrant"""
-        with patch("database.qdrant_adapter.QdrantClient") as mock_client_class:
+        with patch("src.database.qdrant_adapter.QdrantClient") as mock_client_class:
             mock_client = Mock()
             mock_client_class.return_value = mock_client
 
@@ -352,7 +352,7 @@ class TestQdrantCrawl4AiIntegration:
     @pytest.mark.asyncio
     async def test_qdrant_collection_creation_failure(self):
         """Test handling of collection creation failures in Qdrant"""
-        with patch("database.qdrant_adapter.QdrantClient") as mock_client_class:
+        with patch("src.database.qdrant_adapter.QdrantClient") as mock_client_class:
             mock_client = Mock()
             mock_client_class.return_value = mock_client
 
@@ -532,7 +532,7 @@ class TestQdrantSpecificErrorScenarios:
         adapter = QdrantAdapter()
         assert adapter.client is None
 
-        with patch("database.qdrant_adapter.QdrantClient") as mock_client_class:
+        with patch("src.database.qdrant_adapter.QdrantClient") as mock_client_class:
             mock_client = Mock()
             mock_client_class.return_value = mock_client
             mock_client.get_collection.return_value = Mock()  # Collections exist
@@ -548,7 +548,7 @@ class TestQdrantSpecificErrorScenarios:
         existing_client = Mock()
         adapter.client = existing_client
 
-        with patch("database.qdrant_adapter.QdrantClient") as mock_client_class:
+        with patch("src.database.qdrant_adapter.QdrantClient") as mock_client_class:
             await adapter.initialize()
             # Should not create a new client
             mock_client_class.assert_not_called()
