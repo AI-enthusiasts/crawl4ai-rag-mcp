@@ -26,7 +26,7 @@ async def test_e2e_search_pipeline():
         from crawl4ai import AsyncWebCrawler
         from crawl4ai_mcp import mcp
 
-        from database.factory import create_database_client
+        from src.database.factory import create_database_client
 
         # Set up logging to see what's happening
         logging.basicConfig(level=logging.INFO)

@@ -30,7 +30,7 @@ class TestSupabaseAdapterSimplified:
             "database.supabase_adapter.create_client",
             return_value=fake_supabase_client,
         ):
-            from database.supabase_adapter import SupabaseAdapter
+            from src.database.supabase_adapter import SupabaseAdapter
 
             adapter = SupabaseAdapter()
             adapter.client = fake_supabase_client  # Direct assignment
