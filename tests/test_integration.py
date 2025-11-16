@@ -1,6 +1,9 @@
 """
 Integration tests for database adapters with real Docker containers.
 These tests verify that both Supabase and Qdrant work correctly in a real environment.
+
+NOTE: These tests require Docker to be running and available.
+They will be skipped if Docker is not accessible.
 """
 
 import os
@@ -22,6 +25,19 @@ from src.utils.embeddings.code_examples import (
 
 # Load environment variables
 load_dotenv()
+
+# Check if Docker is available
+try:
+    docker.from_env()
+    DOCKER_AVAILABLE = True
+except Exception:
+    DOCKER_AVAILABLE = False
+
+# Skip all tests in this module if Docker is not available
+pytestmark = pytest.mark.skipif(
+    not DOCKER_AVAILABLE,
+    reason="Docker is not available - integration tests require Docker",
+)
 
 
 class TestDatabaseIntegration:

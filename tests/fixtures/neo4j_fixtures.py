@@ -63,6 +63,7 @@ class MockNeo4jResult:
     def __init__(self, records: list[dict] = None):
         self.records = records or []
         self._consumed = False
+        self._index = 0
 
     def data(self):
         """Return result data"""
@@ -84,6 +85,20 @@ class MockNeo4jResult:
                 properties_set=0,
             ),
         )
+
+    def __aiter__(self):
+        """Support async iteration"""
+        self._index = 0
+        return self
+
+    async def __anext__(self):
+        """Get next item in async iteration"""
+        if self._index >= len(self.records):
+            raise StopAsyncIteration
+
+        record = MockNeo4jRecord(self.records[self._index])
+        self._index += 1
+        return record
 
 
 class MockNeo4jRecord:

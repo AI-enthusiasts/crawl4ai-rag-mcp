@@ -193,8 +193,11 @@ async def database_factory(qdrant_client):
 
 
 @pytest.fixture
-def integration_test_env():
-    """Set up environment variables for integration tests."""
+def integration_test_env(docker_compose_services):
+    """Set up environment variables for integration tests.
+
+    Depends on docker_compose_services to ensure services are running.
+    """
     test_env = {
         "ENVIRONMENT": "test",
         "DATABASE_TYPE": "qdrant",
