@@ -10,8 +10,8 @@ import pytest
 from dotenv import load_dotenv
 
 import docker
-from database.factory import create_database_client
-from utils import (
+from src.database.factory import create_database_client
+from src.utils.database_operations import (
     add_code_examples_to_database,
     add_documents_to_database,
     search_code_examples,
@@ -185,11 +185,10 @@ results = await asyncio.gather(*[fetch_data(url) for url in urls])
             keyword="machine learning",
             match_count=5,
         )
-
-        # Note: Keyword search implementation varies between databases
-        # Supabase uses ILIKE, Qdrant uses text matching
-        # So we just verify the method runs without error
         assert isinstance(keyword_results, list)
+        # If results found, verify they contain the keyword
+        if keyword_results:
+            assert any("machine learning" in r["content"].lower() for r in keyword_results)
 
         # Cleanup
         await db.delete_documents_by_url(urls)
@@ -241,8 +240,10 @@ results = await asyncio.gather(*[fetch_data(url) for url in urls])
             keyword="async",
             match_count=5,
         )
-
         assert isinstance(keyword_results, list)
+        # If results found, verify they contain async code
+        if keyword_results:
+            assert any("async" in r.get("code", "").lower() for r in keyword_results)
 
         # Cleanup
         await db.delete_code_examples_by_url(urls)
@@ -319,6 +320,8 @@ results = await asyncio.gather(*[fetch_data(url) for url in urls])
         # Both searches should return results
         assert len(vector_results) > 0
         assert isinstance(keyword_results, list)
+        # Verify vector results contain relevant content
+        assert any("Python" in r["content"] or "functions" in r["content"].lower() for r in vector_results)
 
         # Cleanup
         await db.delete_documents_by_url(urls)
@@ -367,8 +370,10 @@ results = await asyncio.gather(*[fetch_data(url) for url in urls])
             match_count=60,  # More than we added
         )
 
-        # Should find many results
-        assert len(results) > 10
+        # Should find many results matching our batch
+        assert len(results) >= num_docs * 0.5, f"Expected at least {num_docs * 0.5} results, got {len(results)}"
+        # Verify results contain our test content
+        assert any("document" in r["content"] and "test content" in r["content"] for r in results)
 
         # Cleanup
         await db.delete_documents_by_url(urls)
