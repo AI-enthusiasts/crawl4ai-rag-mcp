@@ -15,8 +15,8 @@ class TestLifespan:
 
     @pytest.mark.asyncio
     @patch("crawl4ai.AsyncWebCrawler")
-    @patch("src.crawl4ai_mcp.create_and_initialize_database")
-    @patch("src.crawl4ai_mcp.CrossEncoder")
+    @patch("src.database.factory.create_and_initialize_database")
+    @patch("sentence_transformers.CrossEncoder")
     async def test_crawl4ai_lifespan_basic(
         self,
         mock_cross_encoder,
@@ -52,8 +52,8 @@ class TestLifespan:
 
     @pytest.mark.asyncio
     @patch("crawl4ai.AsyncWebCrawler")
-    @patch("src.crawl4ai_mcp.create_and_initialize_database")
-    @patch("src.crawl4ai_mcp.CrossEncoder")
+    @patch("src.database.factory.create_and_initialize_database")
+    @patch("sentence_transformers.CrossEncoder")
     async def test_crawl4ai_lifespan_with_reranking(
         self,
         mock_cross_encoder,
@@ -84,9 +84,9 @@ class TestLifespan:
 
     @pytest.mark.asyncio
     @patch("crawl4ai.AsyncWebCrawler")
-    @patch("src.crawl4ai_mcp.create_and_initialize_database")
-    @patch("src.crawl4ai_mcp.KnowledgeGraphValidator")
-    @patch("src.crawl4ai_mcp.DirectNeo4jExtractor")
+    @patch("src.database.factory.create_and_initialize_database")
+    @patch("src.knowledge_graph.knowledge_graph_validator.KnowledgeGraphValidator")
+    @patch("src.knowledge_graph.parse_repo_into_neo4j.DirectNeo4jExtractor")
     async def test_crawl4ai_lifespan_with_knowledge_graph(
         self,
         mock_extractor_class,
@@ -132,7 +132,7 @@ class TestLifespan:
 
     @pytest.mark.asyncio
     @patch("crawl4ai.AsyncWebCrawler")
-    @patch("src.crawl4ai_mcp.create_and_initialize_database")
+    @patch("src.database.factory.create_and_initialize_database")
     async def test_crawl4ai_lifespan_knowledge_graph_failure(
         self,
         mock_create_db,
