@@ -10,7 +10,6 @@ Requirements:
 """
 
 import json
-import os
 
 import httpx
 import pytest
@@ -88,18 +87,6 @@ async def qdrant_with_incomplete_data():
         pass
 
     await adapter.client.close()
-
-
-@pytest.fixture
-async def searxng_available():
-    """Check if SearXNG is available."""
-    settings = get_settings()
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(f"{settings.searxng_url}/")
-            return response.status_code == 200
-    except Exception:
-        return False
 
 
 @pytest.mark.asyncio

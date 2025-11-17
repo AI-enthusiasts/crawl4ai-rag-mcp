@@ -13,7 +13,6 @@ This test:
 4. Triggers web search due to low completeness
 """
 
-import asyncio
 import json
 import os
 
@@ -112,14 +111,14 @@ async def test_agentic_search_with_real_qdrant_data(qdrant_with_test_data):
 
     # Initialize app context
     try:
-        ctx = await initialize_global_context()
+        await initialize_global_context()
     except Exception as e:
         pytest.skip(f"Failed to initialize app context: {e}")
 
     # Import after context initialization
     from src.services.agentic_search import agentic_search_impl
 
-    # Create mock FastMCP context
+    # Create simple Context
     class MockContext:
         pass
 
@@ -218,15 +217,18 @@ async def test_qdrant_returns_content_field():
 
     # Initialize context
     try:
-        ctx = await initialize_global_context()
+        await initialize_global_context()
     except Exception as e:
         pytest.skip(f"Failed to initialize app context: {e}")
 
     from src.database import perform_rag_query
+    from src.core.context import get_app_context
+
+    app_ctx = get_app_context()
 
     # Perform RAG query
     rag_response = await perform_rag_query(
-        ctx.database_client,
+        app_ctx.database_client,
         query="test query",
         source=None,
         match_count=5,
