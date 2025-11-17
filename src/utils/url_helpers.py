@@ -5,7 +5,7 @@ from xml.etree import ElementTree as ET
 
 import httpx
 
-from src.core.exceptions import FetchError, NetworkError
+from src.core.exceptions import NetworkError
 from src.core.logging import logger
 
 

@@ -29,10 +29,8 @@ from src.core.constants import (
     SCORE_IMPROVEMENT_THRESHOLD,
 )
 from src.core.exceptions import LLMError
-
-from ..agentic_models import (
+from src.services.agentic_models import (
     AgenticSearchResult,
-    CompletenessEvaluation,
     QueryRefinement,
     RAGResult,
     SearchIteration,

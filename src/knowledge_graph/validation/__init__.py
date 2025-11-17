@@ -11,9 +11,9 @@ from .neo4j_queries import (
     find_method,
     find_modules,
     find_pydantic_ai_result_method,
+    find_repository_for_module,
     find_similar_methods,
     find_similar_modules,
-    find_repository_for_module,
     get_module_contents,
 )
 from .utils import (
@@ -25,7 +25,6 @@ from .utils import (
     is_from_knowledge_graph,
     validate_parameters,
 )
-
 
 __all__ = [
     # Query functions

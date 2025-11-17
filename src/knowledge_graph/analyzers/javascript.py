@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from src.core.exceptions import ParsingError, AnalysisError
+from src.core.exceptions import AnalysisError, ParsingError
 
 from .base import CodeAnalyzer
 

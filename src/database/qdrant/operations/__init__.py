@@ -13,7 +13,9 @@ from .documents import (
 )
 
 # Source operations
+# Private function exports for backward compatibility
 from .sources import (
+    _create_new_source,
     add_source,
     get_sources,
     search_sources,
@@ -23,9 +25,6 @@ from .sources import (
 
 # Utilities and constants
 from .utils import BATCH_SIZE, CODE_EXAMPLES, CRAWLED_PAGES, SOURCES, generate_point_id
-
-# Private function exports for backward compatibility
-from .sources import _create_new_source
 
 # Alias for test compatibility
 _generate_point_id = generate_point_id

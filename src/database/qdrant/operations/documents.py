@@ -7,11 +7,17 @@ import logging
 from typing import Any
 
 from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import FieldCondition, Filter, MatchValue, PointIdsList, PointStruct
+from qdrant_client.models import (
+    FieldCondition,
+    Filter,
+    MatchValue,
+    PointIdsList,
+    PointStruct,
+)
 
 from src.core.exceptions import QueryError, VectorStoreError
 
-from .utils import BATCH_SIZE, CODE_EXAMPLES, CRAWLED_PAGES, generate_point_id
+from .utils import BATCH_SIZE, CRAWLED_PAGES, generate_point_id
 
 logger = logging.getLogger(__name__)
 

@@ -141,7 +141,7 @@ async def get_module_contents(driver: Any, module_name: str) -> tuple[list[str],
 
 
 async def find_repository_for_module(
-    driver: Any, module_name: str, repo_cache: dict[str, str | None]
+    driver: Any, module_name: str, repo_cache: dict[str, str | None],
 ) -> str | None:
     """Find the repository name that matches a module name"""
     if module_name in repo_cache:
@@ -322,7 +322,7 @@ async def find_method(
 
 
 async def find_attribute(
-    driver: Any, class_name: str, attr_name: str, repo_cache: dict[str, str | None]
+    driver: Any, class_name: str, attr_name: str, repo_cache: dict[str, str | None],
 ) -> dict[str, Any] | None:
     """Find attribute information for a class"""
     async with driver.session() as session:
@@ -375,7 +375,7 @@ async def find_attribute(
 
 
 async def find_function(
-    driver: Any, func_name: str, repo_cache: dict[str, str | None]
+    driver: Any, func_name: str, repo_cache: dict[str, str | None],
 ) -> dict[str, Any] | None:
     """Find function information"""
     async with driver.session() as session:
@@ -491,7 +491,7 @@ async def find_similar_modules(driver: Any, module_name: str) -> list[str]:
 
 
 async def find_similar_methods(
-    driver: Any, class_name: str, method_name: str, repo_cache: dict[str, str | None]
+    driver: Any, class_name: str, method_name: str, repo_cache: dict[str, str | None],
 ) -> list[str]:
     """Find similar method names for suggestions"""
     async with driver.session() as session:

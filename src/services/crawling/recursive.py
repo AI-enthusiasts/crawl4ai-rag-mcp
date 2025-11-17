@@ -7,7 +7,13 @@ for discovering and crawling related pages within a website.
 import logging
 from typing import Any
 
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig, MemoryAdaptiveDispatcher
+from crawl4ai import (
+    AsyncWebCrawler,
+    BrowserConfig,
+    CacheMode,
+    CrawlerRunConfig,
+    MemoryAdaptiveDispatcher,
+)
 
 from src.core.stdout_utils import SuppressStdout
 from src.utils.url_helpers import normalize_url

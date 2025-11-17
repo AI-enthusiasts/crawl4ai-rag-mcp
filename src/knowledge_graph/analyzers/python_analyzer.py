@@ -12,7 +12,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from src.core.exceptions import ParsingError, AnalysisError
+from src.core.exceptions import AnalysisError, ParsingError
 
 # Configure logging
 logger = logging.getLogger(__name__)

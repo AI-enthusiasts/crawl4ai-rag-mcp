@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 
 from supabase import Client, create_client
 
-from src.core.exceptions import ConnectionError, QueryError, VectorStoreError
+from src.core.exceptions import QueryError, VectorStoreError
 
 logger = logging.getLogger(__name__)
 

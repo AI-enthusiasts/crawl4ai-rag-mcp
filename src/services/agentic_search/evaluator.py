@@ -197,13 +197,12 @@ Provide:
             if "APIConnectionError" in error_type or "ConnectError" in error_type:
                 raise LLMError(
                     f"Failed to connect to OpenAI API. Check network connectivity and API access. "
-                    f"Error: {error_msg}"
+                    f"Error: {error_msg}",
                 ) from e
-            elif "AuthenticationError" in error_type or "Invalid API" in error_msg:
+            if "AuthenticationError" in error_type or "Invalid API" in error_msg:
                 raise LLMError(
-                    "OpenAI API authentication failed. Check OPENAI_API_KEY environment variable."
+                    "OpenAI API authentication failed. Check OPENAI_API_KEY environment variable.",
                 ) from e
-            elif "RateLimitError" in error_type:
+            if "RateLimitError" in error_type:
                 raise LLMError("OpenAI API rate limit exceeded. Please try again later.") from e
-            else:
-                raise LLMError(f"Completeness evaluation failed: {error_type}: {error_msg}") from e
+            raise LLMError(f"Completeness evaluation failed: {error_type}: {error_msg}") from e

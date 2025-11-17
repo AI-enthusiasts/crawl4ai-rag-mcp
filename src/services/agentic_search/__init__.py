@@ -11,6 +11,7 @@ This package implements the complete agentic search pipeline with modular design
 from .config import AgenticSearchConfig
 from .crawler import SelectiveCrawler
 from .evaluator import LocalKnowledgeEvaluator
+from .mcp_wrapper import agentic_search_impl
 from .orchestrator import AgenticSearchService
 from .ranker import URLRanker
 
@@ -48,9 +49,3 @@ def get_agentic_search_service() -> AgenticSearchService:
             config=config,
         )
     return _service_instance
-
-
-# Import MCP wrapper after service definition to avoid circular imports
-from .mcp_wrapper import agentic_search_impl
-
-__all__.append("agentic_search_impl")

@@ -6,7 +6,6 @@ Main adapter class that coordinates Qdrant vector database operations.
 
 import logging
 import os
-import sys
 import uuid
 
 from qdrant_client import AsyncQdrantClient

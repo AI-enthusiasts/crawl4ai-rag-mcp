@@ -7,15 +7,15 @@ Delegates operations to modular qdrant package functions.
 
 import logging
 import os
-import sys
 from typing import Any
 
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import Distance, VectorParams
 
+from src.core.exceptions import ConnectionError, VectorStoreError
+
 # Import qdrant package modules
 from . import qdrant
-from src.core.exceptions import ConnectionError, VectorStoreError
 
 logger = logging.getLogger(__name__)
 

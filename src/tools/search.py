@@ -183,8 +183,6 @@ def register_search_tools(mcp: "FastMCP") -> None:
         Returns:
             JSON string with cross-language search results, organized by language and confidence scores
         """
-        import json
-
         try:
             # Get the app context
             from src.core.context import get_app_context

@@ -9,7 +9,14 @@ import uuid
 from typing import Any, cast
 
 from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import Condition, FieldCondition, Filter, MatchValue, PointIdsList, PointStruct
+from qdrant_client.models import (
+    Condition,
+    FieldCondition,
+    Filter,
+    MatchValue,
+    PointIdsList,
+    PointStruct,
+)
 
 # Constants
 CODE_EXAMPLES = "code_examples"
@@ -137,7 +144,7 @@ async def search_code_examples(
     # Create filter if conditions exist
     search_filter = None
     if filter_conditions:
-        search_filter = Filter(must=cast(list[Condition], filter_conditions))
+        search_filter = Filter(must=cast("list[Condition]", filter_conditions))
 
     # Perform search
     results = await client.search(
@@ -165,7 +172,7 @@ async def delete_code_examples_by_url(client: AsyncQdrantClient, urls: list[str]
     for url in urls:
         # First, find all points with this URL
         filter_condition = Filter(
-            must=cast(list[Condition], [FieldCondition(key="url", match=MatchValue(value=url))]),
+            must=cast("list[Condition]", [FieldCondition(key="url", match=MatchValue(value=url))]),
         )
 
         points, _ = await client.scroll(
@@ -208,7 +215,7 @@ async def search_code_examples_by_keyword(
             ),
         )
 
-    search_filter = Filter(must=cast(list[Condition], filter_conditions))
+    search_filter = Filter(must=cast("list[Condition]", filter_conditions))
 
     # Use scroll to find matching code examples
     points, _ = await client.scroll(
@@ -262,7 +269,7 @@ async def get_repository_code_examples(
             ),
         )
 
-    search_filter = Filter(must=cast(list[Condition], filter_conditions))
+    search_filter = Filter(must=cast("list[Condition]", filter_conditions))
 
     points, _ = await client.scroll(
         collection_name=CODE_EXAMPLES,
@@ -294,7 +301,7 @@ async def delete_repository_code_examples(
         repo_name: Repository name to delete code examples for
     """
     filter_condition = Filter(
-        must=cast(list[Condition], [
+        must=cast("list[Condition]", [
             FieldCondition(
                 key="metadata.repository_name",
                 match=MatchValue(value=repo_name),
@@ -362,7 +369,7 @@ async def search_code_by_signature(
             ),
         )
 
-    search_filter = Filter(must=cast(list[Condition], filter_conditions))
+    search_filter = Filter(must=cast("list[Condition]", filter_conditions))
 
     points, _ = await client.scroll(
         collection_name=CODE_EXAMPLES,

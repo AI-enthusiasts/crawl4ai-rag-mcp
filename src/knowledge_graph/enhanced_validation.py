@@ -16,7 +16,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from src.core.exceptions import ParsingError, AnalysisError, QueryError
+from src.core.exceptions import AnalysisError, ParsingError, QueryError
 from src.services.validated_search import ValidatedCodeSearchService
 
 logger = logging.getLogger(__name__)

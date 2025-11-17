@@ -7,47 +7,46 @@ repository information. Checks imports, methods, attributes, and parameters.
 
 import logging
 from typing import Any
-from collections.abc import Callable
 
-from neo4j import AsyncGraphDatabase, AsyncDriver
+from neo4j import AsyncDriver, AsyncGraphDatabase
 
 from .ai_script_analyzer import AnalysisResult
 from .validation import (
+    ScriptValidationResult,
     ValidationResult,
     ValidationStatus,
-    ScriptValidationResult,
-)
-from .validation.import_validator import (
-    ImportValidation,
-    validate_imports,
-    validate_single_import,
-)
-from .validation.class_validator import (
-    ClassValidation,
-    validate_class_instantiations,
-    validate_single_class_instantiation,
-)
-from .validation.method_validator import (
-    MethodValidation,
-    validate_method_calls,
-    validate_single_method_call,
+    neo4j_queries,
 )
 from .validation.attribute_validator import (
     AttributeValidation,
     validate_attribute_accesses,
     validate_single_attribute_access,
 )
+from .validation.class_validator import (
+    ClassValidation,
+    validate_class_instantiations,
+    validate_single_class_instantiation,
+)
 from .validation.function_validator import (
     FunctionValidation,
     validate_function_calls,
     validate_single_function_call,
 )
-from .validation import neo4j_queries
+from .validation.import_validator import (
+    ImportValidation,
+    validate_imports,
+    validate_single_import,
+)
+from .validation.method_validator import (
+    MethodValidation,
+    validate_method_calls,
+    validate_single_method_call,
+)
 from .validation.utils import (
-    validate_parameters,
     calculate_overall_confidence,
-    is_from_knowledge_graph,
     detect_hallucinations,
+    is_from_knowledge_graph,
+    validate_parameters,
 )
 
 logger = logging.getLogger(__name__)
