@@ -170,7 +170,7 @@ class TestQdrantAdapterDocumentOperations:
     @pytest.mark.asyncio
     async def test_add_documents(self, mock_adapter):
         """Test adding documents delegates to operations module"""
-        with patch("src.database.qdrant_adapter.qdrant.operations.add_documents") as mock_add:
+        with patch("src.database.qdrant_adapter.qdrant.add_documents") as mock_add:
             mock_add.return_value = None
 
             await mock_adapter.add_documents(
@@ -195,7 +195,7 @@ class TestQdrantAdapterDocumentOperations:
     @pytest.mark.asyncio
     async def test_url_exists(self, mock_adapter):
         """Test URL existence check delegates to operations"""
-        with patch("src.database.qdrant_adapter.qdrant.operations.url_exists") as mock_exists:
+        with patch("src.database.qdrant_adapter.qdrant.url_exists") as mock_exists:
             mock_exists.return_value = True
 
             result = await mock_adapter.url_exists("https://test.com")
@@ -209,7 +209,7 @@ class TestQdrantAdapterDocumentOperations:
     @pytest.mark.asyncio
     async def test_get_documents_by_url(self, mock_adapter):
         """Test getting documents by URL"""
-        with patch("src.database.qdrant_adapter.qdrant.operations.get_documents_by_url") as mock_get:
+        with patch("src.database.qdrant_adapter.qdrant.get_documents_by_url") as mock_get:
             mock_get.return_value = [
                 {"url": "https://test.com", "content": "Test"}
             ]
@@ -226,7 +226,7 @@ class TestQdrantAdapterDocumentOperations:
     @pytest.mark.asyncio
     async def test_delete_documents_by_url(self, mock_adapter):
         """Test deleting documents by URL"""
-        with patch("src.database.qdrant_adapter.qdrant.operations.delete_documents_by_url") as mock_delete:
+        with patch("src.database.qdrant_adapter.qdrant.delete_documents_by_url") as mock_delete:
             mock_delete.return_value = None
 
             await mock_adapter.delete_documents_by_url(["https://test1.com", "https://test2.com"])
@@ -423,7 +423,7 @@ class TestQdrantAdapterSourceOperations:
     @pytest.mark.asyncio
     async def test_add_source(self, mock_adapter):
         """Test adding a source"""
-        with patch("src.database.qdrant_adapter.qdrant.operations.add_source") as mock_add:
+        with patch("src.database.qdrant_adapter.qdrant.add_source") as mock_add:
             mock_add.return_value = None
 
             await mock_adapter.add_source(
@@ -448,7 +448,7 @@ class TestQdrantAdapterSourceOperations:
     @pytest.mark.asyncio
     async def test_search_sources(self, mock_adapter):
         """Test searching sources"""
-        with patch("src.database.qdrant_adapter.qdrant.operations.search_sources") as mock_search:
+        with patch("src.database.qdrant_adapter.qdrant.search_sources") as mock_search:
             mock_search.return_value = [
                 {"source_id": "test.com", "title": "Test Site"}
             ]
@@ -468,7 +468,7 @@ class TestQdrantAdapterSourceOperations:
     @pytest.mark.asyncio
     async def test_update_source(self, mock_adapter):
         """Test updating source metadata"""
-        with patch("src.database.qdrant_adapter.qdrant.operations.update_source") as mock_update:
+        with patch("src.database.qdrant_adapter.qdrant.update_source") as mock_update:
             mock_update.return_value = None
 
             await mock_adapter.update_source(
@@ -485,7 +485,7 @@ class TestQdrantAdapterSourceOperations:
     @pytest.mark.asyncio
     async def test_get_sources(self, mock_adapter):
         """Test getting all sources"""
-        with patch("src.database.qdrant_adapter.qdrant.operations.get_sources") as mock_get:
+        with patch("src.database.qdrant_adapter.qdrant.get_sources") as mock_get:
             mock_get.return_value = [
                 {"source_id": "test1.com", "title": "Test 1"},
                 {"source_id": "test2.com", "title": "Test 2"}
@@ -499,7 +499,7 @@ class TestQdrantAdapterSourceOperations:
     @pytest.mark.asyncio
     async def test_update_source_info(self, mock_adapter):
         """Test updating source information"""
-        with patch("src.database.qdrant_adapter.qdrant.operations.update_source_info") as mock_update:
+        with patch("src.database.qdrant_adapter.qdrant.update_source_info") as mock_update:
             mock_update.return_value = None
 
             await mock_adapter.update_source_info(
@@ -530,7 +530,7 @@ class TestQdrantAdapterErrorHandling:
     @pytest.mark.asyncio
     async def test_add_documents_raises_vector_store_error(self, mock_adapter):
         """Test VectorStoreError propagation from add_documents"""
-        with patch("src.database.qdrant_adapter.qdrant.operations.add_documents") as mock_add:
+        with patch("src.database.qdrant_adapter.qdrant.add_documents") as mock_add:
             mock_add.side_effect = VectorStoreError("Storage failure")
 
             with pytest.raises(VectorStoreError) as exc_info:
@@ -564,7 +564,7 @@ class TestQdrantAdapterErrorHandling:
     @pytest.mark.asyncio
     async def test_delete_raises_connection_error(self, mock_adapter):
         """Test ConnectionError propagation from delete"""
-        with patch("src.database.qdrant_adapter.qdrant.operations.delete_documents_by_url") as mock_delete:
+        with patch("src.database.qdrant_adapter.qdrant.delete_documents_by_url") as mock_delete:
             mock_delete.side_effect = ConnectionError("Cannot connect to Qdrant")
 
             with pytest.raises(ConnectionError) as exc_info:
@@ -593,7 +593,7 @@ class TestQdrantAdapterErrorHandling:
     @pytest.mark.asyncio
     async def test_source_operations_raises_database_error(self, mock_adapter):
         """Test DatabaseError propagation from source operations"""
-        with patch("src.database.qdrant_adapter.qdrant.operations.add_source") as mock_add:
+        with patch("src.database.qdrant_adapter.qdrant.add_source") as mock_add:
             mock_add.side_effect = DatabaseError("Source creation failed")
 
             with pytest.raises(DatabaseError) as exc_info:
@@ -611,7 +611,7 @@ class TestQdrantAdapterErrorHandling:
     @pytest.mark.asyncio
     async def test_generic_exception_propagation(self, mock_adapter):
         """Test generic exception propagation"""
-        with patch("src.database.qdrant_adapter.qdrant.operations.get_sources") as mock_get:
+        with patch("src.database.qdrant_adapter.qdrant.get_sources") as mock_get:
             mock_get.side_effect = RuntimeError("Unexpected error")
 
             with pytest.raises(RuntimeError) as exc_info:
@@ -649,7 +649,7 @@ class TestQdrantAdapterEdgeCases:
     @pytest.mark.asyncio
     async def test_empty_url_list_for_delete(self, mock_adapter):
         """Test deleting with empty URL list"""
-        with patch("src.database.qdrant_adapter.qdrant.operations.delete_documents_by_url") as mock_delete:
+        with patch("src.database.qdrant_adapter.qdrant.delete_documents_by_url") as mock_delete:
             mock_delete.return_value = None
 
             await mock_adapter.delete_documents_by_url([])
@@ -682,7 +682,7 @@ class TestQdrantAdapterEdgeCases:
     @pytest.mark.asyncio
     async def test_large_embedding_dimension(self, mock_adapter):
         """Test handling embeddings with large dimensions"""
-        with patch("src.database.qdrant_adapter.qdrant.operations.add_documents") as mock_add:
+        with patch("src.database.qdrant_adapter.qdrant.add_documents") as mock_add:
             mock_add.return_value = None
 
             # Use 3072 dimensions (e.g., newer embedding models)
@@ -704,7 +704,7 @@ class TestQdrantAdapterEdgeCases:
     @pytest.mark.asyncio
     async def test_special_characters_in_urls(self, mock_adapter):
         """Test handling URLs with special characters"""
-        with patch("src.database.qdrant_adapter.qdrant.operations.add_documents") as mock_add:
+        with patch("src.database.qdrant_adapter.qdrant.add_documents") as mock_add:
             mock_add.return_value = None
 
             special_url = "https://test.com/page?query=test&foo=bar#section"
@@ -724,7 +724,7 @@ class TestQdrantAdapterEdgeCases:
     @pytest.mark.asyncio
     async def test_unicode_content(self, mock_adapter):
         """Test handling unicode content"""
-        with patch("src.database.qdrant_adapter.qdrant.operations.add_documents") as mock_add:
+        with patch("src.database.qdrant_adapter.qdrant.add_documents") as mock_add:
             mock_add.return_value = None
 
             unicode_content = "Test with émojis 🔥 and spëcial characters: 中文"
@@ -794,7 +794,7 @@ class TestQdrantAdapterBatchProcessing:
     @pytest.mark.asyncio
     async def test_large_batch_delegation(self, mock_adapter):
         """Test large batch is delegated to operations module"""
-        with patch("src.database.qdrant_adapter.qdrant.operations.add_documents") as mock_add:
+        with patch("src.database.qdrant_adapter.qdrant.add_documents") as mock_add:
             mock_add.return_value = None
 
             # Create 500 documents
