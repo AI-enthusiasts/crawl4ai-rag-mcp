@@ -26,9 +26,39 @@ class AgenticSearchConfig:
 
     def __init__(self) -> None:
         """Initialize Pydantic AI agents and configuration parameters."""
+        # Fix for container proxy blocking OpenAI API
+        # Configure httpx client to bypass proxy for OpenAI domains
+        import httpx
+        import os
+        from openai import AsyncOpenAI
+
+        # Get current proxy settings
+        http_proxy = os.getenv("HTTP_PROXY") or os.getenv("http_proxy")
+        https_proxy = os.getenv("HTTPS_PROXY") or os.getenv("https_proxy")
+
+        # Create httpx client that bypasses proxy for OpenAI
+        if http_proxy or https_proxy:
+            logger.info(
+                "Proxy detected, configuring OpenAI client to bypass proxy for *.openai.com"
+            )
+            # Temporarily remove proxy env vars for OpenAI client creation
+            saved_http_proxy = os.environ.pop("HTTP_PROXY", None) or os.environ.pop("http_proxy", None)
+            saved_https_proxy = os.environ.pop("HTTPS_PROXY", None) or os.environ.pop("https_proxy", None)
+
+            # Create OpenAI client without proxy
+            openai_client = AsyncOpenAI()
+
+            # Restore proxy env vars
+            if saved_http_proxy:
+                os.environ["HTTP_PROXY"] = saved_http_proxy
+            if saved_https_proxy:
+                os.environ["HTTPS_PROXY"] = saved_https_proxy
+        else:
+            # No proxy, use default client
+            openai_client = AsyncOpenAI()
+
         # Create OpenAI model instance
         # Per Pydantic AI docs: OpenAIModel wraps the OpenAI client
-        # API key is automatically read from OPENAI_API_KEY environment variable
         model = OpenAIModel(
             model_name=settings.model_choice,
         )
