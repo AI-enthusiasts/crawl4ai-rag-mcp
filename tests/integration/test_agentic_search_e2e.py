@@ -121,14 +121,36 @@ async def test_agentic_search_with_real_qdrant_data(qdrant_with_test_data):
 
     mock_ctx = MockContext()
 
-    # Check SearXNG availability
-    searxng_available = False
+    # Check SearXNG availability AND that it returns search results
+    searxng_working = False
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Check if SearXNG is up
             response = await client.get(f"{settings.searxng_url}/")
-            searxng_available = response.status_code == 200
-    except Exception:
-        pass
+            if response.status_code != 200:
+                pytest.skip(f"SearXNG not available at {settings.searxng_url}")
+
+            # Check if SearXNG can return search results
+            search_response = await client.get(
+                f"{settings.searxng_url}/search?q=test&format=json&limit=1"
+            )
+            if search_response.status_code == 200:
+                search_data = search_response.json()
+                # SearXNG is working if it returns at least 1 result OR no unresponsive engines
+                has_results = search_data.get("number_of_results", 0) > 0
+                has_responsive_engines = len(search_data.get("unresponsive_engines", [])) < len(search_data.get("unresponsive_engines", [])) if search_data.get("unresponsive_engines") else True
+
+                if not has_results:
+                    unresponsive = search_data.get("unresponsive_engines", [])
+                    pytest.skip(
+                        f"SearXNG cannot return search results. "
+                        f"All {len(unresponsive)} engines unresponsive (likely DNS/firewall issue). "
+                        f"Test requires working search engines."
+                    )
+
+                searxng_working = True
+    except Exception as e:
+        pytest.skip(f"SearXNG not available or not returning results: {e}")
 
     # Run agentic search
     # Query about Python - our test data is INCOMPLETE so completeness should be low
@@ -142,64 +164,69 @@ async def test_agentic_search_with_real_qdrant_data(qdrant_with_test_data):
 
     result = json.loads(result_json)
 
-    # Verify no validation errors
+    # Verify structure
     assert "success" in result, "Result missing 'success' field"
 
-    # If there was an error, it should NOT be about validation
+    # CRITICAL: Test must succeed when all services are working
     if not result["success"]:
         error = result.get("error", "")
 
-        # These validation errors should NOT occur (the bug we fixed)
+        # These validation errors should NEVER occur (the bug we fixed)
         assert "String should have at least 1 character" not in error, (
-            "BUG: RAGResult validation failed - 'content' field not parsed"
+            "BUG: RAGResult validation failed - 'content' field not parsed correctly"
         )
         assert "Input should be a valid integer" not in error, (
-            "BUG: RAGResult validation failed - 'chunk_index' is None"
+            "BUG: RAGResult validation failed - 'chunk_index' is None or invalid"
         )
 
-        # Acceptable errors (service unavailable, etc)
-        print(f"Test passed with acceptable error: {error}")
-    else:
-        # Success case
-        assert result["success"] is True
-        assert result["query"] == "What is Python programming language?"
-        assert result["iterations"] >= 1
-        assert "completeness" in result
-        assert "results" in result
-        assert "search_history" in result
-
-        # Verify search history has local_check action
-        actions = [item["action"] for item in result["search_history"]]
-        assert "local_check" in actions, "local_check action missing"
-
-        # If SearXNG available and completeness low, should attempt web search
-        if searxng_available and result["completeness"] < 0.8:
-            assert (
-                "web_search" in actions or "max_iterations_reached" in result["status"]
-            ), "Expected web_search when completeness low and SearXNG available"
-
-        # Verify results were retrieved from Qdrant
-        if result["results"]:
-            # Check that results have proper structure
-            for rag_result in result["results"]:
-                assert "content" in rag_result, "RAG result missing 'content'"
-                assert "url" in rag_result, "RAG result missing 'url'"
-                assert "similarity_score" in rag_result, (
-                    "RAG result missing 'similarity_score'"
-                )
-                assert "chunk_index" in rag_result, "RAG result missing 'chunk_index'"
-
-                # Content should not be empty
-                assert len(rag_result["content"]) > 0, "RAG result has empty content"
-                # chunk_index should be integer, not None
-                assert isinstance(rag_result["chunk_index"], int), (
-                    f"chunk_index should be int, got {type(rag_result['chunk_index'])}"
-                )
-
-        print(
-            f"Test passed: completeness={result['completeness']}, "
-            f"iterations={result['iterations']}, results={len(result['results'])}"
+        # If SearXNG is working but test failed - this is a REAL failure
+        pytest.fail(
+            f"Agentic search failed when all services are available. "
+            f"Error: {error}\n"
+            f"This indicates a real bug, not a service availability issue."
         )
+
+    # Success case - verify complete E2E flow
+    assert result["success"] is True, "Expected success=True when services available"
+    assert result["query"] == "What is Python programming language?"
+    assert result["iterations"] >= 1, "Should have at least 1 iteration"
+    assert "completeness" in result
+    assert "results" in result
+    assert "search_history" in result
+
+    # Verify search history has local_check action
+    actions = [item["action"] for item in result["search_history"]]
+    assert "local_check" in actions, "local_check action missing"
+
+    # Since SearXNG is working and test data is INCOMPLETE, should attempt web search
+    if result["completeness"] < 0.8:
+        assert (
+            "web_search" in actions or "max_iterations_reached" in result.get("status", "")
+        ), "Expected web_search attempt when completeness low and SearXNG working"
+
+    # Verify results were retrieved from Qdrant
+    assert len(result["results"]) > 0, "Should have results from Qdrant test data"
+
+    for rag_result in result["results"]:
+        # Verify proper structure (the bug fix)
+        assert "content" in rag_result, "RAG result missing 'content'"
+        assert "url" in rag_result, "RAG result missing 'url'"
+        assert "similarity_score" in rag_result, "RAG result missing 'similarity_score'"
+        assert "chunk_index" in rag_result, "RAG result missing 'chunk_index'"
+
+        # Content should not be empty (validation would fail)
+        assert len(rag_result["content"]) > 0, "RAG result has empty content"
+
+        # chunk_index should be integer, not None (validation would fail)
+        assert isinstance(rag_result["chunk_index"], int), (
+            f"chunk_index should be int, got {type(rag_result['chunk_index'])}"
+        )
+
+    print(
+        f"✓ E2E test passed: completeness={result['completeness']:.2f}, "
+        f"iterations={result['iterations']}, results={len(result['results'])}, "
+        f"actions={actions}"
+    )
 
 
 @pytest.mark.asyncio
