@@ -45,3 +45,7 @@ analysis_scripts/validation_results/*
 build.log
 problem/
 tests/results/
+
+# Qdrant runtime data
+.qdrant-initialized
+storage/
