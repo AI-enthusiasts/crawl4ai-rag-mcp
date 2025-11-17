@@ -82,6 +82,10 @@ docker-compose build --no-cache mcp
 
 All tests MUST use real services. Mocking is FORBIDDEN.
 
+**Test Execution Model**:
+- Tests run LOCALLY via `uv run pytest`
+- Services must be accessible on localhost (Qdrant on :6333, SearXNG on :8080)
+
 **Requirements**:
 - Real Qdrant (localhost:6333)
 - Real SearXNG (localhost:8080 or skip test)
@@ -91,11 +95,11 @@ All tests MUST use real services. Mocking is FORBIDDEN.
 
 **Setup Local Services**:
 ```bash
-# Qdrant (download once)
+# Qdrant (download binary)
 cd ~ && curl -L https://github.com/qdrant/qdrant/releases/latest/download/qdrant-x86_64-unknown-linux-gnu.tar.gz | tar xz
-nohup ~/qdrant > ~/qdrant.log 2>&1 &  # Runs on :6333
+nohup ~/qdrant > ~/qdrant.log 2>&1 &
 
-# SearXNG (via Docker if available, or skip tests)
+# SearXNG
 docker run -p 8080:8080 searxng/searxng
 ```
 
