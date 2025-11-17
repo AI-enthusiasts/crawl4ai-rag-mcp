@@ -29,6 +29,14 @@ async def mcp_session():
     }
 
     async with httpx.AsyncClient(timeout=120.0) as client:
+        # Check if MCP server is available
+        try:
+            health_check = await client.get("http://localhost:8051/health", timeout=5.0)
+            if health_check.status_code != 200:
+                pytest.skip("MCP server not available at localhost:8051")
+        except Exception as e:
+            pytest.skip(f"MCP server not available: {e}")
+
         # Initialize session
         init_request = {
             "jsonrpc": "2.0",

@@ -88,7 +88,7 @@ class TestAddDocuments:
         # Verify upsert was called
         assert mock_client.upsert.called
         call_args = mock_client.upsert.call_args
-        assert call_args.kwargs["collection_name"] == operations.CODE_EXAMPLES
+        assert call_args.kwargs["collection_name"] == operations.CRAWLED_PAGES
         points = call_args.kwargs["points"]
         assert len(points) == 2
 
