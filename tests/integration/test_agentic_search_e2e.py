@@ -30,6 +30,10 @@ async def qdrant_with_test_data():
     """Set up Qdrant with test data that has low completeness."""
     settings = get_settings()
 
+    # Check OpenAI API key availability
+    if not settings.openai_api_key:
+        pytest.skip("OPENAI_API_KEY not set - required for embeddings")
+
     # Check Qdrant availability
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -63,6 +67,10 @@ async def qdrant_with_test_data():
 
     # Get embeddings for test chunks
     embeddings = create_embeddings_batch(test_chunks)
+
+    # Check if embeddings were created successfully
+    if not embeddings or len(embeddings) == 0:
+        pytest.skip("Failed to create embeddings - check OPENAI_API_KEY validity")
 
     # Store in Qdrant
     await adapter.add_documents(
