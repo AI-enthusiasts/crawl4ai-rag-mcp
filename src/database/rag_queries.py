@@ -120,7 +120,7 @@ async def perform_rag_query(
                     "source": result.get("source_id"),  # Changed from "source" to "source_id"
                     "url": result.get("url"),
                     "title": result.get("title"),
-                    "chunk_index": result.get("chunk_index"),
+                    "chunk_index": result.get("chunk_number"),  # Documents store as chunk_number
                     "similarity_score": result.get("score", 0),
                 },
             )
