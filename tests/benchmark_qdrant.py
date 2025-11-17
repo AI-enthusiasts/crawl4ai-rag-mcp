@@ -492,7 +492,7 @@ async def run_benchmarks():
         print(report)
 
         # Save report to file
-        with open("benchmark_results.txt", "w") as f:
+        with Path("benchmark_results.txt").open("w") as f:
             f.write(report)
         print("\n📄 Report saved to benchmark_results.txt")
 

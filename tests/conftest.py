@@ -772,7 +772,7 @@ def docker_logs_collector(request):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         log_file = logs_dir / f"{test_name}_{timestamp}.log"
 
-        with open(log_file, "w") as f:
+        with log_file.open("w") as f:
             f.write(f"Test: {test_name}\n")
             f.write(f"Container: {container_name}\n")
             f.write(f"Start: {start_time}\n")

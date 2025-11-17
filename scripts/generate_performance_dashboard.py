@@ -22,7 +22,7 @@ class PerformanceDashboard:
         :param metrics_file: Path to JSON performance metrics file
         """
         try:
-            with open(metrics_file, 'r') as f:
+            with Path(metrics_file).open('r') as f:
                 data = json.load(f)
             
             # Handle both custom plugin format and pytest-json-report format
@@ -269,18 +269,18 @@ def main():
         </body>
         </html>
         '''
-        
+
         output_file = 'performance_dashboard.html'
-        with open(output_file, 'w') as f:
+        with Path(output_file).open('w') as f:
             f.write(dashboard_html)
         
         print(f"Performance dashboard generated: {output_file} (no data)")
         sys.exit(0)
     
     dashboard = PerformanceDashboard(metrics_file)
-    
+
     output_file = 'performance_dashboard.html'
-    with open(output_file, 'w') as f:
+    with Path(output_file).open('w') as f:
         f.write(dashboard.generate_dashboard())
     
     print(f"Performance dashboard generated: {output_file}")

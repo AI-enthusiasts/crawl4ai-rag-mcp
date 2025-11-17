@@ -53,7 +53,7 @@ class LoadTestAnalyzer:
 
         for json_file in json_files:
             try:
-                with open(json_file) as f:
+                with json_file.open() as f:
                     data = json.load(f)
                     # Only include successful test runs
                     if data.get("summary", {}).get("total", 0) > 0:
@@ -279,7 +279,7 @@ class LoadTestAnalyzer:
         """
         import csv
 
-        with open(output_file, 'w', newline='') as f:
+        with Path(output_file).open('w', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([
                 'Timestamp',

@@ -288,7 +288,7 @@ class LoadTestRunner:
             self.print("✗ No test results found", "red")
             return
 
-        with open(report_file) as f:
+        with report_file.open() as f:
             data = json.load(f)
 
         summary = data.get("summary", {})

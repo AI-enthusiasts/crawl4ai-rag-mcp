@@ -117,7 +117,7 @@ def test_pipeline_structure():
     print("\n🔬 Analyzing pipeline structure...")
 
     try:
-        with open("src/crawl4ai_mcp.py") as f:
+        with Path("src/crawl4ai_mcp.py").open() as f:
             content = f.read()
 
         pipeline_checks = {
@@ -164,7 +164,7 @@ def test_function_interfaces():
     print("\n🔧 Testing function interfaces...")
 
     try:
-        with open("src/crawl4ai_mcp.py") as f:
+        with Path("src/crawl4ai_mcp.py").open() as f:
             content = f.read()
 
         # Extract search function signature
@@ -208,7 +208,7 @@ def analyze_return_raw_markdown():
     print("\n📄 Analyzing return_raw_markdown handling...")
 
     try:
-        with open("src/crawl4ai_mcp.py") as f:
+        with Path("src/crawl4ai_mcp.py").open() as f:
             content = f.read()
 
         # Look for return_raw_markdown handling patterns

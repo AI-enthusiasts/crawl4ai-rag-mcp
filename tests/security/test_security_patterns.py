@@ -448,7 +448,7 @@ class TestCredentialManagement:
 
         for file_path in src_files:
             if os.path.exists(file_path):
-                with open(file_path) as f:
+                with Path(file_path).open() as f:
                     content = f.read()
 
                 for pattern in dangerous_patterns:
@@ -477,7 +477,7 @@ class TestContainerSecurity:
         if not os.path.exists(compose_file):
             compose_file = "docker-compose.yml"
 
-        with open(compose_file) as f:
+        with Path(compose_file).open() as f:
             import yaml
 
             compose_config = yaml.safe_load(f)
@@ -507,7 +507,7 @@ class TestContainerSecurity:
         if not os.path.exists(compose_file):
             compose_file = "docker-compose.yml"
 
-        with open(compose_file) as f:
+        with Path(compose_file).open() as f:
             import yaml
 
             compose_config = yaml.safe_load(f)
@@ -533,7 +533,7 @@ class TestContainerSecurity:
         if not os.path.exists(compose_file):
             compose_file = "docker-compose.yml"
 
-        with open(compose_file) as f:
+        with Path(compose_file).open() as f:
             import yaml
 
             compose_config = yaml.safe_load(f)

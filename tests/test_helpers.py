@@ -157,7 +157,7 @@ class TestFixtures:
         config = {}
 
         if env_path.exists():
-            with open(env_path) as f:
+            with env_path.open() as f:
                 for line in f:
                     line = line.strip()
                     if line and not line.startswith("#") and "=" in line:

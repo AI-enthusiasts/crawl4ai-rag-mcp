@@ -8,7 +8,7 @@ from pathlib import Path
 
 def fix_print_statements(file_path):
     """Replace print() statements with stderr output"""
-    with open(file_path, 'r') as f:
+    with Path(file_path).open('r') as f:
         content = f.read()
     
     # Replace print statements that don't already have file=sys.stderr
@@ -28,9 +28,9 @@ def fix_print_statements(file_path):
     
     # Replace all print statements
     new_content = re.sub(pattern, replacement, content)
-    
+
     # Write back
-    with open(file_path, 'w') as f:
+    with Path(file_path).open('w') as f:
         f.write(new_content)
     
     # Count changes
