@@ -1,0 +1,145 @@
+# ============================================
+# Crawl4AI MCP - Testing Environment
+# ============================================
+# Lightweight services for CI/CD integration tests
+# No passwords, minimal resources, health checks enabled
+# ============================================
+
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  qdrant-test-data:
+  valkey-test-data:
+
+services:
+  # ------------------------------------------
+  # Vector Database - Qdrant
+  # ------------------------------------------
+  qdrant-test:
+    image: qdrant/qdrant:v1.15.1
+    ports:
+      - "6333:6333"
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:6333/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    environment:
+      - QDRANT__LOG_LEVEL=WARN
+      - QDRANT__SERVICE__ENABLE_TLS=false
+    volumes:
+      - qdrant-test-data:/qdrant/storage
+
+  # ------------------------------------------
+  # Cache - Valkey (Redis)
+  # ------------------------------------------
+  valkey-test:
+    image: valkey/valkey:8-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - test-network
+    command: >
+      valkey-server
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
+      --save ""
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - valkey-test-data:/data
+
+  # ------------------------------------------
+  # Search Engine - SearXNG
+  # ------------------------------------------
+  searxng-test:
+    image: searxng/searxng:latest
+    ports:
+      - "8080:8080"
+    networks:
+      - test-network
+    depends_on:
+      valkey-test:
+        condition: service_healthy
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080/
+      - SEARXNG_LIMITER=false
+      - INSTANCE_NAME=test
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+
+  # ------------------------------------------
+  # MCP Server
+  # ------------------------------------------
+  mcp-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8051:8051"
+    networks:
+      - test-network
+    depends_on:
+      qdrant-test:
+        condition: service_healthy
+      searxng-test:
+        condition: service_healthy
+      valkey-test:
+        condition: service_healthy
+    environment:
+      - ENVIRONMENT=test
+      - TRANSPORT=http
+      - HOST=0.0.0.0
+      - PORT=8051
+
+      # Service URLs
+      - QDRANT_URL=http://qdrant-test:6333
+      - SEARXNG_URL=http://searxng-test:8080
+      - VALKEY_URL=redis://valkey-test:6379
+
+      # Database
+      - VECTOR_DATABASE=qdrant
+      - QDRANT_API_KEY=
+      - QDRANT_COLLECTION_NAME=test_crawled_pages
+
+      # API Keys (will be set by CI)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-test-key}
+
+      # Models
+      - EMBEDDING_MODEL=text-embedding-3-small
+      - MODEL_CHOICE=gpt-4o-mini
+
+      # Features
+      - USE_RERANKING=false
+      - USE_AGENTIC_RAG=false
+      - USE_KNOWLEDGE_GRAPH=false
+      - AGENTIC_SEARCH_ENABLED=true
+
+      # Testing flags
+      - TESTING=true
+      - CI=true
+    healthcheck:
+      test: ["CMD-SHELL", "exit 0"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
