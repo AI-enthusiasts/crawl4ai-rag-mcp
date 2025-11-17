@@ -18,10 +18,8 @@ Run with: pytest tests/test_agentic_search_integration.py -v
 import asyncio
 import json
 import os
-from unittest.mock import MagicMock
 
 import pytest
-from fastmcp import Context
 
 from src.config import get_settings, reset_settings
 from src.core.context import Crawl4AIContext, initialize_global_context
@@ -86,9 +84,11 @@ async def app_context(test_settings):
 
 @pytest.fixture
 async def mock_fastmcp_context():
-    """Create a mock FastMCP Context for testing."""
-    ctx = MagicMock(spec=Context)
-    return ctx
+    """Create a simple Context object for testing."""
+    class SimpleContext:
+        pass
+
+    return SimpleContext()
 
 
 class TestAgenticSearchService:
