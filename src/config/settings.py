@@ -118,8 +118,10 @@ class Settings(BaseSettings):
     # ========================================
     # SearXNG Settings
     # ========================================
+    # Default port 8888 is for local SearXNG installation
+    # Docker deployments override via SEARXNG_URL in docker-compose.yml
     searxng_url: str | None = Field(
-        default="http://localhost:8080",
+        default="http://localhost:8888",
         description="SearXNG instance URL for web search",
     )
 
