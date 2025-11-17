@@ -50,7 +50,7 @@ class Neo4jCodeAnalyzer:
     def analyze_python_file(self, file_path: Path, repo_root: Path, project_modules: set[str]) -> dict[str, Any] | None:
         """Extract structure for direct Neo4j insertion"""
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with file_path.open(encoding="utf-8") as f:
                 content = f.read()
 
             tree = ast.parse(content)
