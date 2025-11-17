@@ -13,7 +13,7 @@ import pytest
 import requests
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from src.database.factory import create_and_initialize_database, create_database_client
 from src.database.qdrant_adapter import QdrantAdapter

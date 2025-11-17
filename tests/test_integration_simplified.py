@@ -8,7 +8,7 @@ import sys
 import pytest
 
 # Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from tests.factories import DocumentFactory
 from tests.test_doubles import FakeCrawler, FakeEmbeddingService, FakeQdrantClient
