@@ -10,7 +10,7 @@ import logging
 import re
 from typing import Any
 
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig
+from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
 from fastmcp import Context
 
 from src.core.constants import MAX_VISITED_URLS_LIMIT, URL_FILTER_PATTERNS

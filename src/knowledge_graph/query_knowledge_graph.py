@@ -12,7 +12,7 @@ import os
 from typing import Any
 
 from dotenv import load_dotenv
-from neo4j import AsyncGraphDatabase, AsyncDriver
+from neo4j import AsyncDriver, AsyncGraphDatabase
 
 from src.core.exceptions import QueryError
 

@@ -4,8 +4,6 @@ from typing import Any
 
 from anyio.to_thread import run_sync as run_in_thread
 
-from src.core.logging import logger
-
 from .basic import create_embedding, create_embeddings_batch
 
 

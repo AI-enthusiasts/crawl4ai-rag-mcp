@@ -11,7 +11,6 @@ from sentence_transformers import CrossEncoder
 
 from src.config import get_settings
 from src.core.exceptions import (
-    ConfigurationError,
     DatabaseError,
     KnowledgeGraphError,
 )
@@ -104,7 +103,9 @@ async def initialize_global_context() -> "Crawl4AIContext":
                 from src.knowledge_graph.knowledge_graph_validator import (
                     KnowledgeGraphValidator,
                 )
-                from src.knowledge_graph.parse_repo_into_neo4j import DirectNeo4jExtractor
+                from src.knowledge_graph.parse_repo_into_neo4j import (
+                    DirectNeo4jExtractor,
+                )
 
                 neo4j_uri = settings.neo4j_uri
                 neo4j_user = settings.neo4j_username

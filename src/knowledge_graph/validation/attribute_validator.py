@@ -6,11 +6,12 @@ repository attribute information.
 """
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
-from ..ai_script_analyzer import AttributeAccess
-from . import ValidationResult, ValidationStatus
+from src.knowledge_graph.ai_script_analyzer import AttributeAccess
+from src.knowledge_graph.validation import ValidationResult, ValidationStatus
 
 logger = logging.getLogger(__name__)
 

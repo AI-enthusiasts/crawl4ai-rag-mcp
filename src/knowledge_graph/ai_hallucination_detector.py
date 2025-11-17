@@ -15,7 +15,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from src.core.exceptions import ParsingError, AnalysisError, QueryError
+from src.core.exceptions import AnalysisError, ParsingError, QueryError
 from src.knowledge_graph.ai_script_analyzer import AIScriptAnalyzer
 from src.knowledge_graph.hallucination_reporter import HallucinationReporter
 from src.knowledge_graph.knowledge_graph_validator import KnowledgeGraphValidator

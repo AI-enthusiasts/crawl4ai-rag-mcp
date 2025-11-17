@@ -17,8 +17,8 @@ if TYPE_CHECKING:
     from fastmcp import FastMCP
 
 from src.core import MCPToolError, track_request
-from src.core.exceptions import DatabaseError
 from src.core.context import get_app_context
+from src.core.exceptions import DatabaseError
 from src.database import (
     get_available_sources,
     perform_rag_query,
@@ -34,8 +34,6 @@ async def get_available_sources_wrapper(ctx: Context) -> str:
     """
     Wrapper function to properly extract database_client from context and call the implementation.
     """
-    import json
-
     # Get the app context that was stored during lifespan
     app_ctx = get_app_context()
 
@@ -64,8 +62,6 @@ async def perform_rag_query_wrapper(
     """
     Wrapper function to properly extract database_client from context and call the implementation.
     """
-    import json
-
     # Get the app context that was stored during lifespan
     app_ctx = get_app_context()
 
@@ -99,8 +95,6 @@ async def search_code_examples_wrapper(
     """
     Wrapper function to properly extract database_client from context and call the implementation.
     """
-    import json
-
     # Get the app context that was stored during lifespan
     app_ctx = get_app_context()
 

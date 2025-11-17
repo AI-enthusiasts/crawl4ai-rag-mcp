@@ -19,8 +19,8 @@ if TYPE_CHECKING:
     from fastmcp import FastMCP
 
 from src.core import MCPToolError, track_request
-from src.core.exceptions import DatabaseError, KnowledgeGraphError, ValidationError
 from src.core.context import get_app_context
+from src.core.exceptions import DatabaseError, KnowledgeGraphError, ValidationError
 from src.utils.validation import validate_script_path
 
 logger = logging.getLogger(__name__)
@@ -470,8 +470,6 @@ def register_validation_tools(mcp: "FastMCP") -> None:
         Returns:
             JSON string with setup information and usage examples
         """
-        import os
-
         info = {
             "accessible_paths": {
                 "user_scripts": "./analysis_scripts/user_scripts/",

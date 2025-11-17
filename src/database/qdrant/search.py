@@ -5,7 +5,8 @@ Search operations for documents in Qdrant vector database.
 All functions are standalone and accept QdrantClient as first parameter.
 """
 
-from typing import Any, Sequence, cast
+from collections.abc import Sequence
+from typing import Any, cast
 
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import Condition, FieldCondition, Filter, MatchValue
@@ -45,7 +46,7 @@ async def search_documents(
     # Create filter if conditions exist
     search_filter = None
     if filter_conditions:
-        search_filter = Filter(must=cast(Sequence[Condition], filter_conditions))
+        search_filter = Filter(must=cast("Sequence[Condition]", filter_conditions))
 
     # Perform search
     results = await client.search(
@@ -93,7 +94,7 @@ async def search_documents_by_keyword(
             ),
         )
 
-    search_filter = Filter(must=cast(Sequence[Condition], filter_conditions))
+    search_filter = Filter(must=cast("Sequence[Condition]", filter_conditions))
 
     # Use scroll to find matching documents
     points, _ = await client.scroll(

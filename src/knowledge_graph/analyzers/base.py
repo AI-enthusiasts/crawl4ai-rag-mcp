@@ -9,8 +9,6 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from src.core.exceptions import ParsingError, AnalysisError
-
 logger = logging.getLogger(__name__)
 
 
@@ -118,13 +116,13 @@ class CodeAnalyzer(ABC):
                 # Fallback to Latin-1
                 with open(file_path, encoding="latin-1") as f:
                     return f.read()
-            except (OSError, IOError) as e:
+            except OSError as e:
                 self.logger.error(f"File I/O error reading {file_path}: {e}")
                 return None
             except Exception as e:
                 self.logger.exception(f"Unexpected error reading file {file_path}: {e}")
                 return None
-        except (OSError, IOError) as e:
+        except OSError as e:
             self.logger.error(f"File I/O error reading {file_path}: {e}")
             return None
         except Exception as e:

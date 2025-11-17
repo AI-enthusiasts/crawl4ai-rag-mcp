@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from src.core.exceptions import ParsingError, AnalysisError, QueryError
+from src.core.exceptions import AnalysisError, ParsingError, QueryError
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +90,7 @@ async def check_ai_script_hallucinations(
         # Read the script content
         try:
             script_content = script_file.read_text(encoding="utf-8")
-        except (OSError, IOError, UnicodeDecodeError) as e:
+        except (OSError, UnicodeDecodeError) as e:
             return json.dumps(
                 {
                     "success": False,

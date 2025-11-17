@@ -82,5 +82,5 @@ class AgenticSearchConfig:
 
         logger.info(
             f"Initialized agentic search configuration with model={self.model_name}, "
-            f"threshold={self.completeness_threshold}, max_iterations={self.max_iterations}"
+            f"threshold={self.completeness_threshold}, max_iterations={self.max_iterations}",
         )

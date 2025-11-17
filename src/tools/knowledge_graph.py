@@ -21,12 +21,12 @@ if TYPE_CHECKING:
     from fastmcp import FastMCP
 
 from src.core import MCPToolError, track_request
+from src.core.context import get_app_context
 from src.core.exceptions import (
     DatabaseError,
     KnowledgeGraphError,
     ValidationError,
 )
-from src.core.context import get_app_context
 from src.knowledge_graph import (
     query_knowledge_graph,
 )
@@ -40,8 +40,6 @@ logger = logging.getLogger(__name__)
 
 async def parse_github_repository_wrapper(ctx: Context, repo_url: str) -> str:
     """Wrapper function to properly extract repo_extractor from context and call the implementation."""
-    import json
-
     # Get the app context that was stored during lifespan
     app_ctx = get_app_context()
 
@@ -242,7 +240,9 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
                 raise MCPToolError(validation_result.get("error", "Invalid GitHub URL"))
 
             # Parse repository with branch support
-            from src.knowledge_graph.repository import parse_github_repository_with_branch
+            from src.knowledge_graph.repository import (
+                parse_github_repository_with_branch,
+            )
 
             return await parse_github_repository_with_branch(ctx, repo_url, branch)
         except MCPToolError:
@@ -285,7 +285,9 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
             JSON string with comprehensive repository information
         """
         try:
-            from src.knowledge_graph.repository import get_repository_metadata_from_neo4j
+            from src.knowledge_graph.repository import (
+                get_repository_metadata_from_neo4j,
+            )
 
             return await get_repository_metadata_from_neo4j(ctx, repo_name)
         except KnowledgeGraphError as e:
@@ -375,9 +377,6 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
         Returns:
             JSON string with parsing results, statistics, and repository information
         """
-        import json
-        import os
-
         try:
             # Get the app context
             app_ctx = get_app_context()

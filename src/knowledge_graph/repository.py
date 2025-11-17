@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 from fastmcp import Context
 
-from src.core.exceptions import GitError, RepositoryError, QueryError
+from src.core.exceptions import GitError, QueryError, RepositoryError
 
 logger = logging.getLogger(__name__)
 

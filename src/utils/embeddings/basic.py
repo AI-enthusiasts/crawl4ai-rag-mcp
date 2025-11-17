@@ -5,7 +5,7 @@ import time
 
 import openai
 
-from src.core.exceptions import EmbeddingError, LLMError
+from src.core.exceptions import EmbeddingError
 from src.core.logging import logger
 
 from .config import get_embedding_dimensions, get_embedding_model

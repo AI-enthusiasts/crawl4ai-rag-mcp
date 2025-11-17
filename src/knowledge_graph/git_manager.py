@@ -10,9 +10,9 @@ import logging
 import os
 import shutil
 import tempfile
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any
-from collections.abc import Callable
 
 from src.core.exceptions import GitError, RepositoryError
 
@@ -235,7 +235,7 @@ class GitRepositoryManager:
                     self.logger.info(
                         f"GitHub API reports repository size: {info['estimated_size_mb']:.2f}MB",
                     )
-            except (OSError, IOError) as api_error:
+            except OSError as api_error:
                 self.logger.debug(f"GitHub API network error: {api_error}")
             except Exception as api_error:
                 self.logger.exception(f"Unexpected error with GitHub API: {api_error}")
