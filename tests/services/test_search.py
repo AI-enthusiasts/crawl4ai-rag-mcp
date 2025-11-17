@@ -50,26 +50,29 @@ def mock_context():
 
 
 @pytest.fixture
-def sample_html_response():
-    """Sample HTML response from SearXNG."""
-    return """
-    <html>
-        <body>
-            <article class="result">
-                <h3><a href="https://example.com/1">First Result</a></h3>
-                <p class="content">This is the first result snippet</p>
-            </article>
-            <article class="result">
-                <h3><a href="https://example.com/2">Second Result</a></h3>
-                <p class="content">This is the second result snippet</p>
-            </article>
-            <article class="result">
-                <h3><a href="https://example.com/3">Third Result</a></h3>
-                <p class="content">This is the third result snippet</p>
-            </article>
-        </body>
-    </html>
-    """
+def sample_json_response():
+    """Sample JSON response from SearXNG."""
+    return {
+        "query": "test query",
+        "number_of_results": 3,
+        "results": [
+            {
+                "title": "First Result",
+                "url": "https://example.com/1",
+                "content": "This is the first result snippet",
+            },
+            {
+                "title": "Second Result",
+                "url": "https://example.com/2",
+                "content": "This is the second result snippet",
+            },
+            {
+                "title": "Third Result",
+                "url": "https://example.com/3",
+                "content": "This is the third result snippet",
+            },
+        ],
+    }
 
 
 @pytest.fixture
@@ -98,12 +101,12 @@ def sample_search_results():
 class TestSearchSearxng:
     """Test suite for _search_searxng() function."""
 
-    async def test_search_success(self, mock_settings, sample_html_response):
-        """Test successful search with valid HTML response."""
+    async def test_search_success(self, mock_settings, sample_json_response):
+        """Test successful search with valid JSON response."""
         # Mock aiohttp response
         mock_response = MagicMock()
         mock_response.status = 200
-        mock_response.text = AsyncMock(return_value=sample_html_response)
+        mock_response.json = AsyncMock(return_value=sample_json_response)
         mock_response.__aenter__ = AsyncMock(return_value=mock_response)
         mock_response.__aexit__ = AsyncMock(return_value=None)
 
@@ -126,11 +129,11 @@ class TestSearchSearxng:
 
     async def test_search_empty_results(self, mock_settings):
         """Test search with no results found."""
-        empty_html = "<html><body></body></html>"
+        empty_json = {"query": "nonexistent query", "number_of_results": 0, "results": []}
 
         mock_response = MagicMock()
         mock_response.status = 200
-        mock_response.text = AsyncMock(return_value=empty_html)
+        mock_response.json = AsyncMock(return_value=empty_json)
         mock_response.__aenter__ = AsyncMock(return_value=mock_response)
         mock_response.__aexit__ = AsyncMock(return_value=None)
 
@@ -257,13 +260,12 @@ class TestSearchSearxng:
 
             assert results == []
 
-    async def test_search_malformed_html(self, mock_settings):
-        """Test search with malformed HTML response."""
-        malformed_html = "<html><body><article class='result'><h3>Missing closing tags"
-
+    async def test_search_malformed_json(self, mock_settings):
+        """Test search with malformed JSON response."""
+        # Simulate JSON decode error
         mock_response = MagicMock()
         mock_response.status = 200
-        mock_response.text = AsyncMock(return_value=malformed_html)
+        mock_response.json = AsyncMock(side_effect=json.JSONDecodeError("Malformed JSON", "", 0))
         mock_response.__aenter__ = AsyncMock(return_value=mock_response)
         mock_response.__aexit__ = AsyncMock(return_value=None)
 
@@ -275,22 +277,25 @@ class TestSearchSearxng:
         with patch("aiohttp.ClientSession", return_value=mock_session):
             results = await _search_searxng("test query", num_results=5)
 
-        # BeautifulSoup should handle malformed HTML gracefully
-        assert isinstance(results, list)
+        # Should handle malformed JSON gracefully and return empty list
+        assert results == []
 
     async def test_search_missing_title(self, mock_settings):
-        """Test search with results missing title elements."""
-        html_no_title = """
-        <html><body>
-            <article class="result">
-                <p class="content">Content without title</p>
-            </article>
-        </body></html>
-        """
+        """Test search with results missing title field."""
+        json_no_title = {
+            "query": "test query",
+            "number_of_results": 1,
+            "results": [
+                {
+                    "url": "https://example.com/1",
+                    "content": "Content without title",
+                }
+            ],
+        }
 
         mock_response = MagicMock()
         mock_response.status = 200
-        mock_response.text = AsyncMock(return_value=html_no_title)
+        mock_response.json = AsyncMock(return_value=json_no_title)
         mock_response.__aenter__ = AsyncMock(return_value=mock_response)
         mock_response.__aexit__ = AsyncMock(return_value=None)
 
@@ -302,22 +307,28 @@ class TestSearchSearxng:
         with patch("aiohttp.ClientSession", return_value=mock_session):
             results = await _search_searxng("test query", num_results=5)
 
-        # Should skip results without URLs
-        assert results == []
+        # Should include results even without title (title will be empty string)
+        assert len(results) == 1
+        assert results[0]["title"] == ""
+        assert results[0]["url"] == "https://example.com/1"
 
     async def test_search_missing_snippet(self, mock_settings):
         """Test search with results missing snippet/content."""
-        html_no_snippet = """
-        <html><body>
-            <article class="result">
-                <h3><a href="https://example.com/1">Title Only</a></h3>
-            </article>
-        </body></html>
-        """
+        json_no_snippet = {
+            "query": "test query",
+            "number_of_results": 1,
+            "results": [
+                {
+                    "title": "Title Only",
+                    "url": "https://example.com/1",
+                    # No content or snippet field
+                }
+            ],
+        }
 
         mock_response = MagicMock()
         mock_response.status = 200
-        mock_response.text = AsyncMock(return_value=html_no_snippet)
+        mock_response.json = AsyncMock(return_value=json_no_snippet)
         mock_response.__aenter__ = AsyncMock(return_value=mock_response)
         mock_response.__aexit__ = AsyncMock(return_value=None)
 
@@ -332,39 +343,25 @@ class TestSearchSearxng:
         assert len(results) == 1
         assert results[0]["title"] == "Title Only"
         assert results[0]["url"] == "https://example.com/1"
-        # Snippet key may not exist or be empty
-        assert "snippet" not in results[0] or results[0]["snippet"] == ""
+        assert results[0]["snippet"] == ""
 
     async def test_search_num_results_limit(self, mock_settings):
         """Test that num_results parameter limits the number of results."""
-        html_many_results = """
-        <html><body>
-            <article class="result">
-                <h3><a href="https://example.com/1">Result 1</a></h3>
-                <p class="content">Snippet 1</p>
-            </article>
-            <article class="result">
-                <h3><a href="https://example.com/2">Result 2</a></h3>
-                <p class="content">Snippet 2</p>
-            </article>
-            <article class="result">
-                <h3><a href="https://example.com/3">Result 3</a></h3>
-                <p class="content">Snippet 3</p>
-            </article>
-            <article class="result">
-                <h3><a href="https://example.com/4">Result 4</a></h3>
-                <p class="content">Snippet 4</p>
-            </article>
-            <article class="result">
-                <h3><a href="https://example.com/5">Result 5</a></h3>
-                <p class="content">Snippet 5</p>
-            </article>
-        </body></html>
-        """
+        json_many_results = {
+            "query": "test query",
+            "number_of_results": 5,
+            "results": [
+                {"title": "Result 1", "url": "https://example.com/1", "content": "Snippet 1"},
+                {"title": "Result 2", "url": "https://example.com/2", "content": "Snippet 2"},
+                {"title": "Result 3", "url": "https://example.com/3", "content": "Snippet 3"},
+                {"title": "Result 4", "url": "https://example.com/4", "content": "Snippet 4"},
+                {"title": "Result 5", "url": "https://example.com/5", "content": "Snippet 5"},
+            ],
+        }
 
         mock_response = MagicMock()
         mock_response.status = 200
-        mock_response.text = AsyncMock(return_value=html_many_results)
+        mock_response.json = AsyncMock(return_value=json_many_results)
         mock_response.__aenter__ = AsyncMock(return_value=mock_response)
         mock_response.__aexit__ = AsyncMock(return_value=None)
 
@@ -376,8 +373,8 @@ class TestSearchSearxng:
         with patch("aiohttp.ClientSession", return_value=mock_session):
             results = await _search_searxng("test query", num_results=2)
 
-        # BeautifulSoup's find_all with limit parameter
-        assert len(results) <= 2
+        # Should limit to 2 results
+        assert len(results) == 2
 
     async def test_search_url_stripping(self, mock_settings):
         """Test that trailing slashes are stripped from SearXNG URL."""
@@ -389,7 +386,7 @@ class TestSearchSearxng:
 
             mock_response = MagicMock()
             mock_response.status = 200
-            mock_response.text = AsyncMock(return_value="<html><body></body></html>")
+            mock_response.json = AsyncMock(return_value={"results": []})
             mock_response.__aenter__ = AsyncMock(return_value=mock_response)
             mock_response.__aexit__ = AsyncMock(return_value=None)
 
@@ -743,7 +740,7 @@ class TestSearchEdgeCases:
 
         mock_response = MagicMock()
         mock_response.status = 200
-        mock_response.text = AsyncMock(return_value="<html><body></body></html>")
+        mock_response.json = AsyncMock(return_value={"results": []})
         mock_response.__aenter__ = AsyncMock(return_value=mock_response)
         mock_response.__aexit__ = AsyncMock(return_value=None)
 
@@ -763,7 +760,7 @@ class TestSearchEdgeCases:
 
         mock_response = MagicMock()
         mock_response.status = 200
-        mock_response.text = AsyncMock(return_value="<html><body></body></html>")
+        mock_response.json = AsyncMock(return_value={"results": []})
         mock_response.__aenter__ = AsyncMock(return_value=mock_response)
         mock_response.__aexit__ = AsyncMock(return_value=None)
 
@@ -782,7 +779,7 @@ class TestSearchEdgeCases:
 
         mock_response = MagicMock()
         mock_response.status = 200
-        mock_response.text = AsyncMock(return_value="<html><body></body></html>")
+        mock_response.json = AsyncMock(return_value={"results": []})
         mock_response.__aenter__ = AsyncMock(return_value=mock_response)
         mock_response.__aexit__ = AsyncMock(return_value=None)
 
@@ -799,7 +796,7 @@ class TestSearchEdgeCases:
         """Test search with zero results requested."""
         mock_response = MagicMock()
         mock_response.status = 200
-        mock_response.text = AsyncMock(return_value="<html><body></body></html>")
+        mock_response.json = AsyncMock(return_value={"results": []})
         mock_response.__aenter__ = AsyncMock(return_value=mock_response)
         mock_response.__aexit__ = AsyncMock(return_value=None)
 
