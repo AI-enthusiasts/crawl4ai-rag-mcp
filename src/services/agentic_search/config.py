@@ -71,21 +71,21 @@ class AgenticSearchConfig:
         )
 
         # Create specialized agents for each LLM task
-        # Per Pydantic AI docs: Agent with result_type for structured outputs
+        # Per Pydantic AI docs: Agent with output_type for structured outputs
 
         # Agent for evaluating knowledge completeness (Stage 1)
         self.completeness_agent = Agent(
             model=model,
-            result_type=CompletenessEvaluation,
-            result_retries=MAX_RETRIES_DEFAULT,  # Retry 3 times for validation errors
+            output_type=CompletenessEvaluation,
+            output_retries=MAX_RETRIES_DEFAULT,  # Retry 3 times for validation errors
             model_settings=self.base_model_settings,
         )
 
         # Agent for ranking URLs by relevance (Stage 2)
         self.ranking_agent = Agent(
             model=model,
-            result_type=URLRankingList,
-            result_retries=MAX_RETRIES_DEFAULT,
+            output_type=URLRankingList,
+            output_retries=MAX_RETRIES_DEFAULT,
             model_settings=self.base_model_settings,
         )
 

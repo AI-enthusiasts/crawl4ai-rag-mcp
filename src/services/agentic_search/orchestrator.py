@@ -339,11 +339,11 @@ Provide:
                 )
 
             # Create temporary agent with inline response model
-            # Per Pydantic AI docs: Create Agent instance with specific result_type
+            # Per Pydantic AI docs: Create Agent instance with specific output_type
             refinement_agent = Agent(
                 model=self.openai_model,
-                result_type=QueryRefinementResponse,
-                result_retries=MAX_RETRIES_DEFAULT,
+                output_type=QueryRefinementResponse,
+                output_retries=MAX_RETRIES_DEFAULT,
                 model_settings=self.refinement_model_settings,
             )
 
