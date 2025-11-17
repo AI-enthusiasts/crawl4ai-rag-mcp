@@ -8,7 +8,7 @@ Tests the following tools:
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastmcp import Context
@@ -50,9 +50,9 @@ class TestSearchTool:
                             "url": "https://example.com",
                             "title": "Test Result",
                             "content": "Test content",
-                        }
+                        },
                     ],
-                }
+                },
             )
 
             # Re-register to get the actual function
@@ -215,7 +215,7 @@ class TestAnalyzeCodeCrossLanguageTool:
                         {
                             "success": True,
                             "sources": [{"source_id": "test-repo", "summary": "Test"}],
-                        }
+                        },
                     )
 
                     # Mock RAG query
@@ -229,9 +229,9 @@ class TestAnalyzeCodeCrossLanguageTool:
                                     "similarity_score": 0.95,
                                     "metadata": {"language": "python"},
                                     "source": "test-repo",
-                                }
+                                },
                             ],
-                        }
+                        },
                     )
 
                     # Register and get function
@@ -298,7 +298,9 @@ class TestAnalyzeCodeCrossLanguageTool:
 
     @pytest.mark.asyncio
     async def test_analyze_code_with_json_string_languages(
-        self, mock_mcp, mock_context
+        self,
+        mock_mcp,
+        mock_context,
     ):
         """Test cross-language analysis with JSON string language list."""
         with patch("src.core.context.get_app_context") as mock_get_ctx:
@@ -311,12 +313,12 @@ class TestAnalyzeCodeCrossLanguageTool:
 
                     # Mock sources
                     mock_sources.return_value = json.dumps(
-                        {"success": True, "sources": []}
+                        {"success": True, "sources": []},
                     )
 
                     # Mock RAG query
                     mock_rag.return_value = json.dumps(
-                        {"success": True, "results": []}
+                        {"success": True, "results": []},
                     )
 
                     # Register and get function

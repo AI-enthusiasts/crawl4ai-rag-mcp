@@ -15,23 +15,21 @@ Cost estimate per test run: ~$0.001-0.002 USD with gpt-4.1-nano
 Run with: pytest tests/test_agentic_search_integration.py -v
 """
 
-import asyncio
 import json
 import os
 
 import pytest
 
 from src.config import get_settings, reset_settings
-from src.core.context import Crawl4AIContext, initialize_global_context
+from src.core.context import initialize_global_context
 from src.core.exceptions import LLMError
 from src.services.agentic_search import (
     AgenticSearchConfig,
     AgenticSearchService,
-    SelectiveCrawler,
     LocalKnowledgeEvaluator,
+    SelectiveCrawler,
     URLRanker,
     agentic_search_impl,
-    get_agentic_search_service,
 )
 
 # Mark all tests as integration tests
@@ -85,6 +83,7 @@ async def app_context(test_settings):
 @pytest.fixture
 async def mock_fastmcp_context():
     """Create a simple Context object for testing."""
+
     class SimpleContext:
         pass
 
@@ -118,12 +117,16 @@ class TestAgenticSearchService:
         assert service.openai_model is not None
         assert service.model_name is not None
         assert service.temperature >= 0 and service.temperature <= 1
-        assert service.completeness_threshold >= 0 and service.completeness_threshold <= 1
+        assert (
+            service.completeness_threshold >= 0 and service.completeness_threshold <= 1
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.slow
     async def test_completeness_evaluation_with_real_llm(
-        self, test_settings, app_context
+        self,
+        test_settings,
+        app_context,
     ):
         """Test completeness evaluation with real gpt-4.1-nano API call.
 
@@ -143,7 +146,8 @@ class TestAgenticSearchService:
         # Wrap in try-except to skip if API unavailable
         try:
             evaluation = await evaluator._evaluate_completeness(
-                query="What is Python?", results=empty_results
+                query="What is Python?",
+                results=empty_results,
             )
         except LLMError:
             pytest.skip("OpenAI API unavailable - skipping real LLM test")
@@ -173,7 +177,8 @@ class TestAgenticSearchService:
 
         try:
             evaluation_with_results = await evaluator._evaluate_completeness(
-                query="What is Python?", results=mock_results
+                query="What is Python?",
+                results=mock_results,
             )
         except LLMError:
             pytest.skip("OpenAI API unavailable - skipping real LLM test")
@@ -234,7 +239,9 @@ class TestAgenticSearchService:
 
         # Programming content should rank higher than snake care
         python_doc_score = next(r.score for r in rankings if "docs.python.org" in r.url)
-        snake_care_score = next(r.score for r in rankings if "pets.example.com" in r.url)
+        snake_care_score = next(
+            r.score for r in rankings if "pets.example.com" in r.url
+        )
         assert python_doc_score > snake_care_score
 
     @pytest.mark.asyncio
@@ -288,7 +295,10 @@ class TestAgenticSearchIntegration:
         reason="Expensive test - set RUN_EXPENSIVE_TESTS=true to run",
     )
     async def test_full_agentic_search_pipeline(
-        self, test_settings, app_context, mock_fastmcp_context
+        self,
+        test_settings,
+        app_context,
+        mock_fastmcp_context,
     ):
         """Test full agentic search pipeline with real services.
 
@@ -326,7 +336,9 @@ class TestAgenticSearchIntegration:
 
         # If completeness was low, should have attempted web search
         if result["completeness"] < 0.85:
-            assert "web_search" in actions or result["status"] == "max_iterations_reached"
+            assert (
+                "web_search" in actions or result["status"] == "max_iterations_reached"
+            )
 
 
 @pytest.mark.asyncio
@@ -360,6 +372,7 @@ async def test_settings_validation_for_agentic_search():
 
     # Pydantic validates thresholds - invalid values should raise error
     import pydantic_core
+
     with pytest.raises(pydantic_core._pydantic_core.ValidationError):
         settings = get_settings()
 
