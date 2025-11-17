@@ -273,8 +273,13 @@ services:
     environment:
       - SEARXNG_BASE_URL=${SEARXNG_BASE_URL:-http://localhost:8080/}
       - SEARXNG_SECRET_KEY=$SERVICE_REALBASE64_64_SEARXNG
+      - SEARXNG_LIMITER=true
+      - SEARXNG_VALKEY_URL=redis://valkey:6379/0
     networks:
       - crawl4ai-network
+    depends_on:
+      valkey:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
       interval: 30s
