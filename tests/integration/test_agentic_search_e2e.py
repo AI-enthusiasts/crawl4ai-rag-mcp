@@ -40,18 +40,17 @@ async def qdrant_with_test_data():
     except Exception as e:
         pytest.skip(f"Qdrant not available: {e}")
 
-    # Initialize Qdrant client
-    from qdrant_client import AsyncQdrantClient
-    qdrant_client = AsyncQdrantClient(url=settings.qdrant_url)
-    adapter = QdrantAdapter(qdrant_client)
+    # Initialize Qdrant adapter
+    adapter = QdrantAdapter(url=settings.qdrant_url)
 
     # Create collection if doesn't exist
     try:
-        await qdrant_client.get_collection(settings.qdrant_collection_name)
+        await adapter.client.get_collection(adapter.CRAWLED_PAGES)
     except Exception:
-        await adapter.create_collection(
-            collection_name=settings.qdrant_collection_name,
-            vector_size=1536,
+        from qdrant_client.models import Distance, VectorParams
+        await adapter.client.create_collection(
+            collection_name=adapter.CRAWLED_PAGES,
+            vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
         )
 
     # Add test data with INCOMPLETE information about "Python"
@@ -67,28 +66,31 @@ async def qdrant_with_test_data():
     embeddings = create_embeddings_batch(test_chunks)
 
     # Store in Qdrant
-    await adapter.store_document_chunks(
-        source_id="test-incomplete-python",
-        url=test_url,
-        title="Incomplete Python Info",
-        description="Test data",
-        chunks=test_chunks,
+    await adapter.add_documents(
+        urls=[test_url] * len(test_chunks),
+        chunk_numbers=list(range(len(test_chunks))),
+        contents=test_chunks,
+        metadatas=[
+            {
+                "title": "Incomplete Python Info",
+                "description": "Test data",
+                "test": True,
+                "purpose": "e2e_agentic_search_test",
+            }
+        ] * len(test_chunks),
         embeddings=embeddings,
-        metadata={
-            "test": True,
-            "purpose": "e2e_agentic_search_test",
-        },
+        source_ids=["test-incomplete-python"] * len(test_chunks),
     )
 
     yield adapter
 
     # Cleanup: delete test data
     try:
-        await adapter.delete_by_url([test_url])
+        await adapter.delete_documents_by_url([test_url])
     except Exception:
         pass
 
-    await qdrant_client.close()
+    await adapter.client.close()
 
 
 @pytest.mark.asyncio
