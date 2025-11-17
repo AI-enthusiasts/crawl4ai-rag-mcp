@@ -98,7 +98,7 @@ class QdrantAdapter:
         source_ids: list[str] | None = None,
     ) -> None:
         """Add documents to Qdrant - delegates to qdrant.operations"""
-        return await qdrant.operations.add_documents(
+        return await qdrant.add_documents(
             self.client,
             urls,
             chunk_numbers,
@@ -110,15 +110,15 @@ class QdrantAdapter:
 
     async def url_exists(self, url: str) -> bool:
         """Check if URL exists - delegates to qdrant.operations"""
-        return await qdrant.operations.url_exists(self.client, url)
+        return await qdrant.url_exists(self.client, url)
 
     async def get_documents_by_url(self, url: str) -> list[dict[str, Any]]:
         """Get all document chunks for a URL - delegates to qdrant.operations"""
-        return await qdrant.operations.get_documents_by_url(self.client, url)
+        return await qdrant.get_documents_by_url(self.client, url)
 
     async def delete_documents_by_url(self, urls: list[str]) -> None:
         """Delete document chunks by URL - delegates to qdrant.operations"""
-        return await qdrant.operations.delete_documents_by_url(self.client, urls)
+        return await qdrant.delete_documents_by_url(self.client, urls)
 
     # Search operations - delegate to qdrant.search
     async def search_documents(
@@ -129,7 +129,7 @@ class QdrantAdapter:
         source_filter: str | None = None,
     ) -> list[dict[str, Any]]:
         """Search for similar documents - delegates to qdrant.search"""
-        return await qdrant.search.search_documents(
+        return await qdrant.search_documents(
             self.client,
             query_embedding,
             match_count,
@@ -144,7 +144,7 @@ class QdrantAdapter:
         source_filter: str | None = None,
     ) -> list[dict[str, Any]]:
         """Search documents by keyword - delegates to qdrant.search"""
-        return await qdrant.search.search_documents_by_keyword(
+        return await qdrant.search_documents_by_keyword(
             self.client,
             keyword,
             match_count,
@@ -159,7 +159,7 @@ class QdrantAdapter:
         source_filter: str | None = None,
     ) -> list[dict[str, Any]]:
         """Generic search with embedding generation - delegates to qdrant.search"""
-        return await qdrant.search.search(
+        return await qdrant.search(
             self.client,
             query,
             match_count,
@@ -175,7 +175,7 @@ class QdrantAdapter:
         source_filter: str | None = None,
     ) -> list[dict[str, Any]]:
         """Hybrid search combining vector and keyword - delegates to qdrant.search"""
-        return await qdrant.search.hybrid_search(
+        return await qdrant.hybrid_search(
             self.client,
             query,
             match_count,
@@ -287,7 +287,7 @@ class QdrantAdapter:
         embedding: list[float],
     ) -> None:
         """Add a source - delegates to qdrant.operations"""
-        return await qdrant.operations.add_source(
+        return await qdrant.add_source(
             self.client,
             source_id,
             url,
@@ -303,7 +303,7 @@ class QdrantAdapter:
         match_count: int = 10,
     ) -> list[dict[str, Any]]:
         """Search sources - delegates to qdrant.operations"""
-        return await qdrant.operations.search_sources(
+        return await qdrant.search_sources(
             self.client,
             query_embedding,
             match_count,
@@ -315,7 +315,7 @@ class QdrantAdapter:
         updates: dict[str, Any],
     ) -> None:
         """Update source metadata - delegates to qdrant.operations"""
-        return await qdrant.operations.update_source(
+        return await qdrant.update_source(
             self.client,
             source_id,
             updates,
@@ -323,7 +323,7 @@ class QdrantAdapter:
 
     async def get_sources(self) -> list[dict[str, Any]]:
         """Get all sources - delegates to qdrant.operations"""
-        return await qdrant.operations.get_sources(self.client)
+        return await qdrant.get_sources(self.client)
 
     async def get_all_sources(self) -> list[str]:
         """Get all source IDs - extracts source_id from get_sources()"""
@@ -337,7 +337,7 @@ class QdrantAdapter:
         word_count: int,
     ) -> None:
         """Update source information - delegates to qdrant.operations"""
-        return await qdrant.operations.update_source_info(
+        return await qdrant.update_source_info(
             self.client,
             source_id,
             summary,
