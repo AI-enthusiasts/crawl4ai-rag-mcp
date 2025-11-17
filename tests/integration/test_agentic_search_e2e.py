@@ -14,7 +14,6 @@ This test:
 """
 
 import json
-import os
 
 import httpx
 import pytest
@@ -47,6 +46,7 @@ async def qdrant_with_test_data():
         await adapter.client.get_collection(adapter.CRAWLED_PAGES)
     except Exception:
         from qdrant_client.models import Distance, VectorParams
+
         await adapter.client.create_collection(
             collection_name=adapter.CRAWLED_PAGES,
             vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
@@ -75,8 +75,9 @@ async def qdrant_with_test_data():
                 "description": "Test data",
                 "test": True,
                 "purpose": "e2e_agentic_search_test",
-            }
-        ] * len(test_chunks),
+            },
+        ]
+        * len(test_chunks),
         embeddings=embeddings,
         source_ids=["test-incomplete-python"] * len(test_chunks),
     )
@@ -149,10 +150,12 @@ async def test_agentic_search_with_real_qdrant_data(qdrant_with_test_data):
         error = result.get("error", "")
 
         # These validation errors should NOT occur (the bug we fixed)
-        assert "String should have at least 1 character" not in error, \
+        assert "String should have at least 1 character" not in error, (
             "BUG: RAGResult validation failed - 'content' field not parsed"
-        assert "Input should be a valid integer" not in error, \
+        )
+        assert "Input should be a valid integer" not in error, (
             "BUG: RAGResult validation failed - 'chunk_index' is None"
+        )
 
         # Acceptable errors (service unavailable, etc)
         print(f"Test passed with acceptable error: {error}")
@@ -171,8 +174,9 @@ async def test_agentic_search_with_real_qdrant_data(qdrant_with_test_data):
 
         # If SearXNG available and completeness low, should attempt web search
         if searxng_available and result["completeness"] < 0.8:
-            assert "web_search" in actions or "max_iterations_reached" in result["status"], \
-                "Expected web_search when completeness low and SearXNG available"
+            assert (
+                "web_search" in actions or "max_iterations_reached" in result["status"]
+            ), "Expected web_search when completeness low and SearXNG available"
 
         # Verify results were retrieved from Qdrant
         if result["results"]:
@@ -180,17 +184,22 @@ async def test_agentic_search_with_real_qdrant_data(qdrant_with_test_data):
             for rag_result in result["results"]:
                 assert "content" in rag_result, "RAG result missing 'content'"
                 assert "url" in rag_result, "RAG result missing 'url'"
-                assert "similarity_score" in rag_result, "RAG result missing 'similarity_score'"
+                assert "similarity_score" in rag_result, (
+                    "RAG result missing 'similarity_score'"
+                )
                 assert "chunk_index" in rag_result, "RAG result missing 'chunk_index'"
 
                 # Content should not be empty
                 assert len(rag_result["content"]) > 0, "RAG result has empty content"
                 # chunk_index should be integer, not None
-                assert isinstance(rag_result["chunk_index"], int), \
+                assert isinstance(rag_result["chunk_index"], int), (
                     f"chunk_index should be int, got {type(rag_result['chunk_index'])}"
+                )
 
-        print(f"Test passed: completeness={result['completeness']}, " +
-              f"iterations={result['iterations']}, results={len(result['results'])}")
+        print(
+            f"Test passed: completeness={result['completeness']}, "
+            f"iterations={result['iterations']}, results={len(result['results'])}"
+        )
 
 
 @pytest.mark.asyncio
@@ -217,8 +226,8 @@ async def test_qdrant_returns_content_field():
     except Exception as e:
         pytest.skip(f"Failed to initialize app context: {e}")
 
-    from src.database import perform_rag_query
     from src.core.context import get_app_context
+    from src.database import perform_rag_query
 
     app_ctx = get_app_context()
 
@@ -239,15 +248,18 @@ async def test_qdrant_returns_content_field():
         for result in data["results"]:
             # Should have 'content' field, NOT 'chunk'
             assert "content" in result, "Result missing 'content' field"
-            assert "chunk" not in result, "Result should not have 'chunk' field (legacy)"
+            assert "chunk" not in result, (
+                "Result should not have 'chunk' field (legacy)"
+            )
 
             # Should have chunk_index
             assert "chunk_index" in result, "Result missing 'chunk_index' field"
 
             # chunk_index should not be None if present
             if result.get("chunk_index") is not None:
-                assert isinstance(result["chunk_index"], int), \
+                assert isinstance(result["chunk_index"], int), (
                     f"chunk_index should be int, got {type(result['chunk_index'])}"
+                )
 
 
 if __name__ == "__main__":

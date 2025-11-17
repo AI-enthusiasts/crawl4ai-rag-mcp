@@ -8,11 +8,9 @@ Environment Variables for Test Control:
 """
 
 import asyncio
-import logging
 import os
 import sys
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -647,26 +645,28 @@ _MOCK_CACHE = {}
 def mock_openai_embeddings():
     """
     Mock OpenAI embeddings for testing - with caching.
-    
+
     This fixture is applied by default UNLESS ALLOW_OPENAI_TESTS=true is set.
     Tests using this fixture will use mocked embeddings (all zeros).
-    
+
     To use real OpenAI API: set ALLOW_OPENAI_TESTS=true environment variable.
     """
     # Check if real OpenAI is allowed
     allow_openai = os.getenv("ALLOW_OPENAI_TESTS", "false").lower() == "true"
-    
+
     if allow_openai:
         # Don't mock - let real OpenAI calls through
         # But ensure API key is set
-        if not os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY").startswith("test-"):
+        if not os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY").startswith(
+            "test-"
+        ):
             pytest.fail(
                 "ALLOW_OPENAI_TESTS=true but no valid OPENAI_API_KEY found. "
-                "Set a real API key in .env or environment."
+                "Set a real API key in .env or environment.",
             )
         yield None  # No mock, real API will be used
         return
-    
+
     # Mock mode (default)
     # DO NOT override OPENAI_API_KEY globally - only mock for specific tests
     from unittest.mock import MagicMock, patch
@@ -681,9 +681,9 @@ def mock_openai_embeddings():
     mock_client = MagicMock()
     mock_client.embeddings.create.return_value = _MOCK_CACHE["openai_embeddings"]
     mock_client.chat.completions.create.return_value = MagicMock(
-        choices=[MagicMock(message=MagicMock(content="test context"))]
+        choices=[MagicMock(message=MagicMock(content="test context"))],
     )
-    
+
     with patch("openai.OpenAI", return_value=mock_client) as mock_openai_class:
         yield mock_openai_class
 
@@ -709,7 +709,7 @@ from pathlib import Path
 def docker_logs_collector(request):
     """
     Collect Docker logs for MCP container during test execution.
-    
+
     Usage:
         @pytest.mark.usefixtures("docker_logs_collector")
         async def test_something():
@@ -719,57 +719,59 @@ def docker_logs_collector(request):
     try:
         result = subprocess.run(
             ["docker", "ps", "--filter", "name=mcp-crawl4ai", "--format", "{{.Names}}"],
+            check=False,
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=5,
         )
         container_name = result.stdout.strip()
     except Exception:
         container_name = None
-    
+
     if not container_name:
         print("⚠️  MCP container not found, skipping log collection")
         yield
         return
-    
+
     # Record start time
     start_time = datetime.now()
     test_name = request.node.name
-    
+
     print(f"\n📋 Collecting logs for: {test_name}")
     print(f"🐳 Container: {container_name}")
     print(f"⏰ Start time: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
-    
+
     # Run test
     yield
-    
+
     # Collect logs after test
     end_time = datetime.now()
     duration = (end_time - start_time).total_seconds()
-    
+
     print(f"⏱️  Test duration: {duration:.2f}s")
-    print(f"📝 Collecting Docker logs...")
-    
+    print("📝 Collecting Docker logs...")
+
     try:
         # Get logs since start time
         since_param = start_time.strftime("%Y-%m-%dT%H:%M:%S")
-        
+
         result = subprocess.run(
             ["docker", "logs", "--since", since_param, "--timestamps", container_name],
+            check=False,
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=30,
         )
-        
+
         logs = result.stdout + result.stderr
-        
+
         # Save logs to file
         logs_dir = Path("tests/results/docker_logs")
         logs_dir.mkdir(parents=True, exist_ok=True)
-        
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         log_file = logs_dir / f"{test_name}_{timestamp}.log"
-        
+
         with open(log_file, "w") as f:
             f.write(f"Test: {test_name}\n")
             f.write(f"Container: {container_name}\n")
@@ -778,16 +780,16 @@ def docker_logs_collector(request):
             f.write(f"Duration: {duration:.2f}s\n")
             f.write("=" * 80 + "\n\n")
             f.write(logs)
-        
+
         print(f"✅ Logs saved to: {log_file}")
-        
+
         # Analyze logs for errors
         error_count = logs.count("ERROR")
         warning_count = logs.count("WARNING")
         timeout_count = logs.count("timeout") + logs.count("Timeout")
-        
+
         if error_count > 0 or warning_count > 0 or timeout_count > 0:
-            print(f"⚠️  Log analysis:")
+            print("⚠️  Log analysis:")
             if error_count > 0:
                 print(f"   - Errors: {error_count}")
             if warning_count > 0:
@@ -795,8 +797,8 @@ def docker_logs_collector(request):
             if timeout_count > 0:
                 print(f"   - Timeouts: {timeout_count}")
         else:
-            print(f"✅ No errors found in logs")
-            
+            print("✅ No errors found in logs")
+
     except subprocess.TimeoutExpired:
         print("❌ Timeout while collecting logs")
     except Exception as e:
@@ -809,11 +811,12 @@ def docker_container_name():
     try:
         result = subprocess.run(
             ["docker", "ps", "--filter", "name=mcp-crawl4ai", "--format", "{{.Names}}"],
+            check=False,
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=5,
         )
-        names = result.stdout.strip().split('\n')
+        names = result.stdout.strip().split("\n")
         return names[0] if names and names[0] else None
     except Exception as e:
         print(f"⚠️  Could not get container name: {e}")
@@ -824,26 +827,27 @@ def docker_container_name():
 # TEST CONTROL: Cost Protection
 # ========================================
 
+
 def pytest_configure(config):
     """Configure custom markers for cost control."""
     config.addinivalue_line(
-        "markers", 
-        "requires_openai: Test requires real OpenAI API calls (embeddings, ~$0.0001)"
+        "markers",
+        "requires_openai: Test requires real OpenAI API calls (embeddings, ~$0.0001)",
     )
     config.addinivalue_line(
         "markers",
-        "expensive: Test uses expensive LLM inference (GPT-4, etc, $$$)"
+        "expensive: Test uses expensive LLM inference (GPT-4, etc, $$$)",
     )
     config.addinivalue_line(
         "markers",
-        "cheap: Test uses only cheap operations (embeddings, $0.0001)"
+        "cheap: Test uses only cheap operations (embeddings, $0.0001)",
     )
 
 
 def pytest_collection_modifyitems(config, items):
     """
     Skip expensive tests unless explicitly enabled.
-    
+
     Protection against accidental costs:
     - By default: all OpenAI calls are mocked
     - ALLOW_OPENAI_TESTS=true: enable cheap tests (embeddings)
@@ -851,19 +855,19 @@ def pytest_collection_modifyitems(config, items):
     """
     allow_openai = os.getenv("ALLOW_OPENAI_TESTS", "false").lower() == "true"
     allow_expensive = os.getenv("ALLOW_EXPENSIVE_TESTS", "false").lower() == "true"
-    
+
     skip_openai = pytest.mark.skip(
-        reason="OpenAI tests disabled. Set ALLOW_OPENAI_TESTS=true to enable (cheap embeddings, ~$0.0001 per test)"
+        reason="OpenAI tests disabled. Set ALLOW_OPENAI_TESTS=true to enable (cheap embeddings, ~$0.0001 per test)",
     )
     skip_expensive = pytest.mark.skip(
-        reason="Expensive tests disabled. Set ALLOW_EXPENSIVE_TESTS=true to enable ($$$ LLM inference)"
+        reason="Expensive tests disabled. Set ALLOW_EXPENSIVE_TESTS=true to enable ($$$ LLM inference)",
     )
-    
+
     for item in items:
         # Skip expensive LLM tests unless explicitly allowed
         if "expensive" in item.keywords and not allow_expensive:
             item.add_marker(skip_expensive)
-        
+
         # Skip all OpenAI tests (including cheap ones) unless explicitly allowed
         elif "requires_openai" in item.keywords and not allow_openai:
             item.add_marker(skip_openai)

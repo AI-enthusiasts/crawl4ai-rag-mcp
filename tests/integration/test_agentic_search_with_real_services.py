@@ -46,6 +46,7 @@ async def qdrant_with_incomplete_data():
         await adapter.client.get_collection(adapter.CRAWLED_PAGES)
     except Exception:
         from qdrant_client.models import Distance, VectorParams
+
         await adapter.client.create_collection(
             collection_name=adapter.CRAWLED_PAGES,
             vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
@@ -72,8 +73,9 @@ async def qdrant_with_incomplete_data():
                 "description": "Test data with low completeness",
                 "test": True,
                 "purpose": "integration_test",
-            }
-        ] * len(test_chunks),
+            },
+        ]
+        * len(test_chunks),
         embeddings=embeddings,
         source_ids=["test-incomplete-fastmcp"] * len(test_chunks),
     )
@@ -108,6 +110,7 @@ async def test_agentic_search_with_real_components(qdrant_with_incomplete_data):
     # Create simple context
     class MockContext:
         pass
+
     mock_ctx = MockContext()
 
     # Run agentic search with HIGH threshold to trigger search
@@ -159,6 +162,7 @@ async def test_agentic_search_with_all_parameters(qdrant_with_incomplete_data):
 
     class MockContext:
         pass
+
     mock_ctx = MockContext()
 
     # Test with all parameters
@@ -199,6 +203,7 @@ async def test_agentic_search_error_handling_invalid_query():
 
     class MockContext:
         pass
+
     mock_ctx = MockContext()
 
     # Test with empty query - should raise validation error
@@ -217,7 +222,10 @@ async def test_agentic_search_error_handling_invalid_query():
         assert "error" in result or "results" in result
     except MCPToolError as e:
         # Expected: validation error for empty query
-        assert "validation error" in str(e).lower() or "string should have at least 1 character" in str(e).lower()
+        assert (
+            "validation error" in str(e).lower()
+            or "string should have at least 1 character" in str(e).lower()
+        )
 
 
 @pytest.mark.asyncio
@@ -237,6 +245,7 @@ async def test_agentic_search_success_case(qdrant_with_incomplete_data):
 
     class MockContext:
         pass
+
     mock_ctx = MockContext()
 
     # Query with LOW threshold to ensure success
