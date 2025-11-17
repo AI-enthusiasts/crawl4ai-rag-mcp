@@ -5,7 +5,6 @@ import logging
 from typing import Any
 
 import aiohttp
-from bs4 import BeautifulSoup
 from fastmcp import Context
 
 from src.config import get_settings
@@ -129,7 +128,7 @@ async def _search_searxng(query: str, num_results: int) -> list[dict[str, Any]]:
 
     params = {
         "q": query,
-        "format": "html",
+        "format": "json",
         "categories": "general",
         "engines": settings.searxng_default_engines or "",
         "safesearch": "1",
@@ -138,7 +137,9 @@ async def _search_searxng(query: str, num_results: int) -> list[dict[str, Any]]:
 
     headers = {
         "User-Agent": settings.searxng_user_agent,
-        "Accept": "text/html",
+        "Accept": "application/json",
+        "X-Forwarded-For": "127.0.0.1",
+        "X-Real-IP": "127.0.0.1",
     }
 
     try:
@@ -152,27 +153,16 @@ async def _search_searxng(query: str, num_results: int) -> list[dict[str, Any]]:
                 logger.error(f"SearXNG returned status {response.status}")
                 return []
 
-            html = await response.text()
+            data = await response.json()
 
-        # Parse HTML results
-        soup = BeautifulSoup(html, "html.parser")
+        # Parse JSON results
         results = []
-
-        # Find result articles
-        for article in soup.find_all("article", class_="result", limit=num_results):
-            result = {}
-
-            # Extract title and URL
-            title_elem = article.find("h3")
-            if title_elem and title_elem.find("a"):
-                link = title_elem.find("a")
-                result["title"] = link.get_text(strip=True)
-                result["url"] = link.get("href", "")
-
-            # Extract snippet
-            content_elem = article.find("p", class_="content")
-            if content_elem:
-                result["snippet"] = content_elem.get_text(strip=True)
+        for item in data.get("results", [])[:num_results]:
+            result = {
+                "title": item.get("title", ""),
+                "url": item.get("url", ""),
+                "snippet": item.get("content", "") or item.get("snippet", ""),
+            }
 
             if result.get("url"):
                 results.append(result)
