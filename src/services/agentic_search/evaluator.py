@@ -81,14 +81,42 @@ class LocalKnowledgeEvaluator:
 
         if rag_data.get("success") and rag_data.get("results"):
             for result in rag_data["results"]:
-                rag_results.append(
-                    RAGResult(
-                        content=result.get("chunk", ""),
-                        url=result.get("url", ""),
-                        similarity_score=result.get("similarity_score", 0.0),
-                        chunk_index=result.get("chunk_index", 0),
-                    ),
-                )
+                # Skip invalid results (empty content or missing chunk_index)
+                # Prevents Pydantic errors when Qdrant returns malformed data
+                content = result.get("content", "")
+                chunk_index = result.get("chunk_index")
+                url = result.get("url", "unknown")
+
+                if not content or content.strip() == "":
+                    logger.warning(
+                        "Skipping RAG result with empty content from %s",
+                        url,
+                    )
+                    continue
+
+                if chunk_index is None:
+                    logger.warning(
+                        "Skipping RAG result with missing chunk_index from %s",
+                        url,
+                    )
+                    continue
+
+                try:
+                    rag_results.append(
+                        RAGResult(
+                            content=content,
+                            url=result.get("url", ""),
+                            similarity_score=result.get("similarity_score", 0.0),
+                            chunk_index=chunk_index,
+                        ),
+                    )
+                except Exception as e:
+                    logger.warning(
+                        "Failed to create RAGResult from %s: %s",
+                        url,
+                        e,
+                    )
+                    continue
 
         # LLM evaluation of completeness
         evaluation = await self._evaluate_completeness(query, rag_results)
