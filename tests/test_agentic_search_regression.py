@@ -23,231 +23,132 @@ This can happen when:
 2. LLM returns invalid response that fails Pydantic validation
 3. Network timeout during LLM call
 4. Rate limiting or authentication errors
+
+NO MOCKS - Real integration test that will FAIL if bug exists.
 """
 
+import asyncio
 import json
 import os
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastmcp import Context
 
-from src.core.exceptions import LLMError
+from src.config import get_settings, reset_settings
+from src.core.context import initialize_global_context
 
 
 # Mark as integration test
 pytestmark = pytest.mark.integration
 
 
+@pytest.fixture(scope="module")
+def test_settings():
+    """Configure settings for integration tests."""
+    # Set test environment variables BEFORE importing anything
+    os.environ["AGENTIC_SEARCH_ENABLED"] = "true"
+    os.environ["AGENTIC_SEARCH_COMPLETENESS_THRESHOLD"] = "0.8"
+    os.environ["AGENTIC_SEARCH_MAX_ITERATIONS"] = "1"  # Just 1 iteration for speed
+    os.environ["AGENTIC_SEARCH_MAX_URLS_PER_ITERATION"] = "1"
+    os.environ["USE_QDRANT"] = "true"
+
+    # Use test model if available
+    if not os.getenv("TEST_MODEL_CHOICE"):
+        os.environ["MODEL_CHOICE"] = "gpt-4.1-nano"
+    else:
+        os.environ["MODEL_CHOICE"] = os.getenv("TEST_MODEL_CHOICE")
+
+    # Use test API key if available
+    if os.getenv("TEST_OPENAI_API_KEY"):
+        os.environ["OPENAI_API_KEY"] = os.getenv("TEST_OPENAI_API_KEY")
+
+    # Force reload of settings module
+    import sys
+    if 'src.config.settings' in sys.modules:
+        del sys.modules['src.config.settings']
+    if 'src.config' in sys.modules:
+        del sys.modules['src.config']
+
+    reset_settings()
+    settings = get_settings()
+
+    # Skip if no API key
+    if not settings.openai_api_key:
+        pytest.skip("OPENAI_API_KEY not set - skipping integration test")
+
+    # Check if Qdrant is available
+    import httpx
+    try:
+        response = httpx.get(f"{settings.qdrant_url}/collections", timeout=2.0)
+        if response.status_code >= 500:
+            pytest.skip(f"Qdrant not available at {settings.qdrant_url}")
+    except Exception:
+        pytest.skip(f"Qdrant not available at {settings.qdrant_url} - start with docker-compose up qdrant")
+
+    yield settings
+
+    # Cleanup
+    reset_settings()
+
+
 @pytest.fixture
-def mock_fastmcp_context():
-    """Create a mock FastMCP Context for testing."""
-    ctx = MagicMock(spec=Context)
-    return ctx
+async def app_context(test_settings):
+    """Initialize application context for tests."""
+    try:
+        ctx = await initialize_global_context()
+        yield ctx
+    except Exception as e:
+        pytest.skip(f"Failed to initialize app context: {e}")
 
 
 class TestAgenticSearchCompletenessEvaluationFailure:
-    """Regression tests for completeness evaluation failures."""
+    """Regression test for completeness evaluation failures - NO MOCKS, REAL TEST."""
 
     @pytest.mark.asyncio
-    async def test_completeness_evaluation_failure_returns_proper_error_response(
-        self, mock_fastmcp_context
-    ):
-        """Test that LLM failure during completeness evaluation returns proper error format.
+    @pytest.mark.slow
+    async def test_agentic_search_basic_query(self, test_settings, app_context):
+        """Real integration test: Execute agentic_search with actual OpenAI API.
 
-        This reproduces the bug where agentic_search fails with:
-        - status: error
-        - error: "Completeness evaluation failed"
-        - completeness: 0.0
-        - iterations: 1
+        This test will FAIL if the bug exists (Completeness evaluation failed).
+        When working correctly, should return success=true with results.
+
+        Currently reproduces bug from issue:
+        - Error: "Completeness evaluation failed"
+        - status: "error"
         - success: false
         """
-        # Arrange: Set up environment for agentic search
-        os.environ["AGENTIC_SEARCH_ENABLED"] = "true"
-        os.environ["OPENAI_API_KEY"] = "sk-test-fake-key"
+        from src.services.agentic_search import agentic_search_impl
 
-        from src.config import reset_settings
-        reset_settings()
+        # Create a simple mock context (FastMCP Context not needed for internal call)
+        class SimpleContext:
+            pass
 
-        # Mock database client to avoid Qdrant dependency
-        mock_db_client = MagicMock()
-        mock_rag_response = json.dumps({
-            "results": [],
-            "query": "What is LLM reasoning?",
-            "total_results": 0,
-        })
+        ctx = SimpleContext()
 
-        # Mock the settings check to ensure agentic search is enabled
-        with patch("src.services.agentic_search.mcp_wrapper.settings") as mock_settings:
-            mock_settings.agentic_search_enabled = True
+        # Execute real agentic search with real LLM, real Qdrant, real everything
+        result_json = await agentic_search_impl(
+            ctx=ctx,
+            query="What is LLM reasoning?",
+            completeness_threshold=0.8,
+            max_iterations=1,  # Just 1 iteration to speed up test
+            max_urls_per_iteration=1,
+        )
 
-            with patch("src.services.agentic_search.evaluator.get_app_context") as mock_get_ctx:
-                # Set up mock app context
-                mock_app_ctx = MagicMock()
-                mock_app_ctx.database_client = mock_db_client
-                mock_get_ctx.return_value = mock_app_ctx
+        result = json.loads(result_json)
 
-                with patch("src.services.agentic_search.evaluator.perform_rag_query") as mock_rag:
-                    mock_rag.return_value = mock_rag_response
+        # These assertions will FAIL if bug exists
+        assert result["success"] is True, \
+            f"BUG REPRODUCED: {result.get('error')} - status={result.get('status')}"
 
-                    # Mock the completeness agent to raise an exception
-                    # This simulates LLM API failure, network timeout, or invalid response
-                    with patch("src.services.agentic_search.config.Agent") as mock_agent_class:
-                        # Create mock agent that fails on run()
-                        mock_agent = AsyncMock()
-                        mock_agent.run.side_effect = Exception("API connection timeout")
-                        mock_agent_class.return_value = mock_agent
+        assert result["status"] != "error", \
+            f"BUG: Got error status: {result.get('error')}"
 
-                        # Reset singleton to force re-initialization with mocked agent
-                        import src.services.agentic_search
-                        src.services.agentic_search._service_instance = None
+        assert result["query"] == "What is LLM reasoning?"
+        assert result["iterations"] >= 1
 
-                        # Act: Execute agentic search
-                        from src.services.agentic_search.mcp_wrapper import agentic_search_impl
-
-                        result_json = await agentic_search_impl(
-                            ctx=mock_fastmcp_context,
-                            query="What is LLM reasoning?",
-                            completeness_threshold=0.8,
-                            max_iterations=3,
-                        )
-
-                    result = json.loads(result_json)
-
-                    # Assert: Verify error response format matches bug report
-                    assert result["success"] is False, "Search should fail"
-                    assert result["status"] == "error", "Status should be 'error'"
-                    assert "Completeness evaluation failed" in result["error"], \
-                        f"Error message should mention completeness evaluation, got: {result['error']}"
-                    assert result["query"] == "What is LLM reasoning?"
-                    assert result["iterations"] >= 1, "Should have at least 1 iteration"
-                    assert result["completeness"] == 0.0, "Completeness should be 0.0 when evaluation fails"
-                    assert isinstance(result["results"], list), "Results should be a list"
-                    assert isinstance(result["search_history"], list), "search_history should be a list"
-
-    @pytest.mark.asyncio
-    async def test_completeness_evaluation_pydantic_validation_failure(
-        self, mock_fastmcp_context
-    ):
-        """Test that Pydantic validation errors during completeness evaluation are handled.
-
-        This tests the case where LLM returns invalid JSON or wrong schema.
-        """
-        # Arrange
-        os.environ["AGENTIC_SEARCH_ENABLED"] = "true"
-        os.environ["OPENAI_API_KEY"] = "sk-test-fake-key"
-
-        from src.config import reset_settings
-        reset_settings()
-
-        from pydantic_ai.exceptions import UnexpectedModelBehavior
-
-        # Mock database
-        mock_db_client = MagicMock()
-        mock_rag_response = json.dumps({
-            "results": [],
-            "query": "test query",
-            "total_results": 0,
-        })
-
-        # Mock the settings check to ensure agentic search is enabled
-        with patch("src.services.agentic_search.mcp_wrapper.settings") as mock_settings:
-            mock_settings.agentic_search_enabled = True
-
-            with patch("src.services.agentic_search.evaluator.get_app_context") as mock_get_ctx:
-                mock_app_ctx = MagicMock()
-                mock_app_ctx.database_client = mock_db_client
-                mock_get_ctx.return_value = mock_app_ctx
-
-                with patch("src.services.agentic_search.evaluator.perform_rag_query") as mock_rag:
-                    mock_rag.return_value = mock_rag_response
-
-                    # Mock agent to raise UnexpectedModelBehavior (Pydantic AI validation failure)
-                    with patch("src.services.agentic_search.config.Agent") as mock_agent_class:
-                        mock_agent = AsyncMock()
-                        mock_agent.run.side_effect = UnexpectedModelBehavior(
-                            "LLM returned invalid JSON after 3 retries"
-                        )
-                        mock_agent_class.return_value = mock_agent
-
-                        # Reset singleton
-                        import src.services.agentic_search
-                        src.services.agentic_search._service_instance = None
-
-                        # Act
-                        from src.services.agentic_search.mcp_wrapper import agentic_search_impl
-
-                        result_json = await agentic_search_impl(
-                            ctx=mock_fastmcp_context,
-                            query="test query",
-                        )
-
-                    result = json.loads(result_json)
-
-                    # Assert: Should handle Pydantic AI validation errors gracefully
-                    assert result["success"] is False
-                    assert result["status"] == "error"
-                    assert "completeness evaluation failed" in result["error"].lower()
-
-    @pytest.mark.asyncio
-    async def test_completeness_evaluation_with_openai_auth_error(
-        self, mock_fastmcp_context
-    ):
-        """Test that OpenAI authentication errors are handled gracefully.
-
-        This tests the case where OPENAI_API_KEY is invalid or missing.
-        """
-        # Arrange: Use invalid API key
-        os.environ["AGENTIC_SEARCH_ENABLED"] = "true"
-        os.environ["OPENAI_API_KEY"] = "sk-invalid-key-12345"
-
-        from src.config import reset_settings
-        reset_settings()
-
-        # Mock database
-        mock_db_client = MagicMock()
-        mock_rag_response = json.dumps({
-            "results": [],
-            "query": "test query",
-            "total_results": 0,
-        })
-
-        # Mock the settings check to ensure agentic search is enabled
-        with patch("src.services.agentic_search.mcp_wrapper.settings") as mock_settings:
-            mock_settings.agentic_search_enabled = True
-
-            with patch("src.services.agentic_search.evaluator.get_app_context") as mock_get_ctx:
-                mock_app_ctx = MagicMock()
-                mock_app_ctx.database_client = mock_db_client
-                mock_get_ctx.return_value = mock_app_ctx
-
-                with patch("src.services.agentic_search.evaluator.perform_rag_query") as mock_rag:
-                    mock_rag.return_value = mock_rag_response
-
-                    # Mock agent to raise authentication error
-                    with patch("src.services.agentic_search.config.Agent") as mock_agent_class:
-                        mock_agent = AsyncMock()
-                        mock_agent.run.side_effect = Exception("Invalid API key")
-                        mock_agent_class.return_value = mock_agent
-
-                        # Reset singleton
-                        import src.services.agentic_search
-                        src.services.agentic_search._service_instance = None
-
-                        # Act
-                        from src.services.agentic_search.mcp_wrapper import agentic_search_impl
-
-                        result_json = await agentic_search_impl(
-                            ctx=mock_fastmcp_context,
-                            query="test query",
-                        )
-
-                    result = json.loads(result_json)
-
-                    # Assert: Should return error response, not crash
-                    assert result["success"] is False
-                    assert result["status"] == "error"
-                    assert result["completeness"] == 0.0
+        # Should not have error field when successful
+        if "error" in result:
+            assert result["error"] is None, \
+                f"BUG: Unexpected error: {result['error']}"
 
 
 if __name__ == "__main__":
