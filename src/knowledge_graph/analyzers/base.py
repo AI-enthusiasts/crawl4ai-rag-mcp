@@ -109,12 +109,12 @@ class CodeAnalyzer(ABC):
         """
         try:
             # Try UTF-8 first
-            with open(file_path, encoding="utf-8") as f:
+            with Path(file_path).open(encoding="utf-8") as f:
                 return f.read()
         except UnicodeDecodeError:
             try:
                 # Fallback to Latin-1
-                with open(file_path, encoding="latin-1") as f:
+                with Path(file_path).open(encoding="latin-1") as f:
                     return f.read()
             except OSError as e:
                 self.logger.error(f"File I/O error reading {file_path}: {e}")

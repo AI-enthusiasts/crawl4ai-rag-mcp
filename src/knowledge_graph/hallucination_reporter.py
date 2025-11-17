@@ -8,6 +8,7 @@ detected in Python scripts. Supports multiple output formats.
 import json
 import logging
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from src.knowledge_graph.knowledge_graph_validator import (
@@ -363,7 +364,7 @@ class HallucinationReporter:
 
     def save_json_report(self, report: dict[str, Any], output_path: str) -> None:
         """Save report as JSON file"""
-        with open(output_path, "w", encoding="utf-8") as f:
+        with Path(output_path).open("w", encoding="utf-8") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
 
         logger.info(f"JSON report saved to: {output_path}")
@@ -372,7 +373,7 @@ class HallucinationReporter:
         """Save report as Markdown file"""
         md_content = self._generate_markdown_content(report)
 
-        with open(output_path, "w", encoding="utf-8") as f:
+        with Path(output_path).open("w", encoding="utf-8") as f:
             f.write(md_content)
 
         logger.info(f"Markdown report saved to: {output_path}")
