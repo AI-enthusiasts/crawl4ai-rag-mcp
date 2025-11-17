@@ -8,7 +8,6 @@ This module handles:
 """
 
 import logging
-import os
 
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
@@ -27,32 +26,12 @@ class AgenticSearchConfig:
 
     def __init__(self) -> None:
         """Initialize Pydantic AI agents and configuration parameters."""
-        # Fix for container proxy blocking OpenAI API
-        # Temporarily remove proxy env vars to allow OpenAI API access
-
-        # Get current proxy settings
-        http_proxy = os.getenv("HTTP_PROXY") or os.getenv("http_proxy")
-        https_proxy = os.getenv("HTTPS_PROXY") or os.getenv("https_proxy")
-
-        # Save and remove proxy env vars if present
-        saved_proxies = {}
-        if http_proxy or https_proxy:
-            logger.info(
-                "Proxy detected, temporarily removing proxy env vars for OpenAI API access"
-            )
-            for var in ["HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy"]:
-                if var in os.environ:
-                    saved_proxies[var] = os.environ.pop(var)
-
-        # Create OpenAI model instance without proxy interference
+        # Create OpenAI model instance
         # Pydantic AI 1.18.0+ creates AsyncOpenAI client internally
+        # If proxy blocks OpenAI API, set NO_PROXY=api.openai.com,*.openai.com in environment
         model = OpenAIModel(
             model_name=settings.model_choice,
         )
-
-        # Restore proxy env vars
-        for var, value in saved_proxies.items():
-            os.environ[var] = value
 
         # Shared model settings for all agents
         # Per Pydantic AI docs: timeout, temperature configured via ModelSettings
