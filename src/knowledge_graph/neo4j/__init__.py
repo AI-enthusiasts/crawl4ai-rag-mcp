@@ -6,8 +6,8 @@ from .writer import create_graph, process_batch_transaction, process_modules_in_
 
 __all__ = [
     "clear_repository_data",
-    "search_graph",
     "create_graph",
-    "process_modules_in_batches",
     "process_batch_transaction",
+    "process_modules_in_batches",
+    "search_graph",
 ]

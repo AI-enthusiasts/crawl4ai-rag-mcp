@@ -53,10 +53,10 @@ def register_tools(mcp: "FastMCP") -> None:
 
 
 __all__ = [
-    "register_search_tools",
     "register_crawl_tools",
-    "register_rag_tools",
     "register_knowledge_graph_tools",
-    "register_validation_tools",
+    "register_rag_tools",
+    "register_search_tools",
     "register_tools",
+    "register_validation_tools",
 ]

@@ -19,8 +19,8 @@ from .ranker import URLRanker
 __all__ = [
     "AgenticSearchConfig",
     "AgenticSearchService",
-    "get_agentic_search_service",
     "agentic_search_impl",
+    "get_agentic_search_service",
 ]
 
 # Singleton instance
