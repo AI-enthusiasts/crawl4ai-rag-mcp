@@ -67,7 +67,7 @@ class AIHallucinationDetector:
         logger.info(f"Starting hallucination detection for: {script_path}")
 
         # Validate input
-        if not os.path.exists(script_path):
+        if not Path(script_path).exists():
             msg = f"Script not found: {script_path}"
             raise FileNotFoundError(msg)
 

@@ -12,6 +12,7 @@ import shutil
 import tempfile
 from collections.abc import Callable
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from src.core.exceptions import GitError, RepositoryError
@@ -53,7 +54,7 @@ class GitRepositoryManager:
         self.logger.info(f"Cloning repository from {url} to {target_dir}")
 
         # Clean up existing directory if it exists
-        if os.path.exists(target_dir):
+        if Path(target_dir).exists():
             self.logger.info(f"Removing existing directory: {target_dir}")
             await self._remove_directory(target_dir)
 
@@ -733,7 +734,7 @@ class GitRepositoryManager:
 
         def handle_remove_readonly(func: Callable[[str], None], path: str, exc: Any) -> None:
             try:
-                if os.path.exists(path):
+                if Path(path).exists():
                     os.chmod(path, 0o777)
                     func(path)
             except PermissionError:
