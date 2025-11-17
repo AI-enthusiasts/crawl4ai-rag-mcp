@@ -99,12 +99,13 @@ All tests MUST use real services. Mocking is FORBIDDEN.
 cd ~ && curl -L https://github.com/qdrant/qdrant/releases/latest/download/qdrant-x86_64-unknown-linux-gnu.tar.gz | tar xz
 nohup ~/qdrant > ~/qdrant.log 2>&1 &
 
-# SearXNG (:8080) - Docker method
+# SearXNG - Docker (runs on :8080)
 docker run -d -p 8080:8080 --name searxng searxng/searxng
 
-# SearXNG (:8080) - Git clone method (if no Docker)
+# SearXNG - Local install (runs on :8888)
 cd ~ && git clone https://github.com/searxng/searxng.git
-cd ~/searxng && pip install -e . && python -m searxng.webapp
+cd ~/searxng && ./manage pyenv.install
+nohup ./manage webapp.run > ~/searxng.log 2>&1 &
 ```
 
 **Running Tests**:
