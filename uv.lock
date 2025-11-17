@@ -656,7 +656,7 @@ requires-dist = [
     { name = "passlib", extras = ["bcrypt"], specifier = ">=1.7.4" },
     { name = "psutil", specifier = ">=5.9.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
-    { name = "pydantic-ai", specifier = ">=0.0.14" },
+    { name = "pydantic-ai", specifier = ">=0.0.55" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
     { name = "pytest", specifier = ">=7.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.21.0" },
