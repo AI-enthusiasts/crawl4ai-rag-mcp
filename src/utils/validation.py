@@ -1,7 +1,6 @@
 """Validation utilities for the Crawl4AI MCP server."""
 
 import ipaddress
-import os
 import re
 import socket
 from pathlib import Path
