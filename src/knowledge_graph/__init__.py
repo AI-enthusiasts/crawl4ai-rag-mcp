@@ -24,6 +24,8 @@ from .repository import parse_github_repository
 __all__ = [
     "EnhancedHallucinationDetector",
     "EnhancedScriptAnalyzer",
+    "ScriptValidationResult",
+    "ValidationStatus",
     "check_ai_script_hallucinations_enhanced",
     "handle_class_command",
     "handle_classes_command",
@@ -33,6 +35,4 @@ __all__ = [
     "handle_repos_command",
     "parse_github_repository",
     "query_knowledge_graph",
-    "ScriptValidationResult",
-    "ValidationStatus",
 ]
