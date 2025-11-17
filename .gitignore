@@ -49,3 +49,4 @@ tests/results/
 # Qdrant runtime data
 .qdrant-initialized
 storage/
+dump.rdb
