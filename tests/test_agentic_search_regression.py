@@ -116,6 +116,11 @@ class TestAgenticSearchCompletenessEvaluationFailure:
         - status: "error"
         - success: false
         """
+        # Force reload of mcp_wrapper to pick up test settings
+        import sys
+        if 'src.services.agentic_search.mcp_wrapper' in sys.modules:
+            del sys.modules['src.services.agentic_search.mcp_wrapper']
+
         from src.services.agentic_search import agentic_search_impl
 
         # Create a simple mock context (FastMCP Context not needed for internal call)
