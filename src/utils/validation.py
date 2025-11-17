@@ -4,6 +4,7 @@ import ipaddress
 import os
 import re
 import socket
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
@@ -188,7 +189,7 @@ def validate_script_path(script_path: str) -> dict[str, Any]:
     # Convert to container-accessible path
     container_path = get_accessible_script_path(script_path)
 
-    if not os.path.exists(container_path):
+    if not Path(container_path).exists():
         # Provide helpful error message
         error_msg = f"Script not found: {script_path}"
         if not script_path.startswith("/app/"):

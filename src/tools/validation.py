@@ -11,6 +11,7 @@ This module contains code validation and analysis MCP tools including:
 import json
 import logging
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from fastmcp import Context
@@ -517,7 +518,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
         for key, path in accessible_paths.items():
             if "(" not in path:  # Skip paths with descriptions
                 container_path = f"/app/analysis_scripts/{key.replace('_', '_')}/"
-                if os.path.exists(container_path):
+                if Path(container_path).exists():
                     accessible_paths[key] += " ✓ (exists)"
                 else:
                     accessible_paths[key] += " ✗ (not found)"
