@@ -78,19 +78,37 @@ docker-compose build --no-cache mcp
 
 ### Testing
 
+**CRITICAL: NO MOCKS POLICY**
+
+All tests MUST use real services. Mocking is FORBIDDEN.
+
+**Requirements**:
+- Real Qdrant (localhost:6333)
+- Real SearXNG (localhost:8080 or skip test)
+- Real OpenAI API (or skip test if no key)
+- E2E tests MUST pre-populate Qdrant with test data
+- Use `pytest.skip()` if service unavailable - NEVER mock
+
+**Setup Local Services**:
 ```bash
-# All tests
-make test
+# Qdrant (download once)
+cd ~ && curl -L https://github.com/qdrant/qdrant/releases/latest/download/qdrant-x86_64-unknown-linux-gnu.tar.gz | tar xz
+nohup ~/qdrant > ~/qdrant.log 2>&1 &  # Runs on :6333
+
+# SearXNG (via Docker if available, or skip tests)
+docker run -p 8080:8080 searxng/searxng
+```
+
+**Running Tests**:
+```bash
+# All tests (requires services)
 uv run pytest
 
-# Unit tests only
-uv run pytest tests/unit/ -v
-
-# Integration tests (requires services running)
+# Integration tests with real services
 uv run pytest tests/integration/ -v
 
-# Import verification (fast, runs in pre-commit hook)
-uv run pytest tests/test_imports.py
+# E2E with real Qdrant data
+uv run pytest tests/integration/test_agentic_search_e2e.py -v
 
 # With coverage
 uv run pytest --cov=src --cov-report=html
