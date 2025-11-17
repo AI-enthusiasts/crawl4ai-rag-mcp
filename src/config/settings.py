@@ -119,7 +119,7 @@ class Settings(BaseSettings):
     # SearXNG Settings
     # ========================================
     searxng_url: str | None = Field(
-        default="http://localhost:8080",
+        default="http://localhost:8888",
         description="SearXNG instance URL for web search",
     )
 
