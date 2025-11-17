@@ -109,14 +109,14 @@ async def add_documents(
         # Upsert batch to Qdrant
         try:
             await client.upsert(
-                collection_name=CODE_EXAMPLES,
+                collection_name=CRAWLED_PAGES,
                 points=points,
             )
         except VectorStoreError as e:
-            logger.error(f"Failed to upsert code examples to Qdrant: {e}")
+            logger.error(f"Failed to upsert documents to Qdrant: {e}")
             raise
         except Exception as e:
-            logger.exception(f"Unexpected error upserting code examples to Qdrant: {e}")
+            logger.exception(f"Unexpected error upserting documents to Qdrant: {e}")
             raise
 
 
