@@ -13,6 +13,7 @@ This module contains Neo4j knowledge graph MCP tools including:
 import json
 import logging
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from fastmcp import Context
@@ -425,7 +426,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
                 )
 
             # Validate local path exists
-            if not os.path.exists(local_path):
+            if not Path(local_path).exists():
                 return json.dumps(
                     {
                         "success": False,
@@ -444,8 +445,8 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
                 )
 
             # Check if it's a Git repository
-            git_dir = os.path.join(local_path, ".git")
-            if not os.path.exists(git_dir):
+            git_dir = Path(local_path) / ".git"
+            if not git_dir.exists():
                 return json.dumps(
                     {
                         "success": False,

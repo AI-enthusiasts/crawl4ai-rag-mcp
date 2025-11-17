@@ -1,4 +1,6 @@
 import logging
+import os
+from pathlib import Path
 from typing import Any
 
 from fastmcp import Context
@@ -65,7 +67,7 @@ async def parse_local_repository(
             )
 
         # Validate local path
-        if not os.path.exists(local_path):
+        if not Path(local_path).exists():
             return json.dumps(
                 {
                     "success": False,
@@ -84,8 +86,8 @@ async def parse_local_repository(
             )
 
         # Check if it's a Git repository
-        git_dir = os.path.join(local_path, ".git")
-        if not os.path.exists(git_dir):
+        git_dir = Path(local_path) / ".git"
+        if not git_dir.exists():
             return json.dumps(
                 {
                     "success": False,
