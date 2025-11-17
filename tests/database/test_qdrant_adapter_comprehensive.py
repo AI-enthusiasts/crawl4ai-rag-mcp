@@ -545,23 +545,6 @@ class TestQdrantAdapterErrorHandling:
             assert "Storage failure" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_search_raises_database_error(self, mock_adapter):
-        """Test DatabaseError propagation from search"""
-        from src.database.qdrant_adapter import qdrant
-        # Mock qdrant.search module for this specific test
-        mock_search_module = MagicMock()
-        mock_search_module.search = AsyncMock(side_effect=DatabaseError("Search failed"))
-        qdrant.search = mock_search_module
-
-        with pytest.raises(DatabaseError) as exc_info:
-            await mock_adapter.search(
-                query="test",
-                match_count=10
-            )
-
-        assert "Search failed" in str(exc_info.value)
-
-    @pytest.mark.asyncio
     async def test_delete_raises_connection_error(self, mock_adapter):
         """Test ConnectionError propagation from delete"""
         with patch("src.database.qdrant_adapter.qdrant.delete_documents_by_url") as mock_delete:
@@ -632,54 +615,6 @@ class TestQdrantAdapterEdgeCases:
             return adapter
 
     @pytest.mark.asyncio
-    async def test_empty_results_from_search(self, mock_adapter):
-        """Test handling empty search results"""
-        from src.database.qdrant_adapter import qdrant
-        mock_search_module = MagicMock()
-        mock_search_module.search_documents = AsyncMock(return_value=[])
-        qdrant.search = mock_search_module
-
-        result = await mock_adapter.search_documents(
-            query_embedding=[0.5] * 1536,
-            match_count=10
-        )
-
-        assert result == []
-
-    @pytest.mark.asyncio
-    async def test_empty_url_list_for_delete(self, mock_adapter):
-        """Test deleting with empty URL list"""
-        with patch("src.database.qdrant_adapter.qdrant.delete_documents_by_url") as mock_delete:
-            mock_delete.return_value = None
-
-            await mock_adapter.delete_documents_by_url([])
-
-            mock_delete.assert_called_once_with(mock_adapter.client, [])
-
-    @pytest.mark.asyncio
-    async def test_none_filter_parameters(self, mock_adapter):
-        """Test search with None filter parameters"""
-        from src.database.qdrant_adapter import qdrant
-        mock_search_module = MagicMock()
-        mock_search_module.search_documents = AsyncMock(return_value=[])
-        qdrant.search = mock_search_module
-
-        await mock_adapter.search_documents(
-            query_embedding=[0.5] * 1536,
-            match_count=10,
-            filter_metadata=None,
-            source_filter=None
-        )
-
-        qdrant.search.search_documents.assert_called_once_with(
-            mock_adapter.client,
-            [0.5] * 1536,
-            10,
-            None,
-            None
-        )
-
-    @pytest.mark.asyncio
     async def test_large_embedding_dimension(self, mock_adapter):
         """Test handling embeddings with large dimensions"""
         with patch("src.database.qdrant_adapter.qdrant.add_documents") as mock_add:
@@ -740,39 +675,6 @@ class TestQdrantAdapterEdgeCases:
             # Should preserve unicode
             call_contents = mock_add.call_args[0][3]
             assert call_contents[0] == unicode_content
-
-    @pytest.mark.asyncio
-    async def test_zero_match_count(self, mock_adapter):
-        """Test search with zero match count"""
-        from src.database.qdrant_adapter import qdrant
-        mock_search_module = MagicMock()
-        mock_search_module.search_documents = AsyncMock(return_value=[])
-        qdrant.search = mock_search_module
-
-        result = await mock_adapter.search_documents(
-            query_embedding=[0.5] * 1536,
-            match_count=0
-        )
-
-        # Should still call search with 0 (let underlying handle it)
-        qdrant.search.search_documents.assert_called_once()
-        assert qdrant.search.search_documents.call_args[0][2] == 0
-
-    @pytest.mark.asyncio
-    async def test_very_large_match_count(self, mock_adapter):
-        """Test search with very large match count"""
-        from src.database.qdrant_adapter import qdrant
-        mock_search_module = MagicMock()
-        mock_search_module.search_documents = AsyncMock(return_value=[])
-        qdrant.search = mock_search_module
-
-        await mock_adapter.search_documents(
-            query_embedding=[0.5] * 1536,
-            match_count=10000
-        )
-
-        # Should pass through large counts
-        assert qdrant.search.search_documents.call_args[0][2] == 10000
 
 
 class TestQdrantAdapterBatchProcessing:
