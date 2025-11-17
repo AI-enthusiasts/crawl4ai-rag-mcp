@@ -29,10 +29,6 @@ async def qdrant_with_incomplete_data():
     """
     settings = get_settings()
 
-    # Check OpenAI API key availability
-    if not settings.openai_api_key:
-        pytest.skip("OPENAI_API_KEY not set - required for embeddings")
-
     # Check Qdrant availability
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -64,10 +60,6 @@ async def qdrant_with_incomplete_data():
 
     # Get embeddings
     embeddings = create_embeddings_batch(test_chunks)
-
-    # Check if embeddings were created successfully
-    if not embeddings or len(embeddings) == 0:
-        pytest.skip("Failed to create embeddings - check OPENAI_API_KEY validity")
 
     # Store in Qdrant
     await adapter.add_documents(
@@ -106,10 +98,6 @@ async def test_agentic_search_with_real_components(qdrant_with_incomplete_data):
     Uses real services instead of mocks.
     """
     settings = get_settings()
-
-    # Check OpenAI API key
-    if not settings.openai_api_key:
-        pytest.skip("OPENAI_API_KEY not set")
 
     # Initialize context
     try:
@@ -164,9 +152,6 @@ async def test_agentic_search_with_all_parameters(qdrant_with_incomplete_data):
     """
     settings = get_settings()
 
-    if not settings.openai_api_key:
-        pytest.skip("OPENAI_API_KEY not set")
-
     try:
         await initialize_global_context()
     except Exception as e:
@@ -207,9 +192,6 @@ async def test_agentic_search_error_handling_invalid_query():
     """
     settings = get_settings()
 
-    if not settings.openai_api_key:
-        pytest.skip("OPENAI_API_KEY not set")
-
     try:
         await initialize_global_context()
     except Exception as e:
@@ -219,19 +201,23 @@ async def test_agentic_search_error_handling_invalid_query():
         pass
     mock_ctx = MockContext()
 
-    # Test with empty query
-    result_json = await agentic_search_impl(
-        ctx=mock_ctx,
-        query="",
-        completeness_threshold=0.8,
-        max_iterations=1,
-    )
+    # Test with empty query - should raise validation error
+    from src.core.exceptions import MCPToolError
 
-    result = json.loads(result_json)
-
-    # Should handle gracefully
-    assert "success" in result
-    assert "error" in result or "results" in result
+    try:
+        result_json = await agentic_search_impl(
+            ctx=mock_ctx,
+            query="",
+            completeness_threshold=0.8,
+            max_iterations=1,
+        )
+        result = json.loads(result_json)
+        # If it returns JSON without exception, check error handling
+        assert "success" in result
+        assert "error" in result or "results" in result
+    except MCPToolError as e:
+        # Expected: validation error for empty query
+        assert "validation error" in str(e).lower() or "string should have at least 1 character" in str(e).lower()
 
 
 @pytest.mark.asyncio
@@ -243,9 +229,6 @@ async def test_agentic_search_success_case(qdrant_with_incomplete_data):
     Verifies actual success case with real data.
     """
     settings = get_settings()
-
-    if not settings.openai_api_key:
-        pytest.skip("OPENAI_API_KEY not set")
 
     try:
         await initialize_global_context()

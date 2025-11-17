@@ -26,7 +26,7 @@ import src as crawl4ai_mcp_module
 sys.modules["crawl4ai_mcp"] = crawl4ai_mcp_module
 
 # Set test environment variables BEFORE any imports
-os.environ["OPENAI_API_KEY"] = "test-key-for-mocks"
+# DO NOT override OPENAI_API_KEY - use real key from environment
 os.environ["VECTOR_DATABASE"] = "qdrant"
 os.environ["QDRANT_URL"] = "http://localhost:6333"
 
@@ -668,8 +668,7 @@ def mock_openai_embeddings():
         return
     
     # Mock mode (default)
-    os.environ["OPENAI_API_KEY"] = "test-key-for-mocks"
-
+    # DO NOT override OPENAI_API_KEY globally - only mock for specific tests
     from unittest.mock import MagicMock, patch
 
     # Use cached mock if available
