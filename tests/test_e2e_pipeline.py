@@ -11,7 +11,7 @@ import sys
 import time
 
 # Add src to path
-sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
+sys.path.append(str(Path(__file__).parent / "src"))
 
 
 async def test_e2e_search_pipeline():

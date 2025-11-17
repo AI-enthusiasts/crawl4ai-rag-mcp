@@ -27,18 +27,18 @@ try:
 except ImportError as e:
     print(f"✗ Failed to import: {e}")
     print("\nChecking if knowledge_graph directory exists:")
-    
-    src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    kg_path = os.path.join(src_dir, "src", "knowledge_graph")
+
+    src_dir = Path(__file__).parent.parent.absolute()
+    kg_path = src_dir / "src" / "knowledge_graph"
     
     if os.path.exists(kg_path):
         print(f"  {kg_path} exists")
         print(f"  Contents: {os.listdir(kg_path)}")
     else:
         print(f"  {kg_path} does NOT exist")
-        
+
         # Check alternative path
-        alt_path = os.path.join(src_dir, "knowledge_graph")
+        alt_path = src_dir / "knowledge_graph"
         if os.path.exists(alt_path):
             print(f"  Alternative path {alt_path} exists")
             print(f"  Contents: {os.listdir(alt_path)}")
