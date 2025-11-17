@@ -10,7 +10,6 @@ This module contains code validation and analysis MCP tools including:
 
 import json
 import logging
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
