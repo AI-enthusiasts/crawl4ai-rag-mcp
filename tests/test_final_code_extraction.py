@@ -90,7 +90,7 @@ class SimpleAPI:
         # Test 3: Check the implementation in crawl4ai_mcp.py
         print("\n🔍 Verifying implementation in crawl4ai_mcp.py...")
 
-        with open("src/crawl4ai_mcp.py") as f:
+        with Path("src/crawl4ai_mcp.py").open() as f:
             content = f.read()
 
         # Check that our fixes are in place

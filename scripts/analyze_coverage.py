@@ -8,8 +8,8 @@ def analyze_coverage():
     if not coverage_file.exists():
         print("Run: uv run pytest tests/ --cov=src --cov-report=json")
         sys.exit(1)
-    
-    with open(coverage_file) as f:
+
+    with coverage_file.open() as f:
         data = json.load(f)
     
     files = data.get("files", {})

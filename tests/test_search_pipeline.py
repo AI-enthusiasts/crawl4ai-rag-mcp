@@ -87,7 +87,7 @@ def analyze_search_function():
 
     try:
         # Read the main file and analyze the search function
-        with open("src/crawl4ai_mcp.py") as f:
+        with Path("src/crawl4ai_mcp.py").open() as f:
             content = f.read()
 
         # Check for key components

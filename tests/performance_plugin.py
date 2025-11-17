@@ -155,7 +155,7 @@ class PerformanceMonitorPlugin:
         output_path = Path(self.output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_path, "w") as f:
+        with output_path.open("w") as f:
             json.dump(report, f, indent=2)
 
         # Also print summary to console if verbose
