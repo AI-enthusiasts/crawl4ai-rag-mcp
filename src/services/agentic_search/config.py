@@ -27,8 +27,6 @@ class AgenticSearchConfig:
     def __init__(self) -> None:
         """Initialize Pydantic AI agents and configuration parameters."""
         # Create OpenAI model instance
-        # Pydantic AI 1.18.0+ creates AsyncOpenAI client internally
-        # If proxy blocks OpenAI API, set NO_PROXY=api.openai.com,*.openai.com in environment
         model = OpenAIModel(
             model_name=settings.model_choice,
         )
