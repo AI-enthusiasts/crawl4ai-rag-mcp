@@ -8,6 +8,7 @@ This module handles:
 """
 
 import logging
+import os
 
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
@@ -27,41 +28,31 @@ class AgenticSearchConfig:
     def __init__(self) -> None:
         """Initialize Pydantic AI agents and configuration parameters."""
         # Fix for container proxy blocking OpenAI API
-        # Configure httpx client to bypass proxy for OpenAI domains
-        import httpx
-        import os
-        from openai import AsyncOpenAI
+        # Temporarily remove proxy env vars to allow OpenAI API access
 
         # Get current proxy settings
         http_proxy = os.getenv("HTTP_PROXY") or os.getenv("http_proxy")
         https_proxy = os.getenv("HTTPS_PROXY") or os.getenv("https_proxy")
 
-        # Create httpx client that bypasses proxy for OpenAI
+        # Save and remove proxy env vars if present
+        saved_proxies = {}
         if http_proxy or https_proxy:
             logger.info(
-                "Proxy detected, configuring OpenAI client to bypass proxy for *.openai.com"
+                "Proxy detected, temporarily removing proxy env vars for OpenAI API access"
             )
-            # Temporarily remove proxy env vars for OpenAI client creation
-            saved_http_proxy = os.environ.pop("HTTP_PROXY", None) or os.environ.pop("http_proxy", None)
-            saved_https_proxy = os.environ.pop("HTTPS_PROXY", None) or os.environ.pop("https_proxy", None)
+            for var in ["HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy"]:
+                if var in os.environ:
+                    saved_proxies[var] = os.environ.pop(var)
 
-            # Create OpenAI client without proxy
-            openai_client = AsyncOpenAI()
-
-            # Restore proxy env vars
-            if saved_http_proxy:
-                os.environ["HTTP_PROXY"] = saved_http_proxy
-            if saved_https_proxy:
-                os.environ["HTTPS_PROXY"] = saved_https_proxy
-        else:
-            # No proxy, use default client
-            openai_client = AsyncOpenAI()
-
-        # Create OpenAI model instance
-        # Per Pydantic AI docs: OpenAIModel wraps the OpenAI client
+        # Create OpenAI model instance without proxy interference
+        # Pydantic AI 1.18.0+ creates AsyncOpenAI client internally
         model = OpenAIModel(
             model_name=settings.model_choice,
         )
+
+        # Restore proxy env vars
+        for var, value in saved_proxies.items():
+            os.environ[var] = value
 
         # Shared model settings for all agents
         # Per Pydantic AI docs: timeout, temperature configured via ModelSettings
