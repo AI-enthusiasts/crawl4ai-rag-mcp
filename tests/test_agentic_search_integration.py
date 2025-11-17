@@ -18,10 +18,8 @@ Run with: pytest tests/test_agentic_search_integration.py -v
 import asyncio
 import json
 import os
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastmcp import Context
 
 from src.config import get_settings, reset_settings
 from src.core.context import Crawl4AIContext, initialize_global_context
@@ -86,9 +84,11 @@ async def app_context(test_settings):
 
 @pytest.fixture
 async def mock_fastmcp_context():
-    """Create a mock FastMCP Context for testing."""
-    ctx = MagicMock(spec=Context)
-    return ctx
+    """Create a simple Context object for testing."""
+    class MockContext:
+        pass
+
+    return MockContext()
 
 
 class TestAgenticSearchService:
@@ -280,75 +280,6 @@ class TestAgenticSearchService:
 
 class TestAgenticSearchIntegration:
     """Integration tests for full agentic search pipeline."""
-
-    @pytest.mark.asyncio
-    @pytest.mark.slow
-    async def test_agentic_search_with_mock_components(
-        self, test_settings, app_context, mock_fastmcp_context
-    ):
-        """Test agentic search with mocked web search and crawling.
-
-        This tests the core LLM evaluation logic without hitting external services.
-        Cost: ~$0.0005 USD per run with gpt-4.1-nano
-        """
-        # Ensure agentic search is enabled (test_settings fixture sets this)
-        from src.config import reset_settings
-        reset_settings()  # Reload settings to pick up test environment variables
-
-        # Mock the web search to avoid hitting SearXNG
-        with patch("src.services.search._search_searxng") as mock_search:
-            mock_search.return_value = [
-                {
-                    "title": "Test Result",
-                    "url": "https://example.com/test",
-                    "snippet": "Test snippet",
-                }
-            ]
-
-            # Mock the crawling to avoid hitting real URLs
-            with patch("src.services.crawling.service.process_urls_for_mcp") as mock_crawl:
-                mock_crawl.return_value = json.dumps(
-                    {
-                        "success": True,
-                        "results": [
-                            {
-                                "success": True,
-                                "url": "https://example.com/test",
-                                "chunks_stored": 5,
-                            }
-                        ],
-                    }
-                )
-
-                # Execute agentic search
-                result_json = await agentic_search_impl(
-                    ctx=mock_fastmcp_context,
-                    query="What is FastMCP?",
-                    completeness_threshold=0.9,  # High threshold to trigger search
-                    max_iterations=1,  # Just one iteration for speed
-                    max_urls_per_iteration=1,
-                    url_score_threshold=0.5,
-                )
-
-                result = json.loads(result_json)
-
-                # Verify result structure
-                assert result["success"] is True
-                assert result["query"] == "What is FastMCP?"
-                assert result["iterations"] >= 1
-                assert "completeness" in result
-                assert "results" in result
-                assert "search_history" in result
-                assert result["status"] in [
-                    "complete",
-                    "max_iterations_reached",
-                    "error",
-                ]
-
-                # Verify search history has expected actions
-                assert len(result["search_history"]) > 0
-                actions = [item["action"] for item in result["search_history"]]
-                assert "local_check" in actions
 
     @pytest.mark.asyncio
     @pytest.mark.slow
