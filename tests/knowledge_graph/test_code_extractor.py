@@ -18,7 +18,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 # Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from src.core.exceptions import QueryError
 from src.knowledge_graph.code_extractor import (
