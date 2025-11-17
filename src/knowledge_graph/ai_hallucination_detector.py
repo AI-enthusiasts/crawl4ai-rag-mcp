@@ -109,11 +109,11 @@ class AIHallucinationDetector:
             script_name = Path(script_path).stem
 
             if save_json:
-                json_path = os.path.join(output_dir, f"{script_name}_hallucination_report.json")
+                json_path = str(Path(output_dir) / f"{script_name}_hallucination_report.json")
                 self.reporter.save_json_report(report, json_path)
 
             if save_markdown:
-                md_path = os.path.join(output_dir, f"{script_name}_hallucination_report.md")
+                md_path = str(Path(output_dir) / f"{script_name}_hallucination_report.md")
                 self.reporter.save_markdown_report(report, md_path)
 
             # Step 5: Print summary
