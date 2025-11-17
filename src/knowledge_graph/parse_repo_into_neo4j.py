@@ -189,12 +189,12 @@ class DirectNeo4jExtractor:
                 logger.warning(f"GitRepositoryManager failed, falling back to subprocess: {e}")
 
         # Fallback to original implementation
-        if os.path.exists(target_dir):
+        if Path(target_dir).exists():
             logger.info(f"Removing existing directory: {target_dir}")
             try:
                 def handle_remove_readonly(func: Callable[[str], None], path: str, exc: Any) -> None:
                     try:
-                        if os.path.exists(path):
+                        if Path(path).exists():
                             os.chmod(path, 0o777)
                             func(path)
                     except PermissionError:
@@ -443,12 +443,12 @@ class DirectNeo4jExtractor:
             logger.info(f"Successfully created Neo4j graph for {repo_name}")
 
         finally:
-            if os.path.exists(temp_dir):
+            if Path(temp_dir).exists():
                 logger.info(f"Cleaning up temporary directory: {temp_dir}")
                 try:
                     def handle_remove_readonly(func: Callable[[str], None], path: str, exc: Any) -> None:
                         try:
-                            if os.path.exists(path):
+                            if Path(path).exists():
                                 os.chmod(path, 0o777)
                                 func(path)
                         except PermissionError:
