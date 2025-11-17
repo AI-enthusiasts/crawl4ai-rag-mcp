@@ -205,7 +205,7 @@ def validate_script_path(script_path: str) -> dict[str, Any]:
 
     try:
         # Check if file is readable
-        with open(container_path, encoding="utf-8") as f:
+        with Path(container_path).open(encoding="utf-8") as f:
             f.read(1)  # Read first character to test
         # Always return the container path for downstream use
         return {"valid": True, "container_path": container_path}
