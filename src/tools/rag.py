@@ -149,11 +149,11 @@ def register_rag_tools(mcp: "FastMCP") -> None:
         try:
             return await get_available_sources_wrapper(ctx)
         except DatabaseError as e:
-            logger.error(f"Database error getting sources: {e}")
+            logger.error("Database error getting sources: %s", e)
             msg = f"Failed to get sources: {e!s}"
             raise MCPToolError(msg) from e
         except Exception as e:
-            logger.exception(f"Unexpected error in get_available_sources tool: {e}")
+            logger.exception("Unexpected error in get_available_sources tool: %s", e)
             msg = f"Failed to get sources: {e!s}"
             raise MCPToolError(msg) from e
 
@@ -188,11 +188,11 @@ def register_rag_tools(mcp: "FastMCP") -> None:
                 match_count=match_count,
             )
         except DatabaseError as e:
-            logger.error(f"Database error in RAG query: {e}")
+            logger.error("Database error in RAG query: %s", e)
             msg = f"RAG query failed: {e!s}"
             raise MCPToolError(msg) from e
         except Exception as e:
-            logger.exception(f"Unexpected error in perform_rag_query tool: {e}")
+            logger.exception("Unexpected error in perform_rag_query tool: %s", e)
             msg = f"RAG query failed: {e!s}"
             raise MCPToolError(msg) from e
 
@@ -229,10 +229,10 @@ def register_rag_tools(mcp: "FastMCP") -> None:
                 match_count=match_count,
             )
         except DatabaseError as e:
-            logger.error(f"Database error in code example search: {e}")
+            logger.error("Database error in code example search: %s", e)
             msg = f"Code example search failed: {e!s}"
             raise MCPToolError(msg) from e
         except Exception as e:
-            logger.exception(f"Unexpected error in search_code_examples tool: {e}")
+            logger.exception("Unexpected error in search_code_examples tool: %s", e)
             msg = f"Code example search failed: {e!s}"
             raise MCPToolError(msg) from e
