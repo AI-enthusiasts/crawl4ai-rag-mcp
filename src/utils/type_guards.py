@@ -77,7 +77,7 @@ def is_valid_embedding(embedding: list[float] | None) -> TypeGuard[list[float]]:
         embedding is not None
         and isinstance(embedding, list)
         and len(embedding) > 0
-        and all(isinstance(x, (int, float)) for x in embedding)
+        and all(isinstance(x, int | float) for x in embedding)
     )
 
 
@@ -99,7 +99,7 @@ def is_search_result(data: Any) -> TypeGuard[dict[str, Any]]:
         isinstance(data, dict)
         and "content" in data
         and "score" in data
-        and isinstance(data.get("score"), (int, float))
+        and isinstance(data.get("score"), int | float)
     )
 
 
@@ -169,7 +169,7 @@ def is_point_id_list(data: Any) -> TypeGuard[list[str | int]]:
     return (
         isinstance(data, list)
         and len(data) > 0
-        and all(isinstance(x, (str, int)) for x in data)
+        and all(isinstance(x, str | int) for x in data)
     )
 
 
@@ -209,4 +209,4 @@ def is_confidence_score(value: Any) -> TypeGuard[float]:
         ...     if score > 0.8:
         ...         high_confidence_action()
     """
-    return isinstance(value, (int, float)) and 0.0 <= float(value) <= 1.0
+    return isinstance(value, int | float) and 0.0 <= float(value) <= 1.0

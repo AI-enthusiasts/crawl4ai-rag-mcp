@@ -182,7 +182,7 @@ async def test_agentic_search_with_all_parameters(qdrant_with_incomplete_data):
     assert result["query"] == "What is FastMCP framework?"
     assert result["iterations"] <= 2  # Should not exceed max
     assert "completeness" in result
-    assert isinstance(result["completeness"], (int, float))
+    assert isinstance(result["completeness"], int | float)
     assert 0.0 <= result["completeness"] <= 1.0
 
 
