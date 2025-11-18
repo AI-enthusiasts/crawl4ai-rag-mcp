@@ -11,7 +11,7 @@ This module contains code validation and analysis MCP tools including:
 import json
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from fastmcp import Context
 
@@ -21,6 +21,12 @@ if TYPE_CHECKING:
 from src.core import MCPToolError, track_request
 from src.core.context import get_app_context
 from src.core.exceptions import DatabaseError, KnowledgeGraphError, ValidationError
+from src.knowledge_graph.code_extractor import extract_repository_code
+from src.knowledge_graph.enhanced_validation import (
+    check_ai_script_hallucinations_enhanced as check_hallucinations_enhanced_impl,
+)
+from src.services.validated_search import ValidatedCodeSearchService
+from src.utils import create_embeddings_batch
 from src.utils.validation import validate_script_path
 
 logger = logging.getLogger(__name__)
@@ -37,27 +43,26 @@ def register_validation_tools(mcp: "FastMCP") -> None:
     @mcp.tool()
     @track_request("extract_and_index_repository_code")
     async def extract_and_index_repository_code(
-        ctx: Context,
+        _ctx: Context,
         repo_name: str,
     ) -> str:
         """
         Extract code examples from Neo4j knowledge graph and index them in Qdrant.
 
-        This tool creates a bridge between Neo4j (knowledge graph) and Qdrant (vector database)
-        for code search and validation. It:
+        This tool creates a bridge between Neo4j (knowledge graph) and Qdrant
+        (vector database) for code search and validation. It:
         - Extracts structured code examples from Neo4j
         - Generates embeddings for semantic search
         - Stores code with rich metadata in Qdrant
         - Enables AI hallucination detection and code validation
 
         Args:
+            _ctx: MCP context (unused)
             repo_name: Name of the repository in Neo4j to extract code from
 
         Returns:
             JSON string with indexing results and statistics
         """
-        import json
-
         try:
             # Get the app context that was stored during lifespan
             app_ctx = get_app_context()
@@ -73,10 +78,14 @@ def register_validation_tools(mcp: "FastMCP") -> None:
 
             # Check Neo4j availability
             if not hasattr(app_ctx, "repo_extractor") or not app_ctx.repo_extractor:
+                error_msg = (
+                    "Repository extractor not available. "
+                    "Neo4j may not be configured or USE_KNOWLEDGE_GRAPH may be false."
+                )
                 return json.dumps(
                     {
                         "success": False,
-                        "error": "Repository extractor not available. Neo4j may not be configured or USE_KNOWLEDGE_GRAPH may be false.",
+                        "error": error_msg,
                     },
                     indent=2,
                 )
@@ -105,8 +114,6 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 logger.warning("Unexpected error during cleanup: %s", cleanup_error)
 
             # Extract code examples from Neo4j
-            from src.knowledge_graph.code_extractor import extract_repository_code
-
             extraction_result = await extract_repository_code(
                 app_ctx.repo_extractor, repo_name,
             )
@@ -128,8 +135,6 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 )
 
             # Generate embeddings for code examples
-            from src.utils import create_embeddings_batch
-
             embedding_texts = [example["embedding_text"] for example in code_examples]
             logger.info(
                 "Generating embeddings for %d code examples",
@@ -139,10 +144,14 @@ def register_validation_tools(mcp: "FastMCP") -> None:
             embeddings = create_embeddings_batch(embedding_texts)
 
             if len(embeddings) != len(code_examples):
+                error_msg = (
+                    f"Embedding count mismatch: got {len(embeddings)}, "
+                    f"expected {len(code_examples)}"
+                )
                 return json.dumps(
                     {
                         "success": False,
-                        "error": f"Embedding count mismatch: got {len(embeddings)}, expected {len(code_examples)}",
+                        "error": error_msg,
                     },
                     indent=2,
                 )
@@ -181,16 +190,24 @@ def register_validation_tools(mcp: "FastMCP") -> None:
             )
 
             # Update source information
+            summary = (
+                f"Code repository with "
+                f"{extraction_result['extraction_summary']['classes']} classes, "
+                f"{extraction_result['extraction_summary']['methods']} methods, "
+                f"{extraction_result['extraction_summary']['functions']} functions"
+            )
             await app_ctx.database_client.update_source_info(
                 source_id=repo_name,
-                summary=f"Code repository with {extraction_result['extraction_summary']['classes']} classes, "
-                f"{extraction_result['extraction_summary']['methods']} methods, "
-                f"{extraction_result['extraction_summary']['functions']} functions",
+                summary=summary,
                 word_count=sum(
                     len(example["code_text"].split()) for example in code_examples
                 ),
             )
 
+            success_msg = (
+                f"Successfully indexed {len(code_examples)} "
+                f"code examples from {repo_name}"
+            )
             return json.dumps(
                 {
                     "success": True,
@@ -205,13 +222,13 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                             for example in code_examples
                         ),
                     },
-                    "message": f"Successfully indexed {len(code_examples)} code examples from {repo_name}",
+                    "message": success_msg,
                 },
                 indent=2,
             )
 
         except DatabaseError as e:
-            logger.error("Database error in extract_and_index_repository_code: %s", e)
+            logger.exception("Database error in extract_and_index_repository_code")
             return json.dumps(
                 {
                     "success": False,
@@ -221,7 +238,9 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
         except KnowledgeGraphError as e:
-            logger.error("Knowledge graph error in extract_and_index_repository_code: %s", e)
+            logger.exception(
+                "Knowledge graph error in extract_and_index_repository_code",
+            )
             return json.dumps(
                 {
                     "success": False,
@@ -231,7 +250,9 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
         except Exception as e:
-            logger.exception("Unexpected error in extract_and_index_repository_code tool: %s", e)
+            logger.exception(
+                "Unexpected error in extract_and_index_repository_code tool",
+            )
             return json.dumps(
                 {
                     "success": False,
@@ -244,16 +265,16 @@ def register_validation_tools(mcp: "FastMCP") -> None:
     @mcp.tool()
     @track_request("smart_code_search")
     async def smart_code_search(
-        ctx: Context,
+        _ctx: Context,
         query: str,
         match_count: int = 5,
         source_filter: str | None = None,
         min_confidence: float = 0.6,
         validation_mode: str = "balanced",
+        *,
         include_suggestions: bool = True,
     ) -> str:
-        """
-        Smart code search that intelligently combines Qdrant semantic search with Neo4j validation.
+        """Smart code search combining Qdrant semantic search with Neo4j validation.
 
         This tool provides high-confidence code search results by:
         - Performing semantic search in Qdrant for relevant code examples
@@ -263,18 +284,17 @@ def register_validation_tools(mcp: "FastMCP") -> None:
         - Options to control validation for speed vs accuracy trade-offs
 
         Args:
+            _ctx: MCP context (unused)
             query: Search query for semantic matching
             match_count: Maximum number of results to return (default: 5)
             source_filter: Optional source repository filter (e.g., 'repo-name')
             min_confidence: Minimum confidence threshold 0.0-1.0 (default: 0.6)
-            validation_mode: Validation approach - "fast", "balanced", "thorough" (default: "balanced")
-            include_suggestions: Whether to include correction suggestions (default: True)
+            validation_mode: Validation approach - "fast", "balanced", "thorough"
+            include_suggestions: Include correction suggestions (default: True)
 
         Returns:
             JSON string with validated search results, confidence scores, and metadata
         """
-        import json
-
         try:
             # Get the app context
             app_ctx = get_app_context()
@@ -293,8 +313,6 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 )
 
             # Initialize validated search service
-            from src.services.validated_search import ValidatedCodeSearchService
-
             neo4j_driver = None
             if hasattr(app_ctx, "repo_extractor") and app_ctx.repo_extractor:
                 # Extract Neo4j driver if available
@@ -329,7 +347,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
             return json.dumps(result, indent=2)
 
         except DatabaseError as e:
-            logger.error("Database error in smart_code_search: %s", e)
+            logger.exception("Database error in smart_code_search")
             return json.dumps(
                 {
                     "success": False,
@@ -339,7 +357,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
         except ValidationError as e:
-            logger.error("Validation error in smart_code_search: %s", e)
+            logger.exception("Validation error in smart_code_search")
             return json.dumps(
                 {
                     "success": False,
@@ -349,7 +367,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
         except Exception as e:
-            logger.exception("Unexpected error in smart_code_search tool: %s", e)
+            logger.exception("Unexpected error in smart_code_search tool")
             return json.dumps(
                 {
                     "success": False,
@@ -362,13 +380,14 @@ def register_validation_tools(mcp: "FastMCP") -> None:
     @mcp.tool()
     @track_request("check_ai_script_hallucinations_enhanced")
     async def check_ai_script_hallucinations_enhanced(
-        ctx: Context,
+        _ctx: Context,
         script_path: str,
-        include_code_suggestions: bool = True,
-        detailed_analysis: bool = True,
+        *,
+        _include_code_suggestions: bool = True,
+        _detailed_analysis: bool = True,
     ) -> str:
         """
-        Enhanced AI script hallucination detection using both Neo4j and Qdrant validation.
+        Enhanced AI script hallucination detection using both Neo4j and Qdrant.
 
         This tool provides comprehensive hallucination detection by:
         - Analyzing script structure and extracting code elements
@@ -385,12 +404,14 @@ def register_validation_tools(mcp: "FastMCP") -> None:
         - Parallel validation for improved performance
 
         Args:
+            _ctx: MCP context (unused)
             script_path: Absolute path to the Python script to analyze
-            include_code_suggestions: Whether to include code suggestions from real examples (default: True)
-            detailed_analysis: Whether to include detailed validation results (default: True)
+            _include_code_suggestions: Code suggestions from real examples
+            _detailed_analysis: Include detailed validation results
 
         Returns:
-            JSON string with comprehensive hallucination detection results, confidence scores, and recommendations
+            JSON string with comprehensive hallucination detection results,
+            confidence scores, and recommendations
         """
         try:
             # Validate script path
@@ -428,39 +449,36 @@ def register_validation_tools(mcp: "FastMCP") -> None:
             if hasattr(app_ctx, "repo_extractor") and app_ctx.repo_extractor:
                 neo4j_driver = getattr(app_ctx.repo_extractor, "driver", None)
 
-            # Use enhanced hallucination detection
-            from src.knowledge_graph.enhanced_validation import (
-                check_ai_script_hallucinations_enhanced as check_ai_script_hallucinations_enhanced_impl,
-            )
-
             # Use the container path if available from validation
             actual_path = validation_result.get("container_path", script_path)
-            return await check_ai_script_hallucinations_enhanced_impl(
+            return await check_hallucinations_enhanced_impl(
                 database_client=database_client,
                 neo4j_driver=neo4j_driver,
                 script_path=actual_path,
             )
 
         except ValidationError as e:
-            logger.error("Validation error in hallucination detection: %s", e)
+            logger.exception("Validation error in hallucination detection")
             msg = f"Enhanced hallucination check failed: {e!s}"
             raise MCPToolError(msg) from e
         except DatabaseError as e:
-            logger.error("Database error in hallucination detection: %s", e)
+            logger.exception("Database error in hallucination detection")
             msg = f"Enhanced hallucination check failed: {e!s}"
             raise MCPToolError(msg) from e
         except KnowledgeGraphError as e:
-            logger.error("Knowledge graph error in hallucination detection: %s", e)
+            logger.exception("Knowledge graph error in hallucination detection")
             msg = f"Enhanced hallucination check failed: {e!s}"
             raise MCPToolError(msg) from e
         except Exception as e:
-            logger.exception("Unexpected error in enhanced hallucination detection tool: %s", e)
+            logger.exception(
+                "Unexpected error in enhanced hallucination detection tool",
+            )
             msg = f"Enhanced hallucination check failed: {e!s}"
             raise MCPToolError(msg) from e
 
     @mcp.tool()
     @track_request("get_script_analysis_info")
-    async def get_script_analysis_info(ctx: Context) -> str:
+    async def get_script_analysis_info(_ctx: Context) -> str:
         """
         Get information about script analysis setup and paths.
 
@@ -483,24 +501,40 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 {
                     "description": "Analyze a script in user_scripts directory",
                     "host_path": "./analysis_scripts/user_scripts/my_script.py",
-                    "tool_call": "check_ai_script_hallucinations(script_path='analysis_scripts/user_scripts/my_script.py')",
+                    "tool_call": (
+                        "check_ai_script_hallucinations("
+                        "script_path='analysis_scripts/user_scripts/my_script.py')"
+                    ),
                 },
                 {
                     "description": "Analyze a script from /tmp",
                     "host_path": "/tmp/test.py",
-                    "tool_call": "check_ai_script_hallucinations(script_path='/tmp/test.py')",
+                    "tool_call": (
+                        "check_ai_script_hallucinations(script_path='/tmp/test.py')"
+                    ),
                 },
                 {
                     "description": "Analyze with just filename (defaults to user_scripts)",
                     "host_path": "./analysis_scripts/user_scripts/script.py",
-                    "tool_call": "check_ai_script_hallucinations(script_path='script.py')",
+                    "tool_call": (
+                        "check_ai_script_hallucinations(script_path='script.py')"
+                    ),
                 },
             ],
             "instructions": [
-                "1. Place your Python scripts in ./analysis_scripts/user_scripts/ on your host machine",
-                "2. Call the hallucination detection tools with the relative path",
-                "3. Results will be saved to ./analysis_scripts/validation_results/",
-                "4. The path translation is automatic - you can use convenient paths",
+                (
+                    "1. Place your Python scripts in "
+                    "./analysis_scripts/user_scripts/ on your host machine"
+                ),
+                (
+                    "2. Call the hallucination detection tools with the relative path"
+                ),
+                (
+                    "3. Results will be saved to ./analysis_scripts/validation_results/"
+                ),
+                (
+                    "4. The path translation is automatic - you can use convenient paths"
+                ),
             ],
             "container_mappings": {
                 "./analysis_scripts/": "/app/analysis_scripts/",
@@ -508,13 +542,14 @@ def register_validation_tools(mcp: "FastMCP") -> None:
             },
             "available_tools": [
                 "check_ai_script_hallucinations - Basic hallucination detection",
-                "check_ai_script_hallucinations_enhanced - Enhanced detection with code suggestions",
+                (
+                    "check_ai_script_hallucinations_enhanced - "
+                    "Enhanced detection with code suggestions"
+                ),
             ],
         }
 
         # Check which directories actually exist
-        from typing import cast
-
         accessible_paths = cast("dict[str, str]", info["accessible_paths"])
         for key, path in accessible_paths.items():
             if "(" not in path:  # Skip paths with descriptions

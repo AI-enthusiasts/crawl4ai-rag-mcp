@@ -29,7 +29,7 @@ MAX_URLS_PER_ITERATION_EXTENSIVE = 10  # More URLs for comprehensive search
 MAX_URLS_PER_ITERATION_QUICK = 1  # Single URL for quick search
 
 # Recursive crawling limits
-MAX_PAGES_PER_ITERATION_DEFAULT = 50  # Maximum pages to crawl across all URLs in iteration
+MAX_PAGES_PER_ITERATION_DEFAULT = 50  # Maximum pages to crawl across all URLs
 MAX_PAGES_PER_ITERATION_EXTENSIVE = 100  # More pages for comprehensive search
 MAX_PAGES_PER_ITERATION_QUICK = 10  # Fewer pages for quick search
 
@@ -38,7 +38,8 @@ MAX_CRAWL_DEPTH_SHALLOW = 1  # Single level (no recursion)
 MAX_CRAWL_DEPTH_DEEP = 5  # Deep crawling for comprehensive coverage
 
 # Memory protection limits
-MAX_VISITED_URLS_LIMIT = 10000  # Maximum visited URLs to track (prevents memory exhaustion)
+# Maximum visited URLs to track (prevents memory exhaustion)
+MAX_VISITED_URLS_LIMIT = 10000
 
 # LLM parameters
 LLM_TEMPERATURE_DETERMINISTIC = 0.3  # Deterministic for completeness/ranking
@@ -113,8 +114,7 @@ REPO_MAX_FILE_COUNT_DEFAULT = 10000  # Default maximum file count
 # Network & Timeout Constants
 # ========================================
 
-# Timeouts (seconds)
-SEARXNG_TIMEOUT_DEFAULT = 30
+SEARXNG_TIMEOUT_DEFAULT = 30  # Timeouts (seconds)
 NEO4J_BATCH_TIMEOUT_DEFAULT = 120
 HTTP_REQUEST_TIMEOUT_DEFAULT = 30
 CRAWL_TIMEOUT_DEFAULT = 60

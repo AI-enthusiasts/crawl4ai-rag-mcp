@@ -187,7 +187,7 @@ class GitRepositoryManager:
 
             self.logger.info(
                 "Repository validation passed: %.2fMB, %s files",
-                info['estimated_size_mb'], info['file_count'],
+                info["estimated_size_mb"], info["file_count"],
             )
             return True, info
 
@@ -234,7 +234,7 @@ class GitRepositoryManager:
                     # Note: file count is not available via GitHub API
                     self.logger.info(
                         "GitHub API reports repository size: %.2fMB",
-                        info['estimated_size_mb'],
+                        info["estimated_size_mb"],
                     )
             except OSError as api_error:
                 self.logger.debug("GitHub API network error: %s", api_error)
@@ -292,7 +292,7 @@ class GitRepositoryManager:
 
             self.logger.info(
                 "Repository validation passed - Size: %.2fMB, Files: %s, Free space: %.2fGB",
-                info['estimated_size_mb'], info['file_count'], info['free_space_gb'],
+                info["estimated_size_mb"], info["file_count"], info["free_space_gb"],
             )
         else:
             self.logger.warning("Skipping size validation (force=True)")
@@ -721,7 +721,7 @@ class GitRepositoryManager:
         except GitError:
             raise
         except Exception as e:
-            self.logger.exception("Unexpected error running git command %s: %s", ' '.join(cmd), e)
+            self.logger.exception("Unexpected error running git command %s: %s", " ".join(cmd), e)
             raise GitError("Git command execution failed: %s" % e) from e
 
     async def _remove_directory(self, path: str) -> None:

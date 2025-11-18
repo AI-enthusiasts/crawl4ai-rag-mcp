@@ -74,7 +74,6 @@ class Neo4jCodeAnalyzer:
             tree = ast.parse(content)
             relative_path = str(file_path.relative_to(repo_root))
             module_name = self._get_importable_module_name(
-                file_path,
                 repo_root,
                 relative_path,
             )
@@ -511,13 +510,14 @@ class Neo4jCodeAnalyzer:
 
         try:
             annotation_str = self._get_name(annotation_node)
-            return "ClassVar" in annotation_str
         except AnalysisError as e:
             logger.debug("Failed to check ClassVar annotation: %s", e)
             return False
         except Exception:
             logger.exception("Unexpected error checking ClassVar annotation")
             return False
+        else:
+            return "ClassVar" in annotation_str
 
     def _extract_init_attributes(self, class_node: ast.ClassDef) -> list[dict[str, Any]]:
         """Extract attributes from __init__ method"""
@@ -598,14 +598,14 @@ class Neo4jCodeAnalyzer:
                 except AnalysisError as e:
                     logger.debug("Failed to extract __init__ attribute: %s", e)
                     continue
-                except Exception as e:
-                    logger.exception("Unexpected error extracting __init__ attribute: %s", e)
+                except Exception:
+                    logger.exception("Unexpected error extracting __init__ attribute")
                     continue
 
         except AnalysisError as e:
             logger.debug("Failed to walk __init__ method: %s", e)
-        except Exception as e:
-            logger.exception("Unexpected error walking __init__ method: %s", e)
+        except Exception:
+            logger.exception("Unexpected error walking __init__ method")
 
         return attributes
 
@@ -627,8 +627,8 @@ class Neo4jCodeAnalyzer:
 
         except AnalysisError as e:
             logger.debug("Failed to extract slots: %s", e)
-        except Exception as e:
-            logger.exception("Unexpected error extracting slots: %s", e)
+        except Exception:
+            logger.exception("Unexpected error extracting slots")
 
         return slots
 
@@ -695,8 +695,8 @@ class Neo4jCodeAnalyzer:
                 return "Any"  # Could be various types depending on operation
         except AnalysisError as e:
             logger.debug("Failed to infer type: %s", e)
-        except Exception as e:
-            logger.exception("Unexpected error in type inference: %s", e)
+        except Exception:
+            logger.exception("Unexpected error in type inference")
 
         return "Any"
 
@@ -720,9 +720,20 @@ class Neo4jCodeAnalyzer:
                 return True
 
         # If it's not obviously external, consider it internal
-        return bool(not any(ext in base_module.lower() for ext in ["test", "mock", "fake"]) and not base_module.startswith("_") and len(base_module) > 2)
+        MIN_MODULE_LENGTH = 2
+        test_keywords = ["test", "mock", "fake"]
+        is_not_test = not any(
+            ext in base_module.lower() for ext in test_keywords
+        )
+        is_not_private = not base_module.startswith("_")
+        is_long_enough = len(base_module) > MIN_MODULE_LENGTH
+        return bool(is_not_test and is_not_private and is_long_enough)
 
-    def _get_importable_module_name(self, file_path: Path, repo_root: Path, relative_path: str) -> str:
+    def _get_importable_module_name(
+        self,
+        repo_root: Path,
+        relative_path: str,
+    ) -> str:
         """Determine the actual importable module name for a Python file"""
         # Start with the default: convert file path to module path
         default_module = relative_path.replace("/", ".").replace("\\", ".").replace(".py", "")
@@ -843,11 +854,12 @@ class Neo4jCodeAnalyzer:
                 return "[]"
             if isinstance(default_node, ast.Dict):
                 return "{}"
-            return "..."
         except AnalysisError:
             return "..."
-        except Exception as e:
-            logger.exception("Unexpected error extracting default value: %s", e)
+        except Exception:
+            logger.exception("Unexpected error extracting default value")
+            return "..."
+        else:
             return "..."
 
     def _get_name(self, node: Any) -> str:
@@ -875,12 +887,13 @@ class Neo4jCodeAnalyzer:
                         return f"{base}[{node.slice.value!r}]"
                     if isinstance(node.slice, ast.Attribute | ast.Subscript):
                         return f"{base}[{self._get_name(node.slice)}]"
-                    # Try to get the name of the slice, fallback to Any if it fails
+                    # Try to get the name of the slice, fallback to Any
                     try:
                         slice_name = self._get_name(node.slice)
-                        return f"{base}[{slice_name}]"
-                    except:
+                    except Exception:
                         return f"{base}[Any]"
+                    else:
+                        return f"{base}[{slice_name}]"
                 return base
             if isinstance(node, ast.Constant):
                 return str(node.value)
@@ -892,10 +905,11 @@ class Neo4jCodeAnalyzer:
             if isinstance(node, ast.List):
                 elts = [self._get_name(elt) for elt in node.elts]
                 return f"[{', '.join(elts)}]"
-            # Fallback for complex types - return a simple string representation
-            return "Any"
         except AnalysisError:
             return "Any"
-        except Exception as e:
-            logger.exception("Unexpected error extracting name from AST node: %s", e)
+        except Exception:
+            logger.exception("Unexpected error extracting name from AST node")
+            return "Any"
+        else:
+            # Fallback for complex types - return a simple string representation
             return "Any"
