@@ -10,6 +10,11 @@ from typing import Any
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
+try:
+    from neo4j import NotificationMinimumSeverity
+except ImportError:
+    NotificationMinimumSeverity = None  # type: ignore[assignment]
+
 from .ai_script_analyzer import AnalysisResult
 from .validation import (
     ScriptValidationResult,
@@ -66,22 +71,26 @@ class KnowledgeGraphValidator:
         self.class_cache: dict[str, dict[str, Any]] = {}
         self.method_cache: dict[str, list[dict[str, Any]]] = {}
         self.repo_cache: dict[str, str | None] = {}  # module_name -> repo_name
-        self.knowledge_graph_modules: set[str] = set()  # Track modules in knowledge graph
+        self.knowledge_graph_modules: set[str] = set()  # Modules in kg
 
     async def initialize(self) -> None:
         """Initialize Neo4j connection"""
-        # Import notification suppression (available in neo4j>=5.21.0)
-        try:
-            from neo4j import NotificationMinimumSeverity
-            # Create Neo4j driver with notification suppression
-            self.driver = AsyncGraphDatabase.driver(
-                self.neo4j_uri,
-                auth=(self.neo4j_user, self.neo4j_password),
-                warn_notification_severity=NotificationMinimumSeverity.OFF,
-            )
-        except (ImportError, AttributeError):
-            # Fallback for older versions - use logging suppression
-            import logging
+        if NotificationMinimumSeverity is not None:
+            try:
+                self.driver = AsyncGraphDatabase.driver(
+                    self.neo4j_uri,
+                    auth=(self.neo4j_user, self.neo4j_password),
+                    warn_notification_severity=NotificationMinimumSeverity.OFF,
+                )
+            except (ImportError, AttributeError):
+                logging.getLogger("neo4j.notifications").setLevel(
+                    logging.ERROR,
+                )
+                self.driver = AsyncGraphDatabase.driver(
+                    self.neo4j_uri,
+                    auth=(self.neo4j_user, self.neo4j_password),
+                )
+        else:
             logging.getLogger("neo4j.notifications").setLevel(logging.ERROR)
             self.driver = AsyncGraphDatabase.driver(
                 self.neo4j_uri,
@@ -94,7 +103,9 @@ class KnowledgeGraphValidator:
         if self.driver:
             await self.driver.close()
 
-    async def validate_script(self, analysis_result: AnalysisResult) -> ScriptValidationResult:
+    async def validate_script(
+        self, analysis_result: AnalysisResult,
+    ) -> ScriptValidationResult:
         """Validate entire script analysis against knowledge graph"""
         result = ScriptValidationResult(
             script_path=analysis_result.file_path,
@@ -102,7 +113,9 @@ class KnowledgeGraphValidator:
         )
 
         # Validate imports first (builds context for other validations)
-        result.import_validations = await self._validate_imports(analysis_result.imports)
+        result.import_validations = await self._validate_imports(
+            analysis_result.imports,
+        )
 
         # Validate class instantiations
         result.class_validations = await self._validate_class_instantiations(
@@ -136,8 +149,8 @@ class KnowledgeGraphValidator:
         """Delegate to validation.import_validator.validate_imports"""
         return await validate_imports(
             imports,
-            lambda module_name: neo4j_queries.find_modules(self.driver, module_name),
-            lambda module_name: neo4j_queries.get_module_contents(self.driver, module_name),
+            lambda m: neo4j_queries.find_modules(self.driver, m),
+            lambda m: neo4j_queries.get_module_contents(self.driver, m),
             self.module_cache,
             self.knowledge_graph_modules,
         )
@@ -146,101 +159,161 @@ class KnowledgeGraphValidator:
         """Delegate to validation.import_validator.validate_single_import"""
         return await validate_single_import(
             import_info,
-            lambda module_name: neo4j_queries.find_modules(self.driver, module_name),
-            lambda module_name: neo4j_queries.get_module_contents(self.driver, module_name),
+            lambda m: neo4j_queries.find_modules(self.driver, m),
+            lambda m: neo4j_queries.get_module_contents(self.driver, m),
             self.module_cache,
             self.knowledge_graph_modules,
         )
 
     # Delegation methods - Class validation
 
-    async def _validate_class_instantiations(self, instantiations: Any) -> list[ClassValidation]:
+    async def _validate_class_instantiations(
+        self, instantiations: Any,
+    ) -> list[ClassValidation]:
         """Delegate to validation.class_validator.validate_class_instantiations"""
         return await validate_class_instantiations(
             instantiations,
-            lambda class_name: neo4j_queries.find_class(self.driver, class_name, self.repo_cache),
-            lambda class_name, method_name: neo4j_queries.find_method(self.driver, class_name, method_name, self.method_cache, self.repo_cache),
+            lambda cn: neo4j_queries.find_class(
+                self.driver, cn, self.repo_cache,
+            ),
+            lambda cn, mn: neo4j_queries.find_method(
+                self.driver, cn, mn, self.method_cache, self.repo_cache,
+            ),
             validate_parameters,
-            lambda class_type: is_from_knowledge_graph(class_type, self.knowledge_graph_modules),
+            lambda ct: is_from_knowledge_graph(
+                ct, self.knowledge_graph_modules,
+            ),
             self.knowledge_graph_modules,
         )
 
-    async def _validate_single_class_instantiation(self, instantiation: Any) -> ClassValidation:
-        """Delegate to validation.class_validator.validate_single_class_instantiation"""
+    async def _validate_single_class_instantiation(
+        self, instantiation: Any,
+    ) -> ClassValidation:
+        """Validate single class instantiation against knowledge graph"""
         return await validate_single_class_instantiation(
             instantiation,
-            lambda class_name: neo4j_queries.find_class(self.driver, class_name, self.repo_cache),
-            lambda class_name, method_name: neo4j_queries.find_method(self.driver, class_name, method_name, self.method_cache, self.repo_cache),
+            lambda cn: neo4j_queries.find_class(
+                self.driver, cn, self.repo_cache,
+            ),
+            lambda cn, mn: neo4j_queries.find_method(
+                self.driver, cn, mn, self.method_cache, self.repo_cache,
+            ),
             validate_parameters,
-            lambda class_type: is_from_knowledge_graph(class_type, self.knowledge_graph_modules),
+            lambda ct: is_from_knowledge_graph(
+                ct, self.knowledge_graph_modules,
+            ),
             self.knowledge_graph_modules,
         )
 
     # Delegation methods - Method validation
 
-    async def _validate_method_calls(self, method_calls: Any) -> list[MethodValidation]:
-        """Delegate to validation.method_validator.validate_method_calls"""
+    async def _validate_method_calls(
+        self, method_calls: Any,
+    ) -> list[MethodValidation]:
+        """Validate method calls against knowledge graph"""
         return await validate_method_calls(
             method_calls,
-            lambda class_name, method_name: neo4j_queries.find_method(self.driver, class_name, method_name, self.method_cache, self.repo_cache),
-            lambda class_name, method_name: neo4j_queries.find_similar_methods(self.driver, class_name, method_name, self.repo_cache),
+            lambda cn, mn: neo4j_queries.find_method(
+                self.driver, cn, mn, self.method_cache, self.repo_cache,
+            ),
+            lambda cn, mn: neo4j_queries.find_similar_methods(
+                self.driver, cn, mn, self.repo_cache,
+            ),
             validate_parameters,
-            lambda class_type: is_from_knowledge_graph(class_type, self.knowledge_graph_modules),
+            lambda ct: is_from_knowledge_graph(
+                ct, self.knowledge_graph_modules,
+            ),
             self.knowledge_graph_modules,
         )
 
-    async def _validate_single_method_call(self, method_call: Any) -> MethodValidation:
-        """Delegate to validation.method_validator.validate_single_method_call"""
+    async def _validate_single_method_call(
+        self, method_call: Any,
+    ) -> MethodValidation:
+        """Validate single method call against knowledge graph"""
         return await validate_single_method_call(
             method_call,
-            lambda class_name, method_name: neo4j_queries.find_method(self.driver, class_name, method_name, self.method_cache, self.repo_cache),
-            lambda class_name, method_name: neo4j_queries.find_similar_methods(self.driver, class_name, method_name, self.repo_cache),
+            lambda cn, mn: neo4j_queries.find_method(
+                self.driver, cn, mn, self.method_cache, self.repo_cache,
+            ),
+            lambda cn, mn: neo4j_queries.find_similar_methods(
+                self.driver, cn, mn, self.repo_cache,
+            ),
             validate_parameters,
-            lambda class_type: is_from_knowledge_graph(class_type, self.knowledge_graph_modules),
+            lambda ct: is_from_knowledge_graph(
+                ct, self.knowledge_graph_modules,
+            ),
             self.knowledge_graph_modules,
         )
 
     # Delegation methods - Attribute validation
 
-    async def _validate_attribute_accesses(self, attribute_accesses: Any) -> list[AttributeValidation]:
-        """Delegate to validation.attribute_validator.validate_attribute_accesses"""
+    async def _validate_attribute_accesses(
+        self, attribute_accesses: Any,
+    ) -> list[AttributeValidation]:
+        """Validate attribute accesses against knowledge graph"""
         return await validate_attribute_accesses(
             attribute_accesses,
-            lambda class_name, attr_name: neo4j_queries.find_attribute(self.driver, class_name, attr_name, self.repo_cache),
-            lambda class_name, method_name: neo4j_queries.find_method(self.driver, class_name, method_name, self.method_cache, self.repo_cache),
-            lambda class_type: is_from_knowledge_graph(class_type, self.knowledge_graph_modules),
+            lambda cn, an: neo4j_queries.find_attribute(
+                self.driver, cn, an, self.repo_cache,
+            ),
+            lambda cn, mn: neo4j_queries.find_method(
+                self.driver, cn, mn, self.method_cache, self.repo_cache,
+            ),
+            lambda ct: is_from_knowledge_graph(
+                ct, self.knowledge_graph_modules,
+            ),
             self.knowledge_graph_modules,
         )
 
-    async def _validate_single_attribute_access(self, attr_access: Any) -> AttributeValidation:
-        """Delegate to validation.attribute_validator.validate_single_attribute_access"""
+    async def _validate_single_attribute_access(
+        self, attr_access: Any,
+    ) -> AttributeValidation:
+        """Validate single attribute access against knowledge graph"""
         return await validate_single_attribute_access(
             attr_access,
-            lambda class_name, attr_name: neo4j_queries.find_attribute(self.driver, class_name, attr_name, self.repo_cache),
-            lambda class_name, method_name: neo4j_queries.find_method(self.driver, class_name, method_name, self.method_cache, self.repo_cache),
-            lambda class_type: is_from_knowledge_graph(class_type, self.knowledge_graph_modules),
+            lambda cn, an: neo4j_queries.find_attribute(
+                self.driver, cn, an, self.repo_cache,
+            ),
+            lambda cn, mn: neo4j_queries.find_method(
+                self.driver, cn, mn, self.method_cache, self.repo_cache,
+            ),
+            lambda ct: is_from_knowledge_graph(
+                ct, self.knowledge_graph_modules,
+            ),
             self.knowledge_graph_modules,
         )
 
     # Delegation methods - Function validation
 
-    async def _validate_function_calls(self, function_calls: Any) -> list[FunctionValidation]:
-        """Delegate to validation.function_validator.validate_function_calls"""
+    async def _validate_function_calls(
+        self, function_calls: Any,
+    ) -> list[FunctionValidation]:
+        """Validate function calls against knowledge graph"""
         return await validate_function_calls(
             function_calls,
-            lambda func_name: neo4j_queries.find_function(self.driver, func_name, self.repo_cache),
+            lambda fn: neo4j_queries.find_function(
+                self.driver, fn, self.repo_cache,
+            ),
             validate_parameters,
-            lambda func_name: is_from_knowledge_graph(func_name, self.knowledge_graph_modules),
+            lambda fn: is_from_knowledge_graph(
+                fn, self.knowledge_graph_modules,
+            ),
             self.knowledge_graph_modules,
         )
 
-    async def _validate_single_function_call(self, func_call: Any) -> FunctionValidation:
-        """Delegate to validation.function_validator.validate_single_function_call"""
+    async def _validate_single_function_call(
+        self, func_call: Any,
+    ) -> FunctionValidation:
+        """Validate single function call against knowledge graph"""
         return await validate_single_function_call(
             func_call,
-            lambda func_name: neo4j_queries.find_function(self.driver, func_name, self.repo_cache),
+            lambda fn: neo4j_queries.find_function(
+                self.driver, fn, self.repo_cache,
+            ),
             validate_parameters,
-            lambda func_name: is_from_knowledge_graph(func_name, self.knowledge_graph_modules),
+            lambda fn: is_from_knowledge_graph(
+                fn, self.knowledge_graph_modules,
+            ),
             self.knowledge_graph_modules,
         )
 
@@ -257,7 +330,10 @@ class KnowledgeGraphValidator:
         """Delegate to validation.utils.is_from_knowledge_graph"""
         return is_from_knowledge_graph(class_type, self.knowledge_graph_modules)
 
-    def _detect_hallucinations(self, result: ScriptValidationResult) -> list[dict[str, Any]]:
+    def _detect_hallucinations(
+        self,
+        result: ScriptValidationResult,
+    ) -> list[dict[str, Any]]:
         """Delegate to validation.utils.detect_hallucinations"""
         return detect_hallucinations(
             result,
