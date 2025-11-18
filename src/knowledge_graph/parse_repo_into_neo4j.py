@@ -146,28 +146,27 @@ class DirectNeo4jExtractor:
                 max_file_count=self.repo_max_file_count,
                 min_free_space_gb=self.repo_min_free_space_gb,
             )
-
-            if is_valid:
-                return is_valid, info
-            elif self.repo_allow_size_override:
-                logger.warning(
-                    "Repository exceeds limits but override is enabled: %s",
-                    info.get("errors", []),
-                )
-                info["override_applied"] = True
-                return True, info
-            else:
-                logger.error(
-                    "Repository validation failed: %s",
-                    info.get("errors", []),
-                )
-                return False, info
         except RepositoryError as e:
             logger.exception("Repository validation failed")
             return False, {"errors": [str(e)]}
         except Exception:
             logger.exception("Unexpected error during validation")
             return False, {"errors": ["Unexpected error"]}
+        else:
+            if is_valid:
+                return is_valid, info
+            if self.repo_allow_size_override:
+                logger.warning(
+                    "Repository exceeds limits but override is enabled: %s",
+                    info.get("errors", []),
+                )
+                info["override_applied"] = True
+                return True, info
+            logger.error(
+                "Repository validation failed: %s",
+                info.get("errors", []),
+            )
+            return False, info
 
     async def clone_repo(
         self,
