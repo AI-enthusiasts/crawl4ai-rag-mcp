@@ -66,7 +66,7 @@ def validate_github_url(url: str) -> dict[str, Any]:
     except (ValueError, AttributeError) as e:
         return {"valid": False, "error": f"Invalid URL format: {e!s}"}
     except Exception as e:
-        logger.exception(f"Unexpected error validating GitHub URL: {e}")
+        logger.exception("Unexpected error validating GitHub URL: %s", e)
         return {"valid": False, "error": f"URL validation failed: {e!s}"}
 
 
@@ -117,7 +117,7 @@ async def parse_github_repository(repo_extractor: Any, repo_url: str) -> str:
         # Extract repository name from URL
         repo_name = repo_url.rstrip(".git").split("/")[-1]
 
-        logger.info(f"Starting repository parsing for: {repo_url}")
+        logger.info("Starting repository parsing for: %s", repo_url)
 
         # Clone and analyze the repository
         # The repo_extractor handles:
@@ -172,7 +172,7 @@ async def parse_github_repository(repo_extractor: Any, repo_url: str) -> str:
         )
 
     except (GitError, RepositoryError) as e:
-        logger.error(f"Repository operation failed for {repo_url}: {e}")
+        logger.error("Repository operation failed for %s: %s", repo_url, e)
         return json.dumps(
             {
                 "success": False,
@@ -182,7 +182,7 @@ async def parse_github_repository(repo_extractor: Any, repo_url: str) -> str:
             indent=2,
         )
     except QueryError as e:
-        logger.error(f"Neo4j query failed for {repo_url}: {e}")
+        logger.error("Neo4j query failed for %s: %s", repo_url, e)
         return json.dumps(
             {
                 "success": False,
@@ -192,7 +192,7 @@ async def parse_github_repository(repo_extractor: Any, repo_url: str) -> str:
             indent=2,
         )
     except Exception as e:
-        logger.exception(f"Unexpected error parsing repository {repo_url}: {e}")
+        logger.exception("Unexpected error parsing repository %s: %s", repo_url, e)
         return json.dumps(
             {
                 "success": False,
@@ -244,7 +244,7 @@ async def parse_github_repository_with_branch(
 
         # Extract repository name
         repo_name = repo_url.split("/")[-1].replace(".git", "")
-        logger.info(f"Parsing repository {repo_name} on branch {branch}")
+        logger.info("Parsing repository %s on branch %s", repo_name, branch)
 
         # Parse the repository with branch specification
         await repo_extractor.analyze_repository(repo_url, branch=branch)
@@ -313,7 +313,7 @@ async def parse_github_repository_with_branch(
             )
 
     except (GitError, RepositoryError) as e:
-        logger.error(f"Repository/Git operation failed: {e}")
+        logger.error("Repository/Git operation failed: %s", e)
         return json.dumps(
             {
                 "error": "Failed to parse repository branch",
@@ -321,7 +321,7 @@ async def parse_github_repository_with_branch(
             },
         )
     except QueryError as e:
-        logger.error(f"Neo4j query failed: {e}")
+        logger.error("Neo4j query failed: %s", e)
         return json.dumps(
             {
                 "error": "Database query failed",
@@ -329,7 +329,7 @@ async def parse_github_repository_with_branch(
             },
         )
     except Exception as e:
-        logger.exception(f"Unexpected error parsing repository branch: {e}")
+        logger.exception("Unexpected error parsing repository branch: %s", e)
         return json.dumps(
             {
                 "error": "Failed to parse repository branch",
@@ -448,7 +448,7 @@ async def get_repository_metadata_from_neo4j(ctx: Context, repo_name: str) -> st
             )
 
     except QueryError as e:
-        logger.error(f"Neo4j query failed getting repository metadata: {e}")
+        logger.error("Neo4j query failed getting repository metadata: %s", e)
         return json.dumps(
             {
                 "error": "Database query failed",
@@ -456,7 +456,7 @@ async def get_repository_metadata_from_neo4j(ctx: Context, repo_name: str) -> st
             },
         )
     except Exception as e:
-        logger.exception(f"Unexpected error getting repository metadata: {e}")
+        logger.exception("Unexpected error getting repository metadata: %s", e)
         return json.dumps(
             {
                 "error": "Failed to get repository metadata",
@@ -521,7 +521,7 @@ async def update_repository_in_neo4j(ctx: Context, repo_url: str) -> str:
         )
 
     except (GitError, RepositoryError) as e:
-        logger.error(f"Repository/Git operation failed during update: {e}")
+        logger.error("Repository/Git operation failed during update: %s", e)
         return json.dumps(
             {
                 "error": "Failed to update repository",
@@ -529,7 +529,7 @@ async def update_repository_in_neo4j(ctx: Context, repo_url: str) -> str:
             },
         )
     except Exception as e:
-        logger.exception(f"Unexpected error updating repository: {e}")
+        logger.exception("Unexpected error updating repository: %s", e)
         return json.dumps(
             {
                 "error": "Failed to update repository",
