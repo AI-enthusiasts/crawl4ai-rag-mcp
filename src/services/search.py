@@ -101,7 +101,7 @@ async def search_and_process(
         )
 
     except Exception as e:
-        logger.exception(f"Error in search_and_process: {e}")
+        logger.exception("Error in search_and_process: %s", e)
         msg = f"Search processing failed: {e!s}"
         raise MCPToolError(msg)
 
@@ -150,7 +150,7 @@ async def _search_searxng(query: str, num_results: int) -> list[dict[str, Any]]:
             timeout=aiohttp.ClientTimeout(total=settings.searxng_timeout),
         ) as response:
             if response.status != 200:
-                logger.error(f"SearXNG returned status {response.status}")
+                logger.error("SearXNG returned status %s", response.status)
                 return []
 
             data = await response.json()
@@ -170,11 +170,11 @@ async def _search_searxng(query: str, num_results: int) -> list[dict[str, Any]]:
         return results
 
     except FetchError as e:
-        logger.error(f"Failed to fetch from SearXNG: {e}")
+        logger.error("Failed to fetch from SearXNG: %s", e)
         return []
     except SearchError as e:
-        logger.error(f"SearXNG search error: {e}")
+        logger.error("SearXNG search error: %s", e)
         return []
     except Exception as e:
-        logger.exception(f"Unexpected error in SearXNG search: {e}")
+        logger.exception("Unexpected error in SearXNG search: %s", e)
         return []
