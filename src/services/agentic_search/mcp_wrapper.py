@@ -11,9 +11,9 @@ from fastmcp import Context
 from src.config import get_settings
 from src.core import MCPToolError
 
-# Import singleton from parent module (avoid duplication)
+# Import singleton from factory module (avoid circular import)
 # Per Pydantic AI docs: Reuse Agent instances to benefit from connection pooling
-from . import get_agentic_search_service
+from .factory import get_agentic_search_service
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
