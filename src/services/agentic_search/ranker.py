@@ -72,13 +72,15 @@ class URLRanker:
             )
             return []
 
-        logger.info(f"Found {len(search_results)} search results")
+        logger.info("Found %s search results", len(search_results))
 
         # OPTIMIZATION 3: Limit URLs to rank (configurable)
         # Reduces LLM tokens and speeds up ranking
         if len(search_results) > self.config.max_urls_to_rank:
             logger.info(
-                f"Limiting ranking to top {self.config.max_urls_to_rank} of {len(search_results)} results",
+                "Limiting ranking to top %s of %s results",
+                self.config.max_urls_to_rank,
+                len(search_results),
             )
             search_results = search_results[: self.config.max_urls_to_rank]
 
@@ -90,7 +92,10 @@ class URLRanker:
         promising = promising[:max_urls]  # Limit to max URLs
 
         logger.info(
-            f"Ranked {len(rankings)} URLs, {len(promising)} above threshold {url_threshold}",
+            "Ranked %s URLs, %s above threshold %s",
+            len(rankings),
+            len(promising),
+            url_threshold,
         )
 
         search_history.append(
@@ -160,9 +165,9 @@ Return a list of rankings with url, title, snippet, score, and reasoning for eac
 
         except UnexpectedModelBehavior as e:
             # Per Pydantic AI docs: Raised when retries exhausted
-            logger.error(f"URL ranking failed after retries: {e}")
+            logger.error("URL ranking failed after retries: %s", e)
             raise LLMError("LLM URL ranking failed after retries") from e
 
         except Exception as e:
-            logger.exception(f"Unexpected error in URL ranking: {e}")
+            logger.exception("Unexpected error in URL ranking: %s", e)
             raise LLMError("URL ranking failed") from e
