@@ -59,7 +59,7 @@ def simulate_crawling_scenario():
 
         print(f"✓ extract_domain_from_url worked: {source_id}")
 
-        # Now test the add_documents_to_database import (line 389 in crawling.py) 
+        # Now test the add_documents_to_database import (line 389 in crawling.py)
         print("✓ add_documents_to_database import worked")
 
         return True

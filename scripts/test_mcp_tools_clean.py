@@ -14,7 +14,6 @@ from dotenv import load_dotenv
 
 async def test_tool_invocation():
     """Test MCP tool calls with stdio transport"""
-
     # Load .env.test but don't override existing env vars
     env_test_path = Path(__file__).parent.parent / ".env.test"
     load_dotenv(env_test_path, override=False)
@@ -73,7 +72,7 @@ async def test_tool_invocation():
             "description": "List all sources",
         },
         {
-            "name": "scrape_urls", 
+            "name": "scrape_urls",
             "args": {"url": "https://example.com"},
             "description": "Scrape a test URL",
         },

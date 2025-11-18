@@ -13,7 +13,7 @@ try:
     from services.crawling import crawl_batch, process_urls_for_mcp
     print("✓ Successfully imported from services.crawling")
 
-    # Test 2: Import from services.validated_search  
+    # Test 2: Import from services.validated_search
     from services.validated_search import ValidatedCodeSearchService
     print("✓ Successfully imported from services.validated_search")
 

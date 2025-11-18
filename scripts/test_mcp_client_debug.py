@@ -14,7 +14,6 @@ sys.path.append(str(Path(__file__).parent.parent / "tests"))
 
 async def test_with_debug():
     """Test basic MCP server connectivity with full debug output"""
-
     # Load .env.test first
     from dotenv import load_dotenv
     env_test_path = Path(__file__).parent.parent / ".env.test"
@@ -24,7 +23,7 @@ async def test_with_debug():
     env = os.environ.copy()
     env.update({
         "TRANSPORT": "stdio",  # Override to stdio for this test
-        "VECTOR_DATABASE": "qdrant", 
+        "VECTOR_DATABASE": "qdrant",
         "QDRANT_URL": "http://localhost:6333",  # Use localhost for local testing
         "SEARXNG_URL": "http://localhost:8080",  # Use localhost for local testing
         "OPENAI_API_KEY": env.get("OPENAI_API_KEY", ""),  # Keep from .env.test
@@ -33,7 +32,7 @@ async def test_with_debug():
 
     # Server command
     server_command = [
-        "uv", "run", "python", 
+        "uv", "run", "python",
         "src/crawl4ai_mcp.py",
     ]
 
@@ -78,7 +77,7 @@ async def test_with_debug():
         print("[CLIENT] Waiting for response...")
         try:
             response_line = await asyncio.wait_for(
-                process.stdout.readline(), 
+                process.stdout.readline(),
                 timeout=30.0,  # Increased timeout
             )
 

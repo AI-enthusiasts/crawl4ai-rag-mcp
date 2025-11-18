@@ -13,7 +13,6 @@ sys.path.append(str(Path(__file__).parent.parent / "tests"))
 
 async def test_with_initialization():
     """Test MCP server with proper initialization sequence"""
-
     # Load .env.test first
     from dotenv import load_dotenv
     env_test_path = Path(__file__).parent.parent / ".env.test"

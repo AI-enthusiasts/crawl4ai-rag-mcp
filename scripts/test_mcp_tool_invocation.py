@@ -15,7 +15,6 @@ sys.path.append(str(Path(__file__).parent.parent / "tests"))
 
 async def test_tool_invocation():
     """Test MCP tool calls after proper initialization"""
-
     # Load .env.test first with override=True
     from dotenv import load_dotenv
     env_test_path = Path(__file__).parent.parent / ".env.test"
@@ -69,7 +68,7 @@ async def test_tool_invocation():
             "expected": "Should return list of sources or empty array",
         },
         {
-            "name": "scrape_urls", 
+            "name": "scrape_urls",
             "args": {"url": "https://example.com"},
             "description": "Scrape a simple test URL",
             "expected": "Should return scraped content",
