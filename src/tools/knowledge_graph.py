@@ -152,15 +152,15 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
         try:
             return await query_knowledge_graph_wrapper(ctx, command)
         except KnowledgeGraphError as e:
-            logger.error("Knowledge graph error: %s", e)
+            logger.exception("Knowledge graph error")
             msg = f"Knowledge graph query failed: {e!s}"
             raise MCPToolError(msg) from e
         except DatabaseError as e:
-            logger.error("Database error in knowledge graph: %s", e)
+            logger.exception("Database error in knowledge graph")
             msg = f"Knowledge graph query failed: {e!s}"
             raise MCPToolError(msg) from e
         except Exception as e:
-            logger.exception("Unexpected error in query_knowledge_graph tool: %s", e)
+            logger.exception("Unexpected error in query_knowledge_graph tool")
             msg = f"Knowledge graph query failed: {e!s}"
             raise MCPToolError(msg) from e
 
@@ -199,15 +199,15 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
         except MCPToolError:
             raise
         except ValidationError as e:
-            logger.error("Validation error: %s", e)
+            logger.exception("Validation error")
             msg = f"Repository parsing failed: {e!s}"
             raise MCPToolError(msg) from e
         except KnowledgeGraphError as e:
-            logger.error("Knowledge graph error: %s", e)
+            logger.exception("Knowledge graph error")
             msg = f"Repository parsing failed: {e!s}"
             raise MCPToolError(msg) from e
         except Exception as e:
-            logger.exception("Unexpected error in parse_github_repository tool: %s", e)
+            logger.exception("Unexpected error in parse_github_repository tool")
             msg = f"Repository parsing failed: {e!s}"
             raise MCPToolError(msg) from e
 

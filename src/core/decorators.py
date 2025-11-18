@@ -40,17 +40,19 @@ def track_request(
 
             try:
                 result = await func(*args, **kwargs)
-                duration = datetime.now(UTC).timestamp() - start_time
-                logger.info("Completed %s in %.2fs", tool_name, duration)
-                return result
             except Exception as e:
                 duration = datetime.now(UTC).timestamp() - start_time
                 logger.error("Failed %s after %.2fs: %s", tool_name, duration, str(e))
                 logger.debug("Traceback: %s", traceback.format_exc())
                 raise
+            else:
+                duration = datetime.now(UTC).timestamp() - start_time
+                logger.info("Completed %s in %.2fs", tool_name, duration)
             finally:
                 # Clean up context variable
                 request_id_ctx.set(None)
+
+            return result
 
         return wrapper
 
