@@ -268,7 +268,6 @@ services:
       - type: bind
         source: ./docker/searxng
         target: /etc/searxng
-        read_only: true
       - searxng-cache:/var/cache/searxng
     environment:
       - SEARXNG_BASE_URL=${SEARXNG_BASE_URL:-http://localhost:8080/}
