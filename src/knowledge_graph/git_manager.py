@@ -114,15 +114,16 @@ class GitRepositoryManager:
 
         try:
             # Check available disk space first
-            import shutil
             disk_usage = shutil.disk_usage("/")
             info["free_space_gb"] = disk_usage.free / (1024**3)
 
             if info["free_space_gb"] < min_free_space_gb:
-                info["errors"].append(
-                    f"Insufficient disk space: {info['free_space_gb']:.2f}GB available, "
-                    f"{min_free_space_gb:.2f}GB required",
+                error_msg = (
+                    f"Insufficient disk space: "
+                    f"{info['free_space_gb']:.2f}GB available, "
+                    f"{min_free_space_gb:.2f}GB required"
                 )
+                info["errors"].append(error_msg)
                 return False, info
 
             # Try to get repository size using git ls-remote
@@ -147,16 +148,21 @@ class GitRepositoryManager:
                     if repo_info.get("size"):
                         size_str = repo_info["size"]
                         if "MiB" in size_str:
-                            info["estimated_size_mb"] = float(size_str.replace(" MiB", ""))
+                            size_val = float(size_str.replace(" MiB", ""))
+                            info["estimated_size_mb"] = size_val
                         elif "KiB" in size_str:
-                            info["estimated_size_mb"] = float(size_str.replace(" KiB", "")) / 1024
+                            size_val = float(size_str.replace(" KiB", ""))
+                            info["estimated_size_mb"] = size_val / 1024
                         elif "GiB" in size_str:
-                            info["estimated_size_mb"] = float(size_str.replace(" GiB", "")) * 1024
+                            size_val = float(size_str.replace(" GiB", ""))
+                            info["estimated_size_mb"] = size_val * 1024
 
                     info["file_count"] = repo_info.get("file_count", 0)
 
                 except Exception as e:
-                    self.logger.warning("Could not get exact size, trying alternative method: %s", e)
+                    self.logger.warning(
+                        "Could not get exact size, trying alternative method: %s", e
+                    )
 
                     # Method 2: Use GitHub API if it's a GitHub repository
                     if "github.com" in url:
