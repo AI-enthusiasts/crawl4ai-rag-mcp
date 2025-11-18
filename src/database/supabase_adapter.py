@@ -352,7 +352,7 @@ class SupabaseAdapter:
             query = (
                 self.client.table("code_examples")
                 .select(
-                    "id, url, chunk_number, content, summary, metadata, source_id"
+                    "id, url, chunk_number, content, summary, metadata, source_id",
                 )
                 .or_(f"content.ilike.%{keyword}%,summary.ilike.%{keyword}%")
             )
@@ -403,7 +403,9 @@ class SupabaseAdapter:
                 # Try batch deletion
                 self.client.table("crawled_pages").delete().in_("url", urls).execute()
         except QueryError:
-            logger.warning("Batch delete failed. Trying one-by-one deletion as fallback.")
+            logger.warning(
+                "Batch delete failed. Trying one-by-one deletion as fallback.",
+            )
             # Fallback: delete records one by one
             for url in urls:
                 try:
@@ -443,7 +445,9 @@ class SupabaseAdapter:
                     retry_delay *= 2  # Exponential backoff
                 else:
                     # Final attempt failed
-                    logger.exception("Failed to insert batch after %s attempts", self.max_retries)
+                    logger.exception(
+                        "Failed to insert batch after %s attempts", self.max_retries,
+                    )
                     # Try inserting records one by one as a last resort
                     logger.info("Attempting to insert records individually...")
                     successful_inserts = 0
@@ -454,7 +458,9 @@ class SupabaseAdapter:
                         except QueryError:
                             logger.exception("Failed to insert individual record")
                         except Exception:
-                            logger.exception("Unexpected error inserting individual record")
+                            logger.exception(
+                                "Unexpected error inserting individual record",
+                            )
 
                     if successful_inserts > 0:
                         logger.info(
