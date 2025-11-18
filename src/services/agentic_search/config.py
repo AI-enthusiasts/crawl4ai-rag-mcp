@@ -81,6 +81,8 @@ class AgenticSearchConfig:
         self.max_qdrant_results = settings.agentic_search_max_qdrant_results
 
         logger.info(
-            f"Initialized agentic search configuration with model={self.model_name}, "
-            f"threshold={self.completeness_threshold}, max_iterations={self.max_iterations}",
+            "Initialized agentic search configuration with model=%s, threshold=%s, max_iterations=%s",
+            self.model_name,
+            self.completeness_threshold,
+            self.max_iterations,
         )
