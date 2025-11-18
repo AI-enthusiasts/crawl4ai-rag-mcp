@@ -146,15 +146,18 @@ class AgenticSearchService:
         final_results: list[RAGResult] = []
 
         try:
-            logger.info(f"Starting agentic search for query: {query}")
+            logger.info("Starting agentic search for query: %s", query)
             logger.info(
-                f"Parameters: threshold={threshold}, max_iter={max_iter}, "
-                f"max_urls={max_urls}, url_threshold={url_threshold}",
+                "Parameters: threshold=%s, max_iter=%s, max_urls=%s, url_threshold=%s",
+                threshold,
+                max_iter,
+                max_urls,
+                url_threshold,
             )
 
             while iteration < max_iter:
                 iteration += 1
-                logger.info(f"Iteration {iteration}/{max_iter}: Query='{current_query}'")
+                logger.info("Iteration %d/%d: Query='%s'", iteration, max_iter, current_query)
 
                 # STAGE 1: Local Knowledge Check
                 evaluation, rag_results = await self.evaluator.evaluate_local_knowledge(
@@ -167,7 +170,9 @@ class AgenticSearchService:
                 # Check if we have sufficient answer
                 if evaluation.score >= threshold:
                     logger.info(
-                        f"Completeness threshold met: {evaluation.score:.2f} >= {threshold:.2f}",
+                        "Completeness threshold met: %.2f >= %.2f",
+                        evaluation.score,
+                        threshold,
                     )
                     return AgenticSearchResult(
                         success=True,
@@ -180,9 +185,11 @@ class AgenticSearchService:
                     )
 
                 logger.info(
-                    f"Completeness insufficient: {evaluation.score:.2f} < {threshold:.2f}",
+                    "Completeness insufficient: %.2f < %.2f",
+                    evaluation.score,
+                    threshold,
                 )
-                logger.info(f"Knowledge gaps: {evaluation.gaps}")
+                logger.info("Knowledge gaps: %s", evaluation.gaps)
 
                 # STAGE 2: Web Search
                 promising_urls = await self.ranker.search_and_rank_urls(
@@ -202,7 +209,7 @@ class AgenticSearchService:
                             query, current_query, evaluation.gaps,
                         )
                         current_query = refined.refined_queries[0]
-                        logger.info(f"Refined query: {current_query}")
+                        logger.info("Refined query: %s", current_query)
                         continue
                     logger.info("Max iterations reached with no promising URLs")
                     break
@@ -221,7 +228,7 @@ class AgenticSearchService:
                 # OPTIMIZATION 1: Skip re-check if no content was stored
                 # Saves 1 LLM call per failed crawl
                 if urls_stored > 0:
-                    logger.info(f"Re-checking completeness after storing {urls_stored} URLs")
+                    logger.info("Re-checking completeness after storing %d URLs", urls_stored)
                     evaluation, rag_results = await self.evaluator.evaluate_local_knowledge(
                         ctx, current_query, iteration, search_history, is_recheck=True,
                     )
@@ -231,7 +238,8 @@ class AgenticSearchService:
 
                     if evaluation.score >= threshold:
                         logger.info(
-                            f"Completeness threshold met after crawling: {evaluation.score:.2f}",
+                            "Completeness threshold met after crawling: %.2f",
+                            evaluation.score,
                         )
                         return AgenticSearchResult(
                             success=True,
@@ -253,9 +261,10 @@ class AgenticSearchService:
                 if iteration < max_iter:
                     if score_improvement >= SCORE_IMPROVEMENT_THRESHOLD:
                         logger.info(
-                            f"Score improved significantly ({previous_score:.2f} → "
-                            f"{final_completeness:.2f}, +{score_improvement:.2f}), "
-                            f"skipping refinement (optimization)",
+                            "Score improved significantly (%.2f → %.2f, +%.2f), skipping refinement (optimization)",
+                            previous_score,
+                            final_completeness,
+                            score_improvement,
                         )
                     else:
                         refined = await self._stage4_query_refinement(
@@ -264,7 +273,7 @@ class AgenticSearchService:
                         current_query = refined.refined_queries[0]
 
             # Max iterations reached
-            logger.info(f"Max iterations reached: {iteration}/{max_iter}")
+            logger.info("Max iterations reached: %d/%d", iteration, max_iter)
             return AgenticSearchResult(
                 success=True,
                 query=query,
@@ -276,7 +285,7 @@ class AgenticSearchService:
             )
 
         except Exception as e:
-            logger.exception(f"Agentic search failed: {e}")
+            logger.exception("Agentic search failed: %s", e)
             return AgenticSearchResult(
                 success=False,
                 query=query,
@@ -358,9 +367,9 @@ Provide:
 
         except UnexpectedModelBehavior as e:
             # Per Pydantic AI docs: Raised when retries exhausted
-            logger.error(f"Query refinement failed after retries: {e}")
+            logger.error("Query refinement failed after retries: %s", e)
             raise LLMError("LLM query refinement failed after retries") from e
 
         except Exception as e:
-            logger.exception(f"Unexpected error in query refinement: {e}")
+            logger.exception("Unexpected error in query refinement: %s", e)
             raise LLMError("Query refinement failed") from e
