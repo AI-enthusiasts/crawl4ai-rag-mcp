@@ -27,7 +27,7 @@ async def clear_repository_data(driver: Any, repo_name: str) -> None:
     Raises:
         Exception: If repository validation fails or Neo4j operations encounter errors
     """
-    logger.info(f"Starting cleanup for repository: {repo_name}")
+    logger.info("Starting cleanup for repository: %s", repo_name)
 
     # Validate that repository exists before attempting cleanup
     async with driver.session() as session:
@@ -38,15 +38,15 @@ async def clear_repository_data(driver: Any, repo_name: str) -> None:
             )
             record = await result.single()
             if not record or record["repo_count"] == 0:
-                logger.warning(f"Repository '{repo_name}' not found in database - nothing to clean")
+                logger.warning("Repository '%s' not found in database - nothing to clean", repo_name)
                 return
 
-            logger.info(f"Confirmed repository '{repo_name}' exists, proceeding with cleanup")
+            logger.info("Confirmed repository '%s' exists, proceeding with cleanup", repo_name)
         except QueryError as e:
-            logger.error(f"Neo4j query failed validating repository '{repo_name}': {e}")
+            logger.error("Neo4j query failed validating repository '%s': %s", repo_name, e)
             raise
         except Exception as e:
-            logger.exception(f"Unexpected error validating repository '{repo_name}': {e}")
+            logger.exception("Unexpected error validating repository '%s': %s", repo_name, e)
             raise RepositoryError(f"Repository validation failed: {e}") from e
 
     # Track cleanup statistics for logging
@@ -159,21 +159,21 @@ async def clear_repository_data(driver: Any, repo_name: str) -> None:
 
         except QueryError as e:
             # Rollback the transaction on any error
-            logger.error(f"Neo4j query error during cleanup transaction, rolling back: {e}")
+            logger.error("Neo4j query error during cleanup transaction, rolling back: %s", e)
             await tx.rollback()
             raise
         except Exception as e:
             # Rollback the transaction on any error
-            logger.exception(f"Unexpected error during cleanup transaction, rolling back: {e}")
+            logger.exception("Unexpected error during cleanup transaction, rolling back: %s", e)
             await tx.rollback()
             raise RepositoryError(f"Repository cleanup failed and was rolled back: {e}") from e
 
     # Log cleanup statistics
     total_deleted = sum(cleanup_stats.values())
-    logger.info(f"Successfully cleared repository '{repo_name}' - {total_deleted} total nodes deleted:")
+    logger.info("Successfully cleared repository '%s' - %s total nodes deleted:", repo_name, total_deleted)
     for entity_type, count in cleanup_stats.items():
         if count > 0:
-            logger.info(f"  - {entity_type}: {count}")
+            logger.info("  - %s: %s", entity_type, count)
 
     if total_deleted == 0:
         logger.info("Repository was already empty or contained no data to clean")
