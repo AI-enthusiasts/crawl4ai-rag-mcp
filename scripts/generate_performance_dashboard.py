@@ -91,15 +91,15 @@ class PerformanceDashboard:
         test_names, test_times = self._extract_test_data()
 
         if not test_names:
-            return '''
+            return """
             <script>
             document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('testTimesChart').innerHTML = '<p>No test data available</p>';
             });
             </script>
-            '''
+            """
 
-        return f'''
+        return f"""
         <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
         <script>
         document.addEventListener('DOMContentLoaded', function() {{
@@ -119,7 +119,7 @@ class PerformanceDashboard:
             Plotly.newPlot('testTimesChart', [testTimesTrace], testTimesLayout);
         }});
         </script>
-        '''
+        """
 
     def _generate_slowest_tests_table(self) -> str:
         """
@@ -136,12 +136,12 @@ class PerformanceDashboard:
                 })
 
         if not test_data:
-            return '''
+            return """
             <div class="slowest-tests">
                 <h2>Slowest Tests</h2>
                 <p>No test data available</p>
             </div>
-            '''
+            """
 
         sorted_tests = sorted(test_data, key=lambda x: x["duration"], reverse=True)[:10]
 
@@ -153,7 +153,7 @@ class PerformanceDashboard:
         if not table_rows:
             table_rows = '<tr><td colspan="2">No test timing data available</td></tr>'
 
-        return f'''
+        return f"""
         <div class="slowest-tests">
             <h2>10 Slowest Tests</h2>
             <table>
@@ -165,7 +165,7 @@ class PerformanceDashboard:
                 </tbody>
             </table>
         </div>
-        '''
+        """
 
     def _generate_summary_section(self) -> str:
         """Generate summary statistics section."""
@@ -175,7 +175,7 @@ class PerformanceDashboard:
         passed_tests = sum(1 for test in self.metrics if isinstance(test, dict) and test.get("outcome") == "passed")
         failed_tests = sum(1 for test in self.metrics if isinstance(test, dict) and test.get("outcome") == "failed")
 
-        return f'''
+        return f"""
         <div class="summary">
             <h2>Test Summary</h2>
             <ul>
@@ -185,7 +185,7 @@ class PerformanceDashboard:
                 <li>Failed: {failed_tests}</li>
             </ul>
         </div>
-        '''
+        """
 
     def generate_dashboard(self) -> str:
         """
@@ -193,7 +193,7 @@ class PerformanceDashboard:
         
         :return: Complete HTML dashboard
         """
-        dashboard_html = f'''
+        dashboard_html = f"""
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -232,7 +232,7 @@ class PerformanceDashboard:
             {self._generate_plotly_script()}
         </body>
         </html>
-        '''
+        """
         return dashboard_html
 
 
@@ -247,7 +247,7 @@ def main():
     if not Path(metrics_file).exists():
         print(f"Error: Metrics file '{metrics_file}' not found")
         # Generate a minimal dashboard anyway
-        dashboard_html = '''
+        dashboard_html = """
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -266,7 +266,7 @@ def main():
             </div>
         </body>
         </html>
-        '''
+        """
 
         output_file = "performance_dashboard.html"
         with Path(output_file).open("w") as f:

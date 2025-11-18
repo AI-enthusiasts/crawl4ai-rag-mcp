@@ -114,7 +114,7 @@ async def async_function(data: dict) -> None:
 
     def test_analyze_python_file_with_imports(self):
         """Test extracting imports (internal vs external)."""
-        python_content = '''
+        python_content = """
 import os
 import sys
 from pathlib import Path
@@ -125,7 +125,7 @@ from myproject.utils import helper
 from src.services import ServiceClass
 import myproject.models
 from .relative import RelativeImport
-'''
+"""
         file_path = self.repo_root / "src/myproject/module.py"
 
         with patch("builtins.open", mock_open(read_data=python_content)):
@@ -304,10 +304,10 @@ def complex_function(
 
     def test_analyze_python_file_syntax_error(self):
         """Test handling of syntax errors in Python files."""
-        invalid_python = '''
+        invalid_python = """
 def broken_function(
     missing closing parenthesis
-'''
+"""
         file_path = self.repo_root / "broken.py"
 
         with patch("builtins.open", mock_open(read_data=invalid_python)):
