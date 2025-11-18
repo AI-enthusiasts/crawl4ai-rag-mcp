@@ -64,6 +64,73 @@ Edit(
 
 ---
 
+## ⚠️ **КРИТИЧЕСКИ ВАЖНО: ЗАПРЕТ КОСТЫЛЕЙ И WORKAROUNDS** ⚠️
+
+**КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО** использовать временные решения/костыли/workarounds:
+
+### ЗАПРЕЩЕНО:
+- ❌ **`# noqa` комментарии** - подавляют линтер вместо исправления проблемы
+- ❌ **`# type: ignore`** - скрывают проблемы типизации
+- ❌ **Импорты в конце файла** - нарушают PEP 8, ломаются при ruff auto-fix
+- ❌ **"Временные" решения** - становятся постоянными и ломают проект
+- ❌ **Комментарии "TODO: fix later"** - никто не фиксит, баги накапливаются
+- ❌ **Любые workarounds** которые можно правильно исправить
+
+### РАЗРЕШЕНО ТОЛЬКО:
+- ✅ **Правильная архитектура** - рефакторинг, новые модули, паттерны
+- ✅ **Исправление root cause** - устранение причины, не симптома
+- ✅ **Clean code** - следование PEP 8, best practices
+
+### ПОЧЕМУ ЭТО КРИТИЧЕСКИ ВАЖНО:
+
+1. **КОСТЫЛИ ЛОМАЮТ ПРОЕКТ**: Временные решения создают критические баги:
+   - Линтер/formatter ломает "хитрые" workarounds при auto-fix
+   - Импорты переставляются, circular imports возвращаются
+   - `# noqa` скрывает реальные проблемы, которые проявятся в production
+
+2. **ПОТЕРЯ ДЕНЕГ**: Каждый костыль означает:
+   - Повторная оплата за переделывание
+   - Debugging сломанного кода
+   - Откаты и потеря прогресса
+   - Трата токенов на исправление исправлений
+
+3. **ТЕХНИЧЕСКИЙ ДОЛГ**: Workarounds накапливаются:
+   - Код становится unmaintainable
+   - Новые разработчики не понимают логику
+   - Рефакторинг становится невозможным
+
+4. **НЕСТАБИЛЬНОСТЬ**: Проект даже не стартует:
+   - Circular imports из-за неправильного порядка импортов
+   - Runtime errors из-за подавленных warnings
+   - Непредсказуемое поведение
+
+### ПРАВИЛЬНЫЙ ПОДХОД:
+
+```python
+# ❌ НЕПРАВИЛЬНО - костыль с noqa
+# Import at end to avoid circular import
+from .mcp_wrapper import agentic_search_impl  # noqa: E402
+
+# ✅ ПРАВИЛЬНО - архитектурное решение
+# Create factory.py to break circular dependency
+# src/services/agentic_search/factory.py
+def get_agentic_search_service() -> AgenticSearchService:
+    # Singleton factory
+    ...
+
+# src/services/agentic_search/__init__.py
+from .factory import get_agentic_search_service  # Clean import
+from .mcp_wrapper import agentic_search_impl      # No circular dependency
+```
+
+**ЕСЛИ ЛИНТЕР РУГАЕТСЯ - ИСПРАВЬ ПРОБЛЕМУ, НЕ ПОДАВЛЯЙ WARNING.**
+
+**ЕСЛИ ЕСТЬ CIRCULAR IMPORT - РЕФАКТОРИ АРХИТЕКТУРУ, НЕ ДВИГАЙ ИМПОРТЫ В КОНЕЦ.**
+
+**ЕСЛИ ЕСТЬ TYPE ERROR - ИСПРАВЬ ТИПЫ, НЕ ДОБАВЛЯЙ `# type: ignore`.**
+
+---
+
 ## Technology Stack
 
 - **Package Manager**: uv (NOT pip/poetry/conda)
