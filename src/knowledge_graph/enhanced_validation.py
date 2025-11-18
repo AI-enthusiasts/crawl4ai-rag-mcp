@@ -72,12 +72,12 @@ class EnhancedScriptAnalyzer:
             }
 
         except SyntaxError as e:
-            logger.error(f"Syntax error in script {script_path}: {e}")
+            logger.error("Syntax error in script %s: %s", script_path, e)
             raise ParsingError(f"Script has syntax errors: {e}") from e
         except ParsingError:
             raise
         except AnalysisError as e:
-            logger.error(f"Analysis failed for script {script_path}: {e}")
+            logger.error("Analysis failed for script %s: %s", script_path, e)
             return {
                 "error": f"Analysis error: {e}",
                 "imports": [],
@@ -89,7 +89,7 @@ class EnhancedScriptAnalyzer:
                 "attribute_accesses": [],
             }
         except Exception as e:
-            logger.exception(f"Unexpected error analyzing script {script_path}: {e}")
+            logger.exception("Unexpected error analyzing script %s: %s", script_path, e)
             return {
                 "error": f"Unexpected analysis error: {e}",
                 "imports": [],
@@ -228,7 +228,7 @@ class EnhancedScriptAnalyzer:
         except AnalysisError:
             pass
         except Exception as e:
-            logger.exception(f"Unexpected error analyzing call: {e}")
+            logger.exception("Unexpected error analyzing call: %s", e)
         return None
 
     def _analyze_attribute(self, node: ast.Attribute) -> dict[str, Any] | None:
@@ -242,7 +242,7 @@ class EnhancedScriptAnalyzer:
         except AnalysisError:
             pass
         except Exception as e:
-            logger.exception(f"Unexpected error analyzing attribute: {e}")
+            logger.exception("Unexpected error analyzing attribute: %s", e)
         return None
 
 
@@ -290,7 +290,7 @@ class EnhancedHallucinationDetector:
         Returns:
             Comprehensive hallucination detection report
         """
-        logger.info(f"Starting enhanced hallucination detection for: {script_path}")
+        logger.info("Starting enhanced hallucination detection for: %s", script_path)
 
         try:
             # Validate script path and read content
@@ -341,10 +341,10 @@ class EnhancedHallucinationDetector:
             )
 
         except (ParsingError, AnalysisError) as e:
-            logger.error(f"Analysis/Parsing error in hallucination detection: {e}")
+            logger.error("Analysis/Parsing error in hallucination detection: %s", e)
             return self._create_error_response(script_path, f"Detection failed: {e!s}")
         except Exception as e:
-            logger.exception(f"Unexpected error in enhanced hallucination detection: {e}")
+            logger.exception("Unexpected error in enhanced hallucination detection: %s", e)
             return self._create_error_response(script_path, f"Detection failed: {e!s}")
 
     async def _perform_neo4j_validation(
