@@ -54,7 +54,8 @@ def get_contextual_embedding_config() -> dict[str, any]:
         max_tokens = int(os.getenv("CONTEXTUAL_EMBEDDING_MAX_TOKENS", "200"))
         if not (1 <= max_tokens <= 4096):
             logger.warning(
-                f"CONTEXTUAL_EMBEDDING_MAX_TOKENS ({max_tokens}) out of range 1-4096, using default 200",
+                "CONTEXTUAL_EMBEDDING_MAX_TOKENS (%s) out of range 1-4096, using default 200",
+                max_tokens,
             )
             max_tokens = 200
     except ValueError:
@@ -68,7 +69,8 @@ def get_contextual_embedding_config() -> dict[str, any]:
         temperature = float(os.getenv("CONTEXTUAL_EMBEDDING_TEMPERATURE", "0.3"))
         if not (0.0 <= temperature <= 2.0):
             logger.warning(
-                f"CONTEXTUAL_EMBEDDING_TEMPERATURE ({temperature}) out of range 0.0-2.0, using default 0.3",
+                "CONTEXTUAL_EMBEDDING_TEMPERATURE (%s) out of range 0.0-2.0, using default 0.3",
+                temperature,
             )
             temperature = 0.3
     except ValueError:
@@ -82,7 +84,8 @@ def get_contextual_embedding_config() -> dict[str, any]:
         max_doc_chars = int(os.getenv("CONTEXTUAL_EMBEDDING_MAX_DOC_CHARS", "25000"))
         if max_doc_chars <= 0:
             logger.warning(
-                f"CONTEXTUAL_EMBEDDING_MAX_DOC_CHARS ({max_doc_chars}) must be positive, using default 25000",
+                "CONTEXTUAL_EMBEDDING_MAX_DOC_CHARS (%s) must be positive, using default 25000",
+                max_doc_chars,
             )
             max_doc_chars = 25000
     except ValueError:
@@ -96,7 +99,8 @@ def get_contextual_embedding_config() -> dict[str, any]:
         max_workers = int(os.getenv("CONTEXTUAL_EMBEDDING_MAX_WORKERS", "10"))
         if max_workers <= 0:
             logger.warning(
-                f"CONTEXTUAL_EMBEDDING_MAX_WORKERS ({max_workers}) must be positive, using default 10",
+                "CONTEXTUAL_EMBEDDING_MAX_WORKERS (%s) must be positive, using default 10",
+                max_workers,
             )
             max_workers = 10
     except ValueError:
