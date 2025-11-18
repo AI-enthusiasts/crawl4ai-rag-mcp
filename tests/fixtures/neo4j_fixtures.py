@@ -256,7 +256,7 @@ def sample_git_repo(tmp_path):
 class TestClass:
     def __init__(self):
         self.test_attr = "test_value"
-    
+
     def test_method(self, param1: str) -> bool:
         """Test method"""
         return len(param1) > 0

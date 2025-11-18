@@ -43,11 +43,11 @@ class LoadTestAnalyzer:
 
     def run_load_tests(self, test_path: str | None = None, quick: bool = True) -> tuple[str, str, int]:
         """Run load tests and capture output.
-        
+
         Args:
             test_path: Specific test to run (None = all tests)
             quick: If True, skip slow tests
-            
+
         Returns:
             Tuple of (stdout, stderr, return_code)
         """

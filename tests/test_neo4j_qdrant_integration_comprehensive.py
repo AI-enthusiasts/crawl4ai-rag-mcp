@@ -945,15 +945,15 @@ from fake.module import NonExistentClass
 class UserManager:
     def __init__(self):
         self.auth_service = AuthService()
-    
+
     def authenticate_user(self, username, password):
         # This method exists in Neo4j
         return self.auth_service.authenticate(username, password)
-    
+
     def super_authenticate(self, user, pwd, magic_key):
         # This method doesn't exist - potential hallucination
         return self.auth_service.super_authenticate(user, pwd, magic_key)
-    
+
     def use_nonexistent_class(self):
         # This uses a class that doesn't exist
         fake_obj = NonExistentClass()

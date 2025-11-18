@@ -22,9 +22,9 @@ async def store_crawled_page(
 ) -> None:
     """
     Store a single crawled page in the database.
-    
+
     Test helper that wraps add_documents_to_database for single documents.
-    
+
     Args:
         client: Database adapter instance (QdrantAdapter or SupabaseAdapter)
         url: URL of the page
@@ -49,16 +49,16 @@ async def search_crawled_pages(
 ) -> list[dict[str, Any]]:
     """
     Search for crawled pages using vector similarity.
-    
+
     Test helper that wraps search_documents.
-    
+
     Args:
         client: Database adapter instance
         query: Search query text
         source: Optional source filter
         limit: Maximum number of results
         filter_metadata: Optional metadata filter
-        
+
     Returns:
         List of matching documents with similarity scores
     """
@@ -85,9 +85,9 @@ async def store_code_example(
 ) -> None:
     """
     Store a single code example in the database.
-    
+
     Test helper that wraps add_code_examples_to_database.
-    
+
     Args:
         client: Database adapter instance
         url: URL where the code was found
