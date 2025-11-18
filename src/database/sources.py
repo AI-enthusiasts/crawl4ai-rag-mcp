@@ -37,12 +37,12 @@ async def update_source_summary(
             total_chunks=total_chunks,
             last_crawled=last_crawled,
         )
-        logger.info(f"Updated source summary for {source_id}")
+        logger.info("Updated source summary for %s", source_id)
     except QueryError as e:
-        logger.error(f"Failed to update source summary for {source_id}: {e}")
+        logger.error("Failed to update source summary for %s: %s", source_id, e)
         raise
     except Exception as e:
-        logger.exception(f"Unexpected error updating source summary for {source_id}: {e}")
+        logger.exception("Unexpected error updating source summary for %s: %s", source_id, e)
         raise
 
 
@@ -67,10 +67,10 @@ async def get_source_statistics(
                 return source  # type: ignore[no-any-return]
         return None
     except QueryError as e:
-        logger.error(f"Failed to get source statistics for {source_id}: {e}")
+        logger.error("Failed to get source statistics for %s: %s", source_id, e)
         raise
     except Exception as e:
-        logger.exception(f"Unexpected error getting source statistics for {source_id}: {e}")
+        logger.exception("Unexpected error getting source statistics for %s: %s", source_id, e)
         raise
 
 
@@ -88,8 +88,8 @@ async def list_all_sources(database_client: Any) -> list[dict[str, Any]]:
         sources = await database_client.get_sources()
         return sources or []
     except QueryError as e:
-        logger.error(f"Failed to list sources: {e}")
+        logger.error("Failed to list sources: %s", e)
         raise
     except Exception as e:
-        logger.exception(f"Unexpected error listing sources: {e}")
+        logger.exception("Unexpected error listing sources: %s", e)
         raise
