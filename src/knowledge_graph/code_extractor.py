@@ -462,7 +462,7 @@ class Neo4jCodeExtractor:
         Returns:
             List of CodeExample or UniversalCodeExample objects ready for embedding
         """
-        logger.info(f"Extracting code from repository: {repo_name}")
+        logger.info("Extracting code from repository: %s", repo_name)
 
         # Check if repository exists
         if not await self._repository_exists(repo_name):
@@ -479,7 +479,7 @@ class Neo4jCodeExtractor:
         functions = await self._extract_functions(repo_name)
         code_examples.extend(functions)
 
-        logger.info(f"Extracted {len(code_examples)} code examples from {repo_name}")
+        logger.info("Extracted %s code examples from %s", len(code_examples), repo_name)
         return code_examples
 
     async def extract_repository_code_universal(self, repo_name: str) -> list[CodeExample | UniversalCodeExample]:
@@ -934,7 +934,7 @@ async def extract_repository_code(
             }
 
     except QueryError as e:
-        logger.error(f"Neo4j query failed extracting code from repository {repo_name}: {e}")
+        logger.error("Neo4j query failed extracting code from repository %s: %s", repo_name, e)
         return {
             "success": False,
             "repository_name": repo_name,
@@ -942,7 +942,7 @@ async def extract_repository_code(
             "error": str(e),
         }
     except Exception as e:
-        logger.exception(f"Unexpected error extracting code from repository {repo_name}: {e}")
+        logger.exception("Unexpected error extracting code from repository %s: %s", repo_name, e)
         return {
             "success": False,
             "repository_name": repo_name,
