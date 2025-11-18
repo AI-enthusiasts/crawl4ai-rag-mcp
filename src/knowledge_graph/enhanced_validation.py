@@ -1,6 +1,4 @@
-"""
-Enhanced AI script validation that combines Neo4j knowledge graph validation
-with Qdrant code example validation for comprehensive hallucination detection.
+"""Enhanced AI script validation combining Neo4j and Qdrant.
 
 This module provides improved hallucination detection by:
 1. Validating script structure against Neo4j knowledge graph
@@ -72,12 +70,13 @@ class EnhancedScriptAnalyzer:
             }
 
         except SyntaxError as e:
-            logger.error("Syntax error in script %s: %s", script_path, e)
-            raise ParsingError(f"Script has syntax errors: {e}") from e
+            logger.exception("Syntax error in script %s", script_path)
+            msg = f"Script has syntax errors: {e}"
+            raise ParsingError(msg) from e
         except ParsingError:
             raise
         except AnalysisError as e:
-            logger.error("Analysis failed for script %s: %s", script_path, e)
+            logger.exception("Analysis failed for script %s", script_path)
             return {
                 "error": f"Analysis error: {e}",
                 "imports": [],
@@ -89,7 +88,7 @@ class EnhancedScriptAnalyzer:
                 "attribute_accesses": [],
             }
         except Exception as e:
-            logger.exception("Unexpected error analyzing script %s: %s", script_path, e)
+            logger.exception("Unexpected error analyzing script %s", script_path)
             return {
                 "error": f"Unexpected analysis error: {e}",
                 "imports": [],
@@ -199,7 +198,7 @@ class EnhancedScriptAnalyzer:
             return f"{self._get_node_name(node.value)}.{node.attr}"
         return str(node)
 
-    def _find_parent_classes(self, node: ast.AST) -> list[str]:
+    def _find_parent_classes(self, _node: ast.AST) -> list[str]:
         """Find parent classes for a given node (simplified)."""
         # This is a simplified implementation
         # In a real implementation, you'd walk up the AST tree
@@ -227,8 +226,8 @@ class EnhancedScriptAnalyzer:
                 }
         except AnalysisError:
             pass
-        except Exception as e:
-            logger.exception("Unexpected error analyzing call: %s", e)
+        except Exception:
+            logger.exception("Unexpected error analyzing call")
         return None
 
     def _analyze_attribute(self, node: ast.Attribute) -> dict[str, Any] | None:
@@ -241,8 +240,8 @@ class EnhancedScriptAnalyzer:
             }
         except AnalysisError:
             pass
-        except Exception as e:
-            logger.exception("Unexpected error analyzing attribute: %s", e)
+        except Exception:
+            logger.exception("Unexpected error analyzing attribute")
         return None
 
 
@@ -276,6 +275,7 @@ class EnhancedHallucinationDetector:
     async def check_script_hallucinations(
         self,
         script_path: str,
+        *,
         include_code_suggestions: bool = True,
         detailed_analysis: bool = True,
     ) -> dict[str, Any]:
@@ -341,10 +341,10 @@ class EnhancedHallucinationDetector:
             )
 
         except (ParsingError, AnalysisError) as e:
-            logger.error("Analysis/Parsing error in hallucination detection: %s", e)
+            logger.exception("Analysis/Parsing error in hallucination detection")
             return self._create_error_response(script_path, f"Detection failed: {e!s}")
         except Exception as e:
-            logger.exception("Unexpected error in enhanced hallucination detection: %s", e)
+            logger.exception("Unexpected error in enhanced hallucination detection")
             return self._create_error_response(script_path, f"Detection failed: {e!s}")
 
     async def _perform_neo4j_validation(
@@ -399,7 +399,7 @@ class EnhancedHallucinationDetector:
                 await session.close()
 
         except QueryError as e:
-            logger.error("Neo4j query failed during validation: %s", e)
+            logger.exception("Neo4j query failed during validation")
             return {
                 "available": False,
                 "reason": f"Query error: {e!s}",
@@ -409,7 +409,7 @@ class EnhancedHallucinationDetector:
                 "function_validations": [],
             }
         except Exception as e:
-            logger.exception("Unexpected Neo4j validation error: %s", e)
+            logger.exception("Unexpected Neo4j validation error")
             return {
                 "available": False,
                 "reason": f"Validation error: {e!s}",
@@ -477,7 +477,7 @@ class EnhancedHallucinationDetector:
             }
 
         except QueryError as e:
-            logger.error("Qdrant query failed during validation: %s", e)
+            logger.exception("Qdrant query failed during validation")
             return {
                 "available": False,
                 "reason": f"Query error: {e!s}",
@@ -485,7 +485,7 @@ class EnhancedHallucinationDetector:
                 "suggestions": [],
             }
         except Exception as e:
-            logger.exception("Unexpected Qdrant validation error: %s", e)
+            logger.exception("Unexpected Qdrant validation error")
             return {
                 "available": False,
                 "reason": f"Validation error: {e!s}",
@@ -513,11 +513,13 @@ class EnhancedHallucinationDetector:
         # Extract method call patterns
         for method_call in analysis_result.get("method_calls", []):
             if method_call.get("type") == "method_call":
+                obj = method_call.get("object", "")
+                meth = method_call.get("method", "")
                 elements.append(
                     {
                         "type": "method_call",
-                        "name": f"{method_call.get('object', '')}.{method_call.get('method', '')}",
-                        "context": f"{method_call.get('object', '')}.{method_call.get('method', '')}()",
+                        "name": f"{obj}.{meth}",
+                        "context": f"{obj}.{meth}()",
                         "details": method_call,
                     },
                 )
@@ -599,7 +601,7 @@ class EnhancedHallucinationDetector:
                     )
 
             except QueryError as e:
-                logger.error("Query failed validating import %s.%s: %s", module, name, e)
+                logger.exception("Query failed validating import %s.%s", module, name)
                 validations.append(
                     {
                         "import": import_info,
@@ -609,7 +611,7 @@ class EnhancedHallucinationDetector:
                     },
                 )
             except Exception as e:
-                logger.exception("Unexpected error validating import %s.%s: %s", module, name, e)
+                logger.exception("Unexpected error validating import %s.%s", module, name)
                 validations.append(
                     {
                         "import": import_info,
@@ -649,7 +651,7 @@ class EnhancedHallucinationDetector:
                 )
 
             except QueryError as e:
-                logger.error("Query failed validating class %s: %s", class_name, e)
+                logger.exception("Query failed validating class %s", class_name)
                 validations.append(
                     {
                         "class": class_info,
@@ -659,7 +661,7 @@ class EnhancedHallucinationDetector:
                     },
                 )
             except Exception as e:
-                logger.exception("Unexpected error validating class %s: %s", class_name, e)
+                logger.exception("Unexpected error validating class %s", class_name)
                 validations.append(
                     {
                         "class": class_info,
@@ -685,7 +687,8 @@ class EnhancedHallucinationDetector:
 
             try:
                 query = """
-                MATCH (r:Repository)-[:CONTAINS]->(f:File)-[:DEFINES]->(c:Class)-[:HAS_METHOD]->(m:Method)
+                MATCH (r:Repository)-[:CONTAINS]->(f:File)-[:DEFINES]->(c:Class)
+                -[:HAS_METHOD]->(m:Method)
                 WHERE m.name = $method_name
                 RETURN count(m) > 0 as exists, collect(DISTINCT c.name) as classes
                 """
@@ -702,7 +705,7 @@ class EnhancedHallucinationDetector:
                 )
 
             except QueryError as e:
-                logger.error("Query failed validating method call %s: %s", method_name, e)
+                logger.exception("Query failed validating method call %s", method_name)
                 validations.append(
                     {
                         "method_call": call_info,
@@ -712,7 +715,9 @@ class EnhancedHallucinationDetector:
                     },
                 )
             except Exception as e:
-                logger.exception("Unexpected error validating method call %s: %s", method_name, e)
+                logger.exception(
+                    "Unexpected error validating method call %s", method_name
+                )
                 validations.append(
                     {
                         "method_call": call_info,
@@ -752,7 +757,7 @@ class EnhancedHallucinationDetector:
                 )
 
             except QueryError as e:
-                logger.error("Query failed validating function %s: %s", function_name, e)
+                logger.exception("Query failed validating function %s", function_name)
                 validations.append(
                     {
                         "function": func_info,
@@ -762,7 +767,9 @@ class EnhancedHallucinationDetector:
                     },
                 )
             except Exception as e:
-                logger.exception("Unexpected error validating function %s: %s", function_name, e)
+                logger.exception(
+                    "Unexpected error validating function %s", function_name
+                )
                 validations.append(
                     {
                         "function": func_info,
@@ -935,14 +942,23 @@ class EnhancedHallucinationDetector:
                 if not validation.get("exists", False):
                     if validation_type == "import_validations":
                         import_info = validation.get("import", {})
-                        suggestions.append(
-                            f"Import '{import_info.get('module', '')}.{import_info.get('name', '')}' not found in knowledge graph. Consider checking the module name or parsing the relevant repository.",
+                        module = import_info.get("module", "")
+                        name = import_info.get("name", "")
+                        msg = (
+                            f"Import '{module}.{name}' not found in "
+                            "knowledge graph. Check module name or "
+                            "parse the relevant repository."
                         )
+                        suggestions.append(msg)
                     elif validation_type == "class_validations":
                         class_info = validation.get("class", {})
-                        suggestions.append(
-                            f"Class '{class_info.get('name', '')}' not found. Check class name spelling or ensure the relevant repository is parsed.",
+                        name = class_info.get("name", "")
+                        msg = (
+                            f"Class '{name}' not found. Check class "
+                            "name spelling or ensure the relevant "
+                            "repository is parsed."
                         )
+                        suggestions.append(msg)
 
         return suggestions
 
@@ -1056,12 +1072,18 @@ async def check_ai_script_hallucinations_enhanced(
     """
     try:
         # Check if knowledge graph functionality is enabled
-        knowledge_graph_enabled = os.getenv("USE_KNOWLEDGE_GRAPH", "false") == "true"
+        knowledge_graph_enabled = os.getenv(
+            "USE_KNOWLEDGE_GRAPH", "false"
+        ) == "true"
         if not knowledge_graph_enabled:
+            error_msg = (
+                "Knowledge graph functionality is disabled. "
+                "Set USE_KNOWLEDGE_GRAPH=true in environment."
+            )
             return json.dumps(
                 {
                     "success": False,
-                    "error": "Knowledge graph functionality is disabled. Set USE_KNOWLEDGE_GRAPH=true in environment.",
+                    "error": error_msg,
                 },
                 indent=2,
             )
@@ -1079,7 +1101,7 @@ async def check_ai_script_hallucinations_enhanced(
         return json.dumps(result, indent=2)
 
     except (ParsingError, AnalysisError, QueryError) as e:
-        logger.error("Analysis/Query error in enhanced hallucination detection: %s", e)
+        logger.exception("Analysis/Query error in enhanced hallucination detection")
         return json.dumps(
             {
                 "success": False,
@@ -1089,7 +1111,7 @@ async def check_ai_script_hallucinations_enhanced(
             indent=2,
         )
     except Exception as e:
-        logger.exception("Unexpected error in enhanced hallucination detection: %s", e)
+        logger.exception("Unexpected error in enhanced hallucination detection")
         return json.dumps(
             {
                 "success": False,
