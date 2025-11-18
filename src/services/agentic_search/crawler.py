@@ -53,7 +53,7 @@ class SelectiveCrawler:
         Returns:
             Number of URLs successfully stored in Qdrant
         """
-        logger.info(f"STAGE 3: Recursively crawling {len(urls)} promising URLs")
+        logger.info("STAGE 3: Recursively crawling %d promising URLs", len(urls))
 
         # HIGH PRIORITY FIX #10: Duplicate detection - filter out already crawled URLs
         # Uses Qdrant count() for efficient existence check (per Qdrant docs)
@@ -67,23 +67,25 @@ class SelectiveCrawler:
             try:
                 exists = await database_client.url_exists(url)
                 if exists:
-                    logger.info(f"Skipping duplicate URL (already in database): {url}")
+                    logger.info("Skipping duplicate URL (already in database): %s", url)
                     urls_skipped += 1
                 else:
                     urls_to_crawl.append(url)
             except DatabaseError as e:
                 # On database error, include URL (fail open)
-                logger.warning(f"Database error checking duplicate for {url}: {e}")
+                logger.warning("Database error checking duplicate for %s: %s", url, e)
                 urls_to_crawl.append(url)
             except Exception as e:
                 # On unexpected error, include URL (fail open)
-                logger.warning(f"Unexpected error checking duplicate for {url}: {e}")
+                logger.warning("Unexpected error checking duplicate for %s: %s", url, e)
                 urls_to_crawl.append(url)
 
         if urls_skipped > 0:
             logger.info(
-                f"Filtered {urls_skipped}/{len(urls)} duplicate URLs, "
-                f"crawling {len(urls_to_crawl)} new URLs",
+                "Filtered %d/%d duplicate URLs, crawling %d new URLs",
+                urls_skipped,
+                len(urls),
+                len(urls_to_crawl),
             )
 
         if not urls_to_crawl:
@@ -105,8 +107,11 @@ class SelectiveCrawler:
         urls_filtered = crawl_result.get("urls_filtered", 0)
 
         logger.info(
-            f"Crawled {urls_crawled} pages, stored {urls_stored} URLs, "
-            f"{chunks_stored} chunks, filtered {urls_filtered} URLs",
+            "Crawled %d pages, stored %d URLs, %d chunks, filtered %d URLs",
+            urls_crawled,
+            urls_stored,
+            chunks_stored,
+            urls_filtered,
         )
 
         search_history.append(
