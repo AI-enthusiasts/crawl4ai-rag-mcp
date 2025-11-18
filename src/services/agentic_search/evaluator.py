@@ -59,7 +59,7 @@ class LocalKnowledgeEvaluator:
         Returns:
             Tuple of (evaluation, RAG results)
         """
-        logger.info(f"STAGE 1: Local knowledge check {'(recheck)' if is_recheck else ''}")
+        logger.info("STAGE 1: Local knowledge check %s", "(recheck)" if is_recheck else "")
 
         # Get app context for database client
         app_ctx = get_app_context()
@@ -183,7 +183,7 @@ Provide:
 
         except UnexpectedModelBehavior as e:
             # Per Pydantic AI docs: Raised when retries exhausted
-            logger.error(f"Completeness evaluation failed after retries: {e}")
+            logger.error("Completeness evaluation failed after retries: %s", e)
             raise LLMError("LLM completeness evaluation failed after retries") from e
 
         except Exception as e:
@@ -191,7 +191,7 @@ Provide:
             error_type = type(e).__name__
             error_msg = str(e)
 
-            logger.exception(f"Unexpected error in completeness evaluation: {error_type}: {error_msg}")
+            logger.exception("Unexpected error in completeness evaluation: %s: %s", error_type, error_msg)
 
             # Provide more specific error messages based on error type
             if "APIConnectionError" in error_type or "ConnectError" in error_type:
