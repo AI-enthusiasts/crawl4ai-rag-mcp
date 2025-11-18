@@ -83,7 +83,7 @@ class ValidatedCodeSearchService:
         if min_confidence is None:
             min_confidence = self.MIN_CONFIDENCE_THRESHOLD
 
-        logger.info(f"Starting validated code search for query: {query}")
+        logger.info("Starting validated code search for query: %s", query)
 
         try:
             # Step 1: Perform semantic search in Qdrant
@@ -157,7 +157,7 @@ class ValidatedCodeSearchService:
             }
 
         except (DatabaseError, SearchError) as e:
-            logger.error(f"Database or search error in validated code search: {e}")
+            logger.error("Database or search error in validated code search: %s", e)
             return {
                 "success": False,
                 "query": query,
@@ -165,7 +165,7 @@ class ValidatedCodeSearchService:
                 "fallback_available": not self.neo4j_enabled,
             }
         except Exception as e:
-            logger.exception(f"Unexpected error in validated code search: {e}")
+            logger.exception("Unexpected error in validated code search: %s", e)
             return {
                 "success": False,
                 "query": query,
@@ -209,10 +209,10 @@ class ValidatedCodeSearchService:
             )
 
         except SearchError as e:
-            logger.error(f"Search operation failed: {e}")
+            logger.error("Search operation failed: %s", e)
             return []
         except Exception as e:
-            logger.exception(f"Unexpected error in semantic search: {e}")
+            logger.exception("Unexpected error in semantic search: %s", e)
             return []
 
     def _generate_validation_summary(
