@@ -20,6 +20,7 @@ from src.services import process_urls_for_mcp
 from src.services import (
     smart_crawl_url as smart_crawl_url_service_impl,
 )
+from src.utils.url_helpers import clean_url
 
 logger = logging.getLogger(__name__)
 
@@ -38,100 +39,98 @@ def register_crawl_tools(mcp: "FastMCP") -> None:
         ctx: Context,
         url: str | list[str],
         batch_size: int = 20,
+        *,
         return_raw_markdown: bool = False,
     ) -> str:
-        """
-        Scrape **one or more URLs** and store their contents as embedding chunks in Supabase.
-        Optionally, use `return_raw_markdown=true` to return raw markdown content without storing.
+        """Scrape one or more URLs and store as embedding chunks.
 
-        The content is scraped and stored in Supabase for later retrieval and querying via perform_rag_query tool, unless
-        `return_raw_markdown=True` is specified, in which case raw markdown is returned directly.
+        Scrape one or more URLs and store as embedding chunks in Supabase.
+        Optionally return raw markdown instead of storing.
+
+        Content is scraped and stored in Supabase for later retrieval. If
+        `return_raw_markdown=True` is specified, raw markdown is returned directly.
 
         Args:
-            url: URL to scrape, or list of URLs for batch processing
-            batch_size: Size of batches for database operations (default: 20)
-            return_raw_markdown: If True, skip database storage and return raw markdown content (default: False)
+            ctx: MCP context
+            url: URL or list of URLs for batch processing
+            batch_size: Batch size for database operations (default: 20)
+            return_raw_markdown: If True, return raw markdown (default: False)
 
         Returns:
-            Summary of the scraping operation and storage in Supabase, or raw markdown content if requested
+            Summary of scraping operation or raw markdown if requested
         """
-        try:
-            # Security: Add input size limit to prevent JSON bomb attacks
-            MAX_INPUT_SIZE = 50000  # 50KB limit for safety
+        # Security: Add input size limit to prevent JSON bomb attacks
+        max_input_size = 50000  # 50KB limit for safety
 
-            # Handle URL parameter which can be:
-            # 1. Single URL string
-            # 2. JSON string representation of a list (from MCP protocol)
-            # 3. Actual Python list
+        # Handle URL parameter which can be:
+        # 1. Single URL string
+        # 2. JSON string representation of a list (from MCP protocol)
+        # 3. Actual Python list
 
-            # Enhanced debug logging
-            logger.debug(
-                "scrape_urls received url parameter (type: %s)",
-                type(url).__name__,
-            )
+        # Enhanced debug logging
+        logger.debug(
+            "scrape_urls received url parameter (type: %s)",
+            type(url).__name__,
+        )
 
-            urls = []
-            if isinstance(url, str):
-                # Security check: Limit input size
-                if len(url) > MAX_INPUT_SIZE:
-                    msg = f"Input too large: {len(url)} bytes (max: {MAX_INPUT_SIZE})"
-                    raise ValueError(
-                        msg,
-                    )
-                # Clean whitespace and normalize the string
-                cleaned_url = url.strip()
-                logger.debug("Processing string URL, cleaned: %r", cleaned_url)
+        urls = []
+        if isinstance(url, str):
+            # Security check: Limit input size
+            if len(url) > max_input_size:
+                msg = f"Input too large: {len(url)} bytes (max: {max_input_size})"
+                raise MCPToolError(msg)
+            # Clean whitespace and normalize the string
+            cleaned_url = url.strip()
+            logger.debug("Processing string URL, cleaned: %r", cleaned_url)
 
-                # Check if it's a JSON string representation of a list
-                # Be more precise: must start with [ and end with ] and likely contain quotes
-                if (
-                    cleaned_url.startswith("[")
-                    and cleaned_url.endswith("]")
-                    and ('"' in cleaned_url or "'" in cleaned_url)
-                ):
-                    logger.debug("Detected JSON array format, attempting to parse...")
-                    try:
-                        # Handle common JSON escaping issues
-                        # First, try to parse as-is
-                        parsed = json.loads(cleaned_url)
-                        if isinstance(parsed, list):
-                            urls = parsed
-                            logger.debug(
-                                "Successfully parsed JSON array with %d URLs",
-                                len(urls),
-                            )
-                        else:
-                            urls = [
-                                cleaned_url,
-                            ]  # Single URL that looks like JSON but isn't a list
-                            logger.debug(
-                                "JSON parsed but result is not a list, treating as single URL",
-                            )
-                    except json.JSONDecodeError as json_err:
+            # Check if it's a JSON string representation of a list
+            # Must start with [ and end with ] and likely contain quotes
+            if (
+                cleaned_url.startswith("[")
+                and cleaned_url.endswith("]")
+                and ('"' in cleaned_url or "'" in cleaned_url)
+            ):
+                logger.debug("Detected JSON array format, attempting to parse...")
+                try:
+                    # Handle common JSON escaping issues
+                    # First, try to parse as-is
+                    parsed = json.loads(cleaned_url)
+                    if isinstance(parsed, list):
+                        urls = parsed
                         logger.debug(
-                            "JSON parsing failed (%s), treating as single URL",
-                            json_err,
+                            "Successfully parsed JSON array with %d URLs",
+                            len(urls),
                         )
-                        # Don't attempt fallback parsing with comma split as it can break valid URLs
-                        # URLs can contain commas in query parameters
-                        urls = [cleaned_url]  # Treat as single URL
-                else:
-                    urls = [cleaned_url]  # Single URL
-                    logger.debug("Single URL string detected")
-            elif isinstance(url, list):
-                urls = url  # Assume it's already a list
-                logger.debug("List parameter received with %d URLs", len(urls))
+                    else:
+                        urls = [
+                            cleaned_url,
+                        ]  # Single URL that looks like JSON but isn't a list
+                        logger.debug(
+                            "JSON parsed but not a list, treating as single",
+                        )
+                except json.JSONDecodeError as json_err:
+                    logger.debug(
+                        "JSON parsing failed (%s), treating as single URL",
+                        json_err,
+                    )
+                    # Don't split by comma - URLs can have commas in parameters
+                    urls = [cleaned_url]  # Treat as single URL
             else:
-                # Handle other types by converting to string (defensive programming)
-                logger.warning(  # type: ignore[unreachable]
-                    "Unexpected URL parameter type %s, converting to string",
-                    type(url),
-                )
-                urls = [str(url)]
+                urls = [cleaned_url]  # Single URL
+                logger.debug("Single URL string detected")
+        elif isinstance(url, list):
+            urls = url  # Assume it's already a list
+            logger.debug("List parameter received with %d URLs", len(urls))
+        else:
+            # Handle other types by converting to string (defensive programming)
+            logger.warning(  # type: ignore[unreachable]
+                "Unexpected URL parameter type %s, converting to string",
+                type(url),
+            )
+            urls = [str(url)]
 
+        try:
             # Clean and validate each URL in the final list
-            from src.utils.url_helpers import clean_url
-
             cleaned_urls = []
             invalid_urls = []
 
@@ -149,17 +148,16 @@ def register_crawl_tools(mcp: "FastMCP") -> None:
                     cleaned_url = clean_url(url_str)
                     if cleaned_url:
                         cleaned_urls.append(cleaned_url)
-                        logger.debug("URL %d cleaned successfully: %s", i + 1, cleaned_url)
+                        logger.debug("URL %d cleaned: %s", i + 1, cleaned_url)
                     else:
                         invalid_urls.append(url_str)
                         logger.warning("URL %d failed cleaning: %s", i + 1, url_str)
 
-                except Exception as url_err:
+                except Exception:
                     logger.exception(
-                        "Error processing URL %d (%r): %s",
+                        "Error processing URL %d (%r)",
                         i + 1,
                         raw_url,
-                        url_err,
                     )
                     invalid_urls.append(str(raw_url))
 
@@ -172,22 +170,22 @@ def register_crawl_tools(mcp: "FastMCP") -> None:
             if invalid_urls:
                 logger.warning("Invalid URLs that were skipped: %s", invalid_urls)
 
-            if not cleaned_urls:
-                error_msg = "No valid URLs found after processing and cleaning"
-                logger.error(error_msg)
-                raise MCPToolError(error_msg)
-
-            # Use cleaned URLs for processing
-            return await process_urls_for_mcp(
-                ctx=ctx,
-                urls=cleaned_urls,
-                batch_size=batch_size,
-                return_raw_markdown=return_raw_markdown,
-            )
+            if cleaned_urls:
+                # Use cleaned URLs for processing
+                return await process_urls_for_mcp(
+                    ctx=ctx,
+                    urls=cleaned_urls,
+                    batch_size=batch_size,
+                    return_raw_markdown=return_raw_markdown,
+                )
         except Exception as e:
-            logger.exception("Error in scrape_urls tool: %s", e)
+            logger.exception("Error in scrape_urls tool")
             msg = f"Scraping failed: {e!s}"
-            raise MCPToolError(msg)
+            raise MCPToolError(msg) from e
+
+        msg = "No valid URLs found after processing and cleaning"
+        logger.error(msg)
+        raise MCPToolError(msg)
 
     @mcp.tool()
     @track_request("smart_crawl_url")
@@ -196,29 +194,27 @@ def register_crawl_tools(mcp: "FastMCP") -> None:
         url: str,
         max_depth: int = 3,
         chunk_size: int = 5000,
+        *,
         return_raw_markdown: bool = False,
         query: list[str] | str | None = None,
     ) -> str:
-        """
-        Intelligently crawl a URL based on its type and store content in Supabase.
-        Enhanced with raw markdown return and RAG query capabilities.
+        """Intelligently crawl a URL and store content in Supabase.
 
-        This tool automatically detects the URL type and applies the appropriate crawling method:
+        Automatically detects URL type and applies the appropriate crawling method:
         - For sitemaps: Extracts and crawls all URLs in parallel
-        - For text files (llms.txt): Directly retrieves the content
-        - For regular webpages: Recursively crawls internal links up to the specified depth
-
-        All crawled content is chunked and stored in Supabase for later retrieval and querying.
+        - For text files: Directly retrieves the content
+        - For webpages: Recursively crawls internal links
 
         Args:
-            url: URL to crawl (can be a regular webpage, sitemap.xml, or .txt file)
-            max_depth: Maximum recursion depth for regular URLs (default: 3)
-            chunk_size: Maximum size of each content chunk in characters (default: 5000)
-            return_raw_markdown: If True, return raw markdown content instead of just storing (default: False)
-            query: List of queries to perform RAG search on crawled content (default: None)
+            ctx: MCP context
+            url: URL to crawl (webpage, sitemap.xml, or .txt file)
+            max_depth: Maximum recursion depth (default: 3)
+            chunk_size: Maximum chunk size in characters (default: 5000)
+            return_raw_markdown: If True, return raw markdown (default: False)
+            query: List of queries for RAG search (default: None)
 
         Returns:
-            JSON string with crawl summary, raw markdown (if requested), or RAG query results
+            Crawl summary, raw markdown, or RAG query results
         """
         try:
             # Handle query parameter which can be:
@@ -253,6 +249,6 @@ def register_crawl_tools(mcp: "FastMCP") -> None:
                 query=parsed_query,
             )
         except Exception as e:
-            logger.exception("Error in smart_crawl_url tool: %s", e)
+            logger.exception("Error in smart_crawl_url tool")
             msg = f"Smart crawl failed: {e!s}"
-            raise MCPToolError(msg)
+            raise MCPToolError(msg) from e
