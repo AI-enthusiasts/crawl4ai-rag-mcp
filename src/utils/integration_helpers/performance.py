@@ -88,13 +88,13 @@ class BatchProcessor:
             try:
                 return await processor_func(item, *args, **kwargs)
             except ValidationError as e:
-                logger.warning(f"Validation error processing item: {e}")
+                logger.warning("Validation error processing item: %s", e)
                 return e
             except DatabaseError as e:
-                logger.warning(f"Database error processing item: {e}")
+                logger.warning("Database error processing item: %s", e)
                 return e
             except Exception as e:
-                logger.warning(f"Unexpected error processing item: {e}")
+                logger.warning("Unexpected error processing item: %s", e)
                 return e
 
 
@@ -210,20 +210,20 @@ def performance_monitor(func: Callable[..., Any]) -> Callable[..., Any]:
             result = await func(*args, **kwargs)
             execution_time = time.time() - start_time
 
-            logger.debug(f"{function_name} executed in {execution_time:.3f}s")
+            logger.debug("%s executed in %.3fs", function_name, execution_time)
             return result
 
         except ValidationError as e:
             execution_time = time.time() - start_time
-            logger.error(f"{function_name} validation error after {execution_time:.3f}s: {e}")
+            logger.error("%s validation error after %.3fs: %s", function_name, execution_time, e)
             raise
         except DatabaseError as e:
             execution_time = time.time() - start_time
-            logger.error(f"{function_name} database error after {execution_time:.3f}s: {e}")
+            logger.error("%s database error after %.3fs: %s", function_name, execution_time, e)
             raise
         except Exception as e:
             execution_time = time.time() - start_time
-            logger.exception(f"{function_name} failed after {execution_time:.3f}s: {e}")
+            logger.exception("%s failed after %.3fs: %s", function_name, execution_time, e)
             raise
 
     return wrapper
