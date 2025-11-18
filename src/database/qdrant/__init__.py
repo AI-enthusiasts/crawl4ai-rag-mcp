@@ -33,29 +33,25 @@ from .search import (
 )
 
 __all__ = [
-    # Adapter
     "QdrantAdapter",
-    # Operations
+    "add_code_examples",
     "add_documents",
     "add_source",
+    "delete_code_examples_by_url",
     "delete_documents_by_url",
+    "delete_repository_code_examples",
     "get_documents_by_url",
+    "get_repository_code_examples",
     "get_sources",
+    "hybrid_search",
+    "search",
+    "search_code_by_signature",
+    "search_code_examples",
+    "search_code_examples_by_keyword",
+    "search_documents",
+    "search_documents_by_keyword",
     "search_sources",
     "update_source",
     "update_source_info",
     "url_exists",
-    # Search
-    "hybrid_search",
-    "search",
-    "search_documents",
-    "search_documents_by_keyword",
-    # Code examples
-    "add_code_examples",
-    "delete_code_examples_by_url",
-    "delete_repository_code_examples",
-    "get_repository_code_examples",
-    "search_code_by_signature",
-    "search_code_examples",
-    "search_code_examples_by_keyword",
 ]

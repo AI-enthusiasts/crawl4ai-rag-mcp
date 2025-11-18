@@ -20,16 +20,13 @@ from .performance import (
 )
 
 __all__ = [
-    # Cache
-    "PerformanceCache",
-    "create_cache_key",
-    # Health
-    "IntegrationHealthMonitor",
-    "validate_integration_health",
-    # Performance
     "BatchProcessor",
     "CircuitBreaker",
+    "IntegrationHealthMonitor",
+    "PerformanceCache",
     "PerformanceOptimizer",
+    "create_cache_key",
     "get_performance_optimizer",
     "performance_monitor",
+    "validate_integration_health",
 ]

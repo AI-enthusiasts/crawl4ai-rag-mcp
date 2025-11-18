@@ -21,16 +21,11 @@ from .service import (
 )
 
 __all__ = [
-    # Memory tracking
-    "track_memory",
-    # Basic crawling
-    "crawl_markdown_file",
     "crawl_batch",
-    # Recursive crawling
+    "crawl_markdown_file",
     "crawl_recursive_internal_links",
-    # MCP service layer
-    "process_urls_for_mcp",
-    # Agentic search
     "crawl_urls_for_agentic_search",
+    "process_urls_for_mcp",
     "should_filter_url",
+    "track_memory",
 ]

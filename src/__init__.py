@@ -103,60 +103,47 @@ except Exception:
     pass
 
 __all__ = [
-    "__version__",
-    # Core
     "Crawl4AIContext",
-    "SuppressStdout",
-    "format_neo4j_error",
-    "get_app_context",
-    "set_app_context",
-    "track_request",
-    # Exceptions
     "Crawl4AIError",
     "DatabaseError",
-    "NetworkError",
-    "ValidationError",
     "MCPToolError",
-    # Text processing
+    "NetworkError",
+    "Settings",
+    "SuppressStdout",
+    "ValidationError",
+    "__version__",
+    "check_ai_script_hallucinations",
+    "create_and_initialize_database",
+    "create_database_client",
+    "create_embedding",
+    "create_embeddings_batch",
     "extract_section_info",
-    "smart_chunk_markdown",
-    # URL helpers
+    "format_neo4j_error",
+    "get_app_context",
+    "get_available_sources",
+    "get_settings",
     "is_sitemap",
     "is_txt",
+    "mcp",
+    "parse_github_repository",
     "parse_sitemap",
-    # Validation
+    "perform_rag_query",
+    "process_code_example",
+    "process_urls_for_mcp",
+    "query_knowledge_graph",
+    "register_tools",
+    "rerank_results",
+    "reset_settings",
+    "scrape_urls",
+    "search",
+    "search_and_process",
+    "search_code_examples",
+    "set_app_context",
+    "smart_chunk_markdown",
+    "smart_crawl_url",
+    "smart_crawl_url_tool",
+    "track_request",
     "validate_github_url",
     "validate_neo4j_connection",
     "validate_script_path",
-    # Configuration
-    "Settings",
-    "get_settings",
-    "reset_settings",
-    # Database
-    "create_database_client",
-    "create_and_initialize_database",
-    "get_available_sources",
-    # Code analysis
-    "process_code_example",
-    # Reranking
-    "rerank_results",
-    # Embeddings
-    "create_embedding",
-    "create_embeddings_batch",
-    # Services
-    "process_urls_for_mcp",
-    "search_and_process",
-    "smart_crawl_url",
-    # Knowledge graph
-    "check_ai_script_hallucinations",
-    "parse_github_repository",
-    "query_knowledge_graph",
-    # MCP server and tools
-    "register_tools",
-    "mcp",
-    "scrape_urls",
-    "perform_rag_query",
-    "search",
-    "search_code_examples",
-    "smart_crawl_url_tool",
 ]
