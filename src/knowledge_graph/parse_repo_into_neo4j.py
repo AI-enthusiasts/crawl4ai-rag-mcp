@@ -195,7 +195,7 @@ class DirectNeo4jExtractor:
                 def handle_remove_readonly(func: Callable[[str], None], path: str, exc: Any) -> None:
                     try:
                         if Path(path).exists():
-                            os.chmod(path, 0o777)
+                            Path(path).chmod(0o777)
                             func(path)
                     except PermissionError:
                         logger.warning(f"Could not remove {path} - file in use, skipping")
@@ -449,7 +449,7 @@ class DirectNeo4jExtractor:
                     def handle_remove_readonly(func: Callable[[str], None], path: str, exc: Any) -> None:
                         try:
                             if Path(path).exists():
-                                os.chmod(path, 0o777)
+                                Path(path).chmod(0o777)
                                 func(path)
                         except PermissionError:
                             logger.warning(f"Could not remove {path} - file in use, skipping")

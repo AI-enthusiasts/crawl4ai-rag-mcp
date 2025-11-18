@@ -403,18 +403,18 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
                 )
 
             # Security: Validate and sanitize local path
-            local_path = os.path.abspath(os.path.expanduser(local_path))
+            local_path = str(Path(local_path).expanduser().resolve())
 
             # Define allowed directories for repository parsing (configurable)
             allowed_prefixes = [
-                os.path.expanduser("~/"),  # User home directory
+                str(Path("~").expanduser()),  # User home directory
                 "/tmp/",                    # Temporary directory
                 "/var/tmp/",               # Var temporary
                 "/workspace/",             # Common workspace directory
             ]
 
             # Check if path is within allowed directories
-            path_allowed = any(local_path.startswith(os.path.abspath(prefix)) for prefix in allowed_prefixes)
+            path_allowed = any(local_path.startswith(str(Path(prefix).resolve())) for prefix in allowed_prefixes)
 
             if not path_allowed:
                 return json.dumps(
@@ -435,7 +435,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
                     indent=2,
                 )
 
-            if not os.path.isdir(local_path):
+            if not Path(local_path).is_dir():
                 return json.dumps(
                     {
                         "success": False,
@@ -456,7 +456,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
                 )
 
             # Extract repository name from path
-            repo_name = os.path.basename(os.path.abspath(local_path))
+            repo_name = Path(local_path).resolve().name
 
             logger.info(f"Parsing local repository: {repo_name} at {local_path}")
 
