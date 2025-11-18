@@ -46,11 +46,15 @@ class AIHallucinationDetector:
         """Close connections"""
         await self.validator.close()
 
-    async def detect_hallucinations(self, script_path: str,
-                                  output_dir: str | None = None,
-                                  save_json: bool = True,
-                                  save_markdown: bool = True,
-                                  print_summary: bool = True) -> dict[str, Any]:
+    async def detect_hallucinations(
+        self,
+        script_path: str,
+        output_dir: str | None = None,
+        *,
+        save_json: bool = True,
+        save_markdown: bool = True,
+        print_summary: bool = True,
+    ) -> dict[str, Any]:
         """
         Main detection function that analyzes a script and generates reports
 
@@ -89,18 +93,24 @@ class AIHallucinationDetector:
             if analysis_result.errors:
                 logger.warning("Analysis warnings: %s", analysis_result.errors)
 
-            logger.info("Found: %s imports, %s class instantiations, %s method calls, %s function calls, %s attribute accesses",
-                       len(analysis_result.imports),
-                       len(analysis_result.class_instantiations),
-                       len(analysis_result.method_calls),
-                       len(analysis_result.function_calls),
-                       len(analysis_result.attribute_accesses))
+            logger.info(
+                "Found: %s imports, %s class instantiations, %s method calls, "
+                "%s function calls, %s attribute accesses",
+                len(analysis_result.imports),
+                len(analysis_result.class_instantiations),
+                len(analysis_result.method_calls),
+                len(analysis_result.function_calls),
+                len(analysis_result.attribute_accesses),
+            )
 
             # Step 2: Validate against knowledge graph
             logger.info("Step 2: Validating against knowledge graph...")
             validation_result = await self.validator.validate_script(analysis_result)
 
-            logger.info("Validation complete. Overall confidence: %.1f%%", validation_result.overall_confidence * 100)
+            logger.info(
+                "Validation complete. Overall confidence: %.1f%%",
+                validation_result.overall_confidence * 100,
+            )
 
             # Step 3: Generate comprehensive report
             logger.info("Step 3: Generating reports...")
@@ -110,11 +120,15 @@ class AIHallucinationDetector:
             script_name = Path(script_path).stem
 
             if save_json:
-                json_path = str(Path(output_dir) / f"{script_name}_hallucination_report.json")
+                json_path = str(
+                    Path(output_dir) / f"{script_name}_hallucination_report.json",
+                )
                 self.reporter.save_json_report(report, json_path)
 
             if save_markdown:
-                md_path = str(Path(output_dir) / f"{script_name}_hallucination_report.md")
+                md_path = str(
+                    Path(output_dir) / f"{script_name}_hallucination_report.md",
+                )
                 self.reporter.save_markdown_report(report, md_path)
 
             # Step 5: Print summary
@@ -122,14 +136,14 @@ class AIHallucinationDetector:
                 self.reporter.print_summary(report)
 
             logger.info("Hallucination detection completed successfully")
+        except (ParsingError, AnalysisError, QueryError):
+            logger.exception("Analysis/Query error during hallucination detection")
+            raise
+        except Exception:
+            logger.exception("Unexpected error during hallucination detection")
+            raise
+        else:
             return report
-
-        except (ParsingError, AnalysisError, QueryError) as e:
-            logger.error("Analysis/Query error during hallucination detection: %s", e)
-            raise
-        except Exception as e:
-            logger.exception("Unexpected error during hallucination detection: %s", e)
-            raise
 
     async def batch_detect(self, script_paths: list[str],
                           output_dir: str | None = None) -> list[dict[str, Any]]:
@@ -147,22 +161,27 @@ class AIHallucinationDetector:
 
         results = []
         for i, script_path in enumerate(script_paths, 1):
-            logger.info("Processing script %s/%s: %s", i, len(script_paths), script_path)
+            logger.info(
+                "Processing script %s/%s: %s",
+                i,
+                len(script_paths),
+                script_path,
+            )
 
             try:
                 result = await self.detect_hallucinations(
                     script_path=script_path,
                     output_dir=output_dir,
-                    print_summary=False,  # Don't print individual summaries in batch mode
+                    print_summary=False,
                 )
                 results.append(result)
 
-            except (ParsingError, AnalysisError, QueryError) as e:
-                logger.error("Analysis/Query error processing %s: %s", script_path, e)
+            except (ParsingError, AnalysisError, QueryError):
+                logger.exception("Analysis/Query error processing %s", script_path)
                 # Continue with other scripts
                 continue
-            except Exception as e:
-                logger.exception("Unexpected error processing %s: %s", script_path, e)
+            except Exception:
+                logger.exception("Unexpected error processing %s", script_path)
                 # Continue with other scripts
                 continue
 
@@ -182,13 +201,26 @@ class AIHallucinationDetector:
         print("="*80)
 
         total_scripts = len(results)
-        total_validations = sum(r["validation_summary"]["total_validations"] for r in results)
-        total_valid = sum(r["validation_summary"]["valid_count"] for r in results)
-        total_invalid = sum(r["validation_summary"]["invalid_count"] for r in results)
-        total_not_found = sum(r["validation_summary"]["not_found_count"] for r in results)
-        total_hallucinations = sum(len(r["hallucinations_detected"]) for r in results)
+        total_validations = sum(
+            r["validation_summary"]["total_validations"] for r in results
+        )
+        total_valid = sum(
+            r["validation_summary"]["valid_count"] for r in results
+        )
+        total_invalid = sum(
+            r["validation_summary"]["invalid_count"] for r in results
+        )
+        total_not_found = sum(
+            r["validation_summary"]["not_found_count"] for r in results
+        )
+        total_hallucinations = sum(
+            len(r["hallucinations_detected"]) for r in results
+        )
 
-        avg_confidence = sum(r["validation_summary"]["overall_confidence"] for r in results) / total_scripts
+        avg_confidence = (
+            sum(r["validation_summary"]["overall_confidence"] for r in results)
+            / total_scripts
+        )
 
         print(f"Scripts Processed: {total_scripts}")
         print(f"Total Validations: {total_validations}")
@@ -196,18 +228,32 @@ class AIHallucinationDetector:
         print(f"Total Hallucinations: {total_hallucinations}")
 
         print("\nAggregated Results:")
-        print(f"  ✅ Valid: {total_valid} ({total_valid/total_validations:.1%})")
-        print(f"  ❌ Invalid: {total_invalid} ({total_invalid/total_validations:.1%})")
-        print(f"  🔍 Not Found: {total_not_found} ({total_not_found/total_validations:.1%})")
+        print(
+            f"  ✅ Valid: {total_valid} ({total_valid/total_validations:.1%})",
+        )
+        print(
+            f"  ❌ Invalid: {total_invalid} ({total_invalid/total_validations:.1%})",
+        )
+        print(
+            f"  🔍 Not Found: {total_not_found} "
+            f"({total_not_found/total_validations:.1%})",
+        )
 
         # Show worst performing scripts
         print("\n🚨 Scripts with Most Hallucinations:")
-        sorted_results = sorted(results, key=lambda x: len(x["hallucinations_detected"]), reverse=True)
+        sorted_results = sorted(
+            results,
+            key=lambda x: len(x["hallucinations_detected"]),
+            reverse=True,
+        )
         for result in sorted_results[:5]:
             script_name = Path(result["analysis_metadata"]["script_path"]).name
             hall_count = len(result["hallucinations_detected"])
             confidence = result["validation_summary"]["overall_confidence"]
-            print(f"  - {script_name}: {hall_count} hallucinations ({confidence:.1%} confidence)")
+            print(
+                f"  - {script_name}: {hall_count} hallucinations "
+                f"({confidence:.1%} confidence)",
+            )
 
         print("="*80)
 
@@ -299,12 +345,20 @@ Examples:
     load_dotenv()
 
     # Get Neo4j credentials
-    neo4j_uri = args.neo4j_uri or os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+    default_neo4j_uri = "bolt://localhost:7687"
+    neo4j_uri = args.neo4j_uri or os.environ.get("NEO4J_URI", default_neo4j_uri)
     neo4j_user = args.neo4j_user or os.environ.get("NEO4J_USERNAME", "neo4j")
-    neo4j_password = args.neo4j_password or os.environ.get("NEO4J_PASSWORD", "password")
+    default_password = "password"  # noqa: S105
+    neo4j_password = (
+        args.neo4j_password
+        or os.environ.get("NEO4J_PASSWORD", default_password)
+    )
 
-    if not neo4j_password or neo4j_password == "password":
-        logger.error("Please set NEO4J_PASSWORD environment variable or use --neo4j-password")
+    if not neo4j_password or neo4j_password == default_password:
+        logger.error(
+            "Please set NEO4J_PASSWORD environment variable "
+            "or use --neo4j-password",
+        )
         sys.exit(1)
 
     # Initialize detector
@@ -334,12 +388,12 @@ Examples:
         logger.info("Detection interrupted by user")
         sys.exit(1)
 
-    except (ParsingError, AnalysisError, QueryError) as e:
-        logger.error("Analysis/Query error - detection failed: %s", e)
+    except (ParsingError, AnalysisError, QueryError):
+        logger.exception("Analysis/Query error - detection failed")
         sys.exit(1)
 
-    except Exception as e:
-        logger.exception("Unexpected error - detection failed: %s", e)
+    except Exception:
+        logger.exception("Unexpected error - detection failed")
         sys.exit(1)
 
     finally:
