@@ -6,9 +6,12 @@ cloning, updating, branch/tag management, and history analysis.
 """
 
 import asyncio
+import json
 import logging
+import re
 import shutil
 import tempfile
+import urllib.request
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -32,6 +35,7 @@ class GitRepositoryManager:
         target_dir: str,
         branch: str | None = None,
         depth: int | None = None,
+        *,
         single_branch: bool = False,
     ) -> str:
         """
@@ -74,14 +78,15 @@ class GitRepositoryManager:
         # Execute clone command
         try:
             await self._run_git_command(cmd)
-            self.logger.info("Repository cloned successfully to %s", target_dir)
-            return target_dir
         except GitError:
             raise
         except Exception as e:
             msg = "Failed to clone repository: %s"
-            self.logger.error(msg, e)
+            self.logger.exception(msg)
             raise GitError(msg % e) from e
+        else:
+            self.logger.info("Repository cloned successfully to %s", target_dir)
+            return target_dir
     async def validate_repository_size(
         self,
         url: str,
@@ -221,7 +226,6 @@ class GitRepositoryManager:
         """
         try:
             # Extract owner and repo from URL
-            import re
             match = re.search(r"github\.com[/:]([^/]+)/([^/.]+)", url)
             if not match:
                 return info
@@ -230,9 +234,6 @@ class GitRepositoryManager:
             repo = repo.replace(".git", "")
 
             # Use GitHub API to get repository info
-            import json
-            import urllib.request
-
             api_url = f"https://api.github.com/repos/{owner}/{repo}"
 
             try:
