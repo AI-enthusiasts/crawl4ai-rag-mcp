@@ -91,10 +91,10 @@ class CodeAnalyzer(ABC):
             return module_name
 
         except (ValueError, OSError) as e:
-            self.logger.debug(f"Failed to get module name: {e}")
+            self.logger.debug("Failed to get module name: %s", e)
             return Path(file_path).stem
         except Exception as e:
-            self.logger.exception(f"Unexpected error getting module name: {e}")
+            self.logger.exception("Unexpected error getting module name: %s", e)
             return Path(file_path).stem
 
     async def read_file_content(self, file_path: str) -> str | None:
@@ -117,16 +117,16 @@ class CodeAnalyzer(ABC):
                 with Path(file_path).open(encoding="latin-1") as f:
                     return f.read()
             except OSError as e:
-                self.logger.error(f"File I/O error reading {file_path}: {e}")
+                self.logger.error("File I/O error reading %s: %s", file_path, e)
                 return None
             except Exception as e:
-                self.logger.exception(f"Unexpected error reading file {file_path}: {e}")
+                self.logger.exception("Unexpected error reading file %s: %s", file_path, e)
                 return None
         except OSError as e:
-            self.logger.error(f"File I/O error reading {file_path}: {e}")
+            self.logger.error("File I/O error reading %s: %s", file_path, e)
             return None
         except Exception as e:
-            self.logger.exception(f"Unexpected error reading file {file_path}: {e}")
+            self.logger.exception("Unexpected error reading file %s: %s", file_path, e)
             return None
 
     def extract_docstring(self, lines: list[str], start_line: int) -> str | None:
