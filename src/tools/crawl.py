@@ -66,7 +66,8 @@ def register_crawl_tools(mcp: "FastMCP") -> None:
 
             # Enhanced debug logging
             logger.debug(
-                f"scrape_urls received url parameter (type: {type(url).__name__})",
+                "scrape_urls received url parameter (type: %s)",
+                type(url).__name__,
             )
 
             urls = []
@@ -79,7 +80,7 @@ def register_crawl_tools(mcp: "FastMCP") -> None:
                     )
                 # Clean whitespace and normalize the string
                 cleaned_url = url.strip()
-                logger.debug(f"Processing string URL, cleaned: {cleaned_url!r}")
+                logger.debug("Processing string URL, cleaned: %r", cleaned_url)
 
                 # Check if it's a JSON string representation of a list
                 # Be more precise: must start with [ and end with ] and likely contain quotes
@@ -96,7 +97,8 @@ def register_crawl_tools(mcp: "FastMCP") -> None:
                         if isinstance(parsed, list):
                             urls = parsed
                             logger.debug(
-                                f"Successfully parsed JSON array with {len(urls)} URLs",
+                                "Successfully parsed JSON array with %d URLs",
+                                len(urls),
                             )
                         else:
                             urls = [
@@ -107,7 +109,8 @@ def register_crawl_tools(mcp: "FastMCP") -> None:
                             )
                     except json.JSONDecodeError as json_err:
                         logger.debug(
-                            f"JSON parsing failed ({json_err}), treating as single URL",
+                            "JSON parsing failed (%s), treating as single URL",
+                            json_err,
                         )
                         # Don't attempt fallback parsing with comma split as it can break valid URLs
                         # URLs can contain commas in query parameters
@@ -117,11 +120,12 @@ def register_crawl_tools(mcp: "FastMCP") -> None:
                     logger.debug("Single URL string detected")
             elif isinstance(url, list):
                 urls = url  # Assume it's already a list
-                logger.debug(f"List parameter received with {len(urls)} URLs")
+                logger.debug("List parameter received with %d URLs", len(urls))
             else:
                 # Handle other types by converting to string (defensive programming)
                 logger.warning(  # type: ignore[unreachable]
-                    f"Unexpected URL parameter type {type(url)}, converting to string",
+                    "Unexpected URL parameter type %s, converting to string",
+                    type(url),
                 )
                 urls = [str(url)]
 
@@ -135,33 +139,38 @@ def register_crawl_tools(mcp: "FastMCP") -> None:
                 try:
                     # Convert to string if not already
                     url_str = str(raw_url).strip()
-                    logger.debug(f"Processing URL {i + 1}/{len(urls)}: {url_str!r}")
+                    logger.debug("Processing URL %d/%d: %r", i + 1, len(urls), url_str)
 
                     if not url_str:
-                        logger.warning(f"Empty URL at position {i + 1}, skipping")
+                        logger.warning("Empty URL at position %d, skipping", i + 1)
                         continue
 
                     # Clean the URL using utility function
                     cleaned_url = clean_url(url_str)
                     if cleaned_url:
                         cleaned_urls.append(cleaned_url)
-                        logger.debug(f"URL {i + 1} cleaned successfully: {cleaned_url}")
+                        logger.debug("URL %d cleaned successfully: %s", i + 1, cleaned_url)
                     else:
                         invalid_urls.append(url_str)
-                        logger.warning(f"URL {i + 1} failed cleaning: {url_str}")
+                        logger.warning("URL %d failed cleaning: %s", i + 1, url_str)
 
                 except Exception as url_err:
                     logger.exception(
-                        f"Error processing URL {i + 1} ({raw_url!r}): {url_err}",
+                        "Error processing URL %d (%r): %s",
+                        i + 1,
+                        raw_url,
+                        url_err,
                     )
                     invalid_urls.append(str(raw_url))
 
             # Log final results
             logger.info(
-                f"URL processing complete: {len(cleaned_urls)} valid URLs, {len(invalid_urls)} invalid URLs",
+                "URL processing complete: %d valid URLs, %d invalid URLs",
+                len(cleaned_urls),
+                len(invalid_urls),
             )
             if invalid_urls:
-                logger.warning(f"Invalid URLs that were skipped: {invalid_urls}")
+                logger.warning("Invalid URLs that were skipped: %s", invalid_urls)
 
             if not cleaned_urls:
                 error_msg = "No valid URLs found after processing and cleaning"
@@ -176,7 +185,7 @@ def register_crawl_tools(mcp: "FastMCP") -> None:
                 return_raw_markdown=return_raw_markdown,
             )
         except Exception as e:
-            logger.exception(f"Error in scrape_urls tool: {e}")
+            logger.exception("Error in scrape_urls tool: %s", e)
             msg = f"Scraping failed: {e!s}"
             raise MCPToolError(msg)
 
@@ -244,6 +253,6 @@ def register_crawl_tools(mcp: "FastMCP") -> None:
                 query=parsed_query,
             )
         except Exception as e:
-            logger.exception(f"Error in smart_crawl_url tool: {e}")
+            logger.exception("Error in smart_crawl_url tool: %s", e)
             msg = f"Smart crawl failed: {e!s}"
             raise MCPToolError(msg)
