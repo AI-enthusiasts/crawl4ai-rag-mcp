@@ -264,10 +264,11 @@ class GitRepositoryManager:
         target_dir: str,
         branch: str | None = None,
         depth: int | None = None,
-        single_branch: bool = False,
         max_size_mb: int = 500,
         max_file_count: int = 10000,
         min_free_space_gb: float = 1.0,
+        *,
+        single_branch: bool = False,
         force: bool = False,
     ) -> str:
         """

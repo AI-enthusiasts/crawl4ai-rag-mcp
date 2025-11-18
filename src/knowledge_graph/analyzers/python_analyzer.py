@@ -785,7 +785,11 @@ class Neo4jCodeAnalyzer:
             elif isinstance(value_node, ast.Call):
                 # Try to get type from function call
                 func_name = self._get_name(value_node.func)
-                if func_name in ["list", "dict", "set", "tuple", "str", "int", "float", "bool"]:
+                builtins = [
+                    "list", "dict", "set", "tuple", "str", "int",
+                    "float", "bool"
+                ]
+                if func_name in builtins:
                     return func_name
                 if func_name in ["defaultdict", "Counter", "OrderedDict"]:
                     return f"collections.{func_name}"
