@@ -587,14 +587,17 @@ class Neo4jCodeAnalyzer:
         else:
             return "ClassVar" in annotation_str
 
-    def _extract_init_attributes(self, class_node: ast.ClassDef) -> list[dict[str, Any]]:
+    def _extract_init_attributes(
+        self, class_node: ast.ClassDef
+    ) -> list[dict[str, Any]]:
         """Extract attributes from __init__ method"""
         attributes: list[dict[str, Any]] = []
 
         # Find __init__ method
         init_method = None
         for item in class_node.body:
-            if isinstance(item, ast.FunctionDef) and item.name == "__init__":
+            if (isinstance(item, ast.FunctionDef)
+                    and item.name == "__init__"):
                 init_method = item
                 break
 
@@ -604,20 +607,38 @@ class Neo4jCodeAnalyzer:
         try:
             for node in ast.walk(init_method):
                 try:
-                    # Handle annotated assignments: self.attr: Type = value
-                    if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Attribute):
-                        if (isinstance(node.target.value, ast.Name) and
-                            node.target.value.id == "self" and
-                            not node.target.attr.startswith("_")):
-
+                    # Handle annotated assignments:
+                    # self.attr: Type = value
+                    if (isinstance(node, ast.AnnAssign)
+                            and isinstance(
+                                node.target, ast.Attribute
+                            )):
+                        is_self = (
+                            isinstance(node.target.value, ast.Name)
+                            and node.target.value.id == "self"
+                        )
+                        if (is_self
+                                and not node.target.attr.startswith(
+                                    "_"
+                                )):
+                            type_hint = (
+                                self._get_name(node.annotation)
+                                if node.annotation
+                                else "Any"
+                            )
+                            default = (
+                                self._get_default_value(node.value)
+                                if node.value
+                                else None
+                            )
                             attributes.append({
                                 "name": node.target.attr,
-                                "type": self._get_name(node.annotation) if node.annotation else "Any",
+                                "type": type_hint,
                                 "is_instance": True,
                                 "is_class": False,
                                 "is_property": False,
                                 "has_type_hint": True,
-                                "default_value": self._get_default_value(node.value) if node.value else None,
+                                "default_value": default,
                                 "line_number": node.lineno,
                             })
 
@@ -625,41 +646,71 @@ class Neo4jCodeAnalyzer:
                     elif isinstance(node, ast.Assign):
                         for target in node.targets:
                             if isinstance(target, ast.Attribute):
-                                if (isinstance(target.value, ast.Name) and
-                                    target.value.id == "self" and
-                                    not target.attr.startswith("_")):
-
-                                    # Try to infer type from assignment value
-                                    inferred_type = self._infer_type_from_value(node.value)
-
+                                is_self = (
+                                    isinstance(
+                                        target.value, ast.Name
+                                    )
+                                    and target.value.id == "self"
+                                )
+                                if (is_self
+                                        and not target.attr.startswith(
+                                            "_"
+                                        )):
+                                    # Infer type from assignment
+                                    inferred = (
+                                        self._infer_type_from_value(
+                                            node.value
+                                        )
+                                    )
+                                    default = (
+                                        self._get_default_value(
+                                            node.value
+                                        )
+                                    )
                                     attributes.append({
                                         "name": target.attr,
-                                        "type": inferred_type,
+                                        "type": inferred,
                                         "is_instance": True,
                                         "is_class": False,
                                         "is_property": False,
                                         "has_type_hint": False,
-                                        "default_value": self._get_default_value(node.value),
+                                        "default_value": default,
                                         "line_number": node.lineno,
                                     })
 
-                            # Handle multiple assignments: self.x = self.y = value
+                            # Handle multiple assignments:
+                            # self.x = self.y = value
                             elif isinstance(target, ast.Tuple):
                                 for elt in target.elts:
-                                    if (isinstance(elt, ast.Attribute) and
-                                        isinstance(elt.value, ast.Name) and
-                                        elt.value.id == "self" and
-                                        not elt.attr.startswith("_")):
-
-                                        inferred_type = self._infer_type_from_value(node.value)
+                                    is_self = (
+                                        isinstance(elt, ast.Attribute)
+                                        and isinstance(
+                                            elt.value, ast.Name
+                                        )
+                                        and elt.value.id == "self"
+                                    )
+                                    if (is_self
+                                            and not elt.attr.startswith(
+                                                "_"
+                                            )):
+                                        inferred = (
+                                            self._infer_type_from_value(
+                                                node.value
+                                            )
+                                        )
+                                        default = (
+                                            self._get_default_value(
+                                                node.value
+                                            )
+                                        )
                                         attributes.append({
                                             "name": elt.attr,
-                                            "type": inferred_type,
+                                            "type": inferred,
                                             "is_instance": True,
                                             "is_class": False,
                                             "is_property": False,
                                             "has_type_hint": False,
-                                            "default_value": self._get_default_value(node.value),
+                                            "default_value": default,
                                             "line_number": node.lineno,
                                         })
 

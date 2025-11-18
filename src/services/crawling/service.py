@@ -163,7 +163,7 @@ async def process_urls_for_mcp(
                     },
                 )
             except DatabaseError as e:
-                logger.error("Database error storing %s: %s", result['url'], e)
+                logger.exception("Database error storing %s: %s", result["url"], e)
                 stored_results.append(
                     {
                         "url": result["url"],
@@ -173,7 +173,7 @@ async def process_urls_for_mcp(
                     },
                 )
             except Exception as e:
-                logger.error("Failed to store %s: %s", result['url'], e)
+                logger.exception("Failed to store %s: %s", result["url"], e)
                 stored_results.append(
                     {
                         "url": result["url"],
@@ -192,7 +192,7 @@ async def process_urls_for_mcp(
         )
 
     except Exception as e:
-        logger.error("Error in process_urls_for_mcp: %s", e)
+        logger.exception("Error in process_urls_for_mcp: %s", e)
         return json.dumps(
             {
                 "success": False,
@@ -305,7 +305,7 @@ async def crawl_urls_for_agentic_search(
             "Starting recursive crawl: %s URLs, max_pages=%s, filtering=%s",
             len(current_urls),
             max_pages,
-            'enabled' if enable_url_filtering else 'disabled',
+            "enabled" if enable_url_filtering else "disabled",
         )
 
         async with AsyncWebCrawler(config=browser_config) as crawler:
@@ -407,9 +407,9 @@ async def crawl_urls_for_agentic_search(
                                     result.url,
                                 )
                         except DatabaseError as e:
-                            logger.error("Database error storing %s: %s", result.url, e)
+                            logger.exception("Database error storing %s: %s", result.url, e)
                         except Exception as e:
-                            logger.error("Failed to store %s: %s", result.url, e)
+                            logger.exception("Failed to store %s: %s", result.url, e)
 
                         # Extract internal links for next level
                         if pages_crawled < max_pages:  # Only if budget remains
