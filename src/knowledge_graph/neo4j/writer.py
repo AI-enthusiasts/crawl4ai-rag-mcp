@@ -349,11 +349,11 @@ async def create_graph(
                 relationships_created += 1
 
             if (i + 1) % 10 == 0:
-                logger.info(f"Processed {i + 1}/{len(modules_data)} files...")
+                logger.info("Processed %s/%s files...", i + 1, len(modules_data))
 
         # Create Branch nodes if metadata available
         if git_metadata and git_metadata.get("branches"):
-            logger.info(f"Creating {len(git_metadata['branches'][:10])} Branch nodes in Neo4j")
+            logger.info("Creating %s Branch nodes in Neo4j", len(git_metadata['branches'][:10]))
             for branch in git_metadata["branches"][:10]:  # Limit to 10 branches
                 await session.run("""
                     CREATE (b:Branch {
@@ -378,7 +378,7 @@ async def create_graph(
 
         # Create Commit nodes if metadata available
         if git_metadata and git_metadata.get("recent_commits"):
-            logger.info(f"Creating {len(git_metadata['recent_commits'])} Commit nodes in Neo4j")
+            logger.info("Creating %s Commit nodes in Neo4j", len(git_metadata['recent_commits']))
             for commit in git_metadata["recent_commits"]:
                 await session.run("""
                     CREATE (c:Commit {
@@ -407,7 +407,7 @@ async def create_graph(
         else:
             logger.warning("No Git metadata available - Branch and Commit nodes will not be created")
 
-        logger.info(f"Created {nodes_created} nodes and {relationships_created} relationships")
+        logger.info("Created %s nodes and %s relationships", nodes_created, relationships_created)
 
 
 async def process_modules_in_batches(
@@ -436,14 +436,15 @@ async def process_modules_in_batches(
     nodes_created = 0
     relationships_created = 0
 
-    logger.info(f"Processing {total_modules} modules in batches of {batch_size}")
+    logger.info("Processing %s modules in batches of %s", total_modules, batch_size)
 
     for batch_start in range(0, total_modules, batch_size):
         batch_end = min(batch_start + batch_size, total_modules)
         batch = modules_data[batch_start:batch_end]
 
-        logger.info(f"Processing batch {batch_start//batch_size + 1}/{(total_modules + batch_size - 1)//batch_size} "
-                   f"(modules {batch_start + 1}-{batch_end}/{total_modules})")
+        logger.info("Processing batch %s/%s (modules %s-%s/%s)",
+                   batch_start//batch_size + 1, (total_modules + batch_size - 1)//batch_size,
+                   batch_start + 1, batch_end, total_modules)
 
         # Process this batch in a transaction
         async with driver.session() as session:
@@ -462,16 +463,16 @@ async def process_modules_in_batches(
                 nodes_created += batch_nodes
                 relationships_created += batch_rels
 
-                logger.info(f"Batch {batch_start//batch_size + 1} completed: "
-                           f"{batch_nodes} nodes, {batch_rels} relationships")
+                logger.info("Batch %s completed: %s nodes, %s relationships",
+                           batch_start//batch_size + 1, batch_nodes, batch_rels)
 
             except QueryError as e:
-                logger.error(f"Neo4j query error in batch {batch_start//batch_size + 1}: {e}")
+                logger.error("Neo4j query error in batch %s: %s", batch_start//batch_size + 1, e)
                 logger.warning("Attempting to continue with next batch...")
                 # Continue with next batch on error
                 continue
             except Exception as e:
-                logger.exception(f"Unexpected error processing batch {batch_start//batch_size + 1}: {e}")
+                logger.exception("Unexpected error processing batch %s: %s", batch_start//batch_size + 1, e)
                 logger.warning("Attempting to continue with next batch...")
                 # Continue with next batch on error
                 continue
@@ -540,6 +541,6 @@ async def process_batch_transaction(
 
         # Log progress within batch
         if (i + 1) % 10 == 0:
-            logger.debug(f"  Processed {i + 1}/{len(batch)} modules in current batch")
+            logger.debug("  Processed %s/%s modules in current batch", i + 1, len(batch))
 
     return nodes_created, relationships_created
