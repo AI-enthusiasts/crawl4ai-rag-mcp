@@ -12,7 +12,7 @@ print("\nAttempting to import knowledge_graph modules...")
 
 # Try the fix we implemented
 try:
-    src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    src_dir = str(Path(__file__).parent.parent.absolute())
     if src_dir not in sys.path:
         sys.path.insert(0, src_dir)
         print(f"Added {src_dir} to sys.path")
