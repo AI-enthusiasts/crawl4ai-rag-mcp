@@ -93,15 +93,16 @@ def register_validation_tools(mcp: "FastMCP") -> None:
 
             # Clean up any existing code examples for this repository
             logger.info(
-                f"Cleaning up existing code examples for repository: {repo_name}",
+                "Cleaning up existing code examples for repository: %s",
+                repo_name,
             )
             try:
                 # Method exists in QdrantAdapter, added to Protocol
                 await app_ctx.database_client.delete_repository_code_examples(repo_name)
             except DatabaseError as cleanup_error:
-                logger.warning(f"Database error during cleanup: {cleanup_error}")
+                logger.warning("Database error during cleanup: %s", cleanup_error)
             except Exception as cleanup_error:
-                logger.warning(f"Unexpected error during cleanup: {cleanup_error}")
+                logger.warning("Unexpected error during cleanup: %s", cleanup_error)
 
             # Extract code examples from Neo4j
             from src.knowledge_graph.code_extractor import extract_repository_code
@@ -131,7 +132,8 @@ def register_validation_tools(mcp: "FastMCP") -> None:
 
             embedding_texts = [example["embedding_text"] for example in code_examples]
             logger.info(
-                f"Generating embeddings for {len(embedding_texts)} code examples",
+                "Generating embeddings for %d code examples",
+                len(embedding_texts),
             )
 
             embeddings = create_embeddings_batch(embedding_texts)
@@ -166,7 +168,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 source_ids.append(repo_name)
 
             # Store in Qdrant
-            logger.info(f"Storing {len(code_examples)} code examples in Qdrant")
+            logger.info("Storing %d code examples in Qdrant", len(code_examples))
 
             await app_ctx.database_client.add_code_examples(
                 urls=urls,
@@ -209,7 +211,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
             )
 
         except DatabaseError as e:
-            logger.error(f"Database error in extract_and_index_repository_code: {e}")
+            logger.error("Database error in extract_and_index_repository_code: %s", e)
             return json.dumps(
                 {
                     "success": False,
@@ -219,7 +221,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
         except KnowledgeGraphError as e:
-            logger.error(f"Knowledge graph error in extract_and_index_repository_code: {e}")
+            logger.error("Knowledge graph error in extract_and_index_repository_code: %s", e)
             return json.dumps(
                 {
                     "success": False,
@@ -229,7 +231,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
         except Exception as e:
-            logger.exception(f"Unexpected error in extract_and_index_repository_code tool: {e}")
+            logger.exception("Unexpected error in extract_and_index_repository_code tool: %s", e)
             return json.dumps(
                 {
                     "success": False,
@@ -327,7 +329,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
             return json.dumps(result, indent=2)
 
         except DatabaseError as e:
-            logger.error(f"Database error in smart_code_search: {e}")
+            logger.error("Database error in smart_code_search: %s", e)
             return json.dumps(
                 {
                     "success": False,
@@ -337,7 +339,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
         except ValidationError as e:
-            logger.error(f"Validation error in smart_code_search: {e}")
+            logger.error("Validation error in smart_code_search: %s", e)
             return json.dumps(
                 {
                     "success": False,
@@ -347,7 +349,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
         except Exception as e:
-            logger.exception(f"Unexpected error in smart_code_search tool: {e}")
+            logger.exception("Unexpected error in smart_code_search tool: %s", e)
             return json.dumps(
                 {
                     "success": False,
@@ -440,19 +442,19 @@ def register_validation_tools(mcp: "FastMCP") -> None:
             )
 
         except ValidationError as e:
-            logger.error(f"Validation error in hallucination detection: {e}")
+            logger.error("Validation error in hallucination detection: %s", e)
             msg = f"Enhanced hallucination check failed: {e!s}"
             raise MCPToolError(msg) from e
         except DatabaseError as e:
-            logger.error(f"Database error in hallucination detection: {e}")
+            logger.error("Database error in hallucination detection: %s", e)
             msg = f"Enhanced hallucination check failed: {e!s}"
             raise MCPToolError(msg) from e
         except KnowledgeGraphError as e:
-            logger.error(f"Knowledge graph error in hallucination detection: {e}")
+            logger.error("Knowledge graph error in hallucination detection: %s", e)
             msg = f"Enhanced hallucination check failed: {e!s}"
             raise MCPToolError(msg) from e
         except Exception as e:
-            logger.exception(f"Unexpected error in enhanced hallucination detection tool: {e}")
+            logger.exception("Unexpected error in enhanced hallucination detection tool: %s", e)
             msg = f"Enhanced hallucination check failed: {e!s}"
             raise MCPToolError(msg) from e
 
