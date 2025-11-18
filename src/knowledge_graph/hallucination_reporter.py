@@ -367,7 +367,7 @@ class HallucinationReporter:
         with Path(output_path).open("w", encoding="utf-8") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
 
-        logger.info(f"JSON report saved to: {output_path}")
+        logger.info("JSON report saved to: %s", output_path)
 
     def save_markdown_report(self, report: dict[str, Any], output_path: str) -> None:
         """Save report as Markdown file"""
@@ -376,7 +376,7 @@ class HallucinationReporter:
         with Path(output_path).open("w", encoding="utf-8") as f:
             f.write(md_content)
 
-        logger.info(f"Markdown report saved to: {output_path}")
+        logger.info("Markdown report saved to: %s", output_path)
 
     def _generate_markdown_content(self, report: dict[str, Any]) -> str:
         """Generate Markdown content from report"""
