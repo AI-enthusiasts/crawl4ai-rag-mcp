@@ -77,30 +77,12 @@ else:
 
 # Export registered MCP tool functions for tests
 # These are dynamically created by @mcp.tool() decorators
+# Note: Tool functions are available through the mcp instance directly
 scrape_urls = None
 perform_rag_query = None
 search = None
 search_code_examples = None
 smart_crawl_url_tool = None
-
-# Try to extract tool functions from mcp instance
-try:
-    # Tools are registered in mcp._tools dict
-    if hasattr(mcp, "_tools"):
-        for tool_name, tool_obj in mcp._tools.items():
-            if tool_name == "scrape_urls":
-                scrape_urls = tool_obj
-            elif tool_name == "perform_rag_query":
-                perform_rag_query = tool_obj
-            elif tool_name == "search":
-                search = tool_obj
-            elif tool_name == "search_code_examples":
-                search_code_examples = tool_obj
-            elif tool_name == "smart_crawl_url":
-                smart_crawl_url_tool = tool_obj
-except Exception:
-    # Tools not available yet, will be None
-    pass
 
 __all__ = [
     "Crawl4AIContext",

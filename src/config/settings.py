@@ -173,7 +173,10 @@ class Settings(BaseSettings):
         default=0.95,
         ge=0.0,
         le=1.0,
-        description="Completeness threshold (0.0-1.0) for determining when answer is sufficient",
+        description=(
+            "Completeness threshold (0.0-1.0) for determining when answer is "
+            "sufficient"
+        ),
     )
 
     agentic_search_max_iterations: int = Field(
@@ -194,7 +197,10 @@ class Settings(BaseSettings):
         default=50,
         ge=1,
         le=200,
-        description="Maximum total pages to crawl recursively across all URLs in iteration",
+        description=(
+            "Maximum total pages to crawl recursively across all URLs in "
+            "iteration"
+        ),
     )
 
     agentic_search_url_score_threshold: float = Field(
@@ -211,14 +217,20 @@ class Settings(BaseSettings):
 
     agentic_search_enable_url_filtering: bool = Field(
         default=True,
-        description="Enable smart URL filtering to avoid GitHub commits, pagination, etc.",
+        description=(
+            "Enable smart URL filtering to avoid GitHub commits, pagination, "
+            "etc."
+        ),
     )
 
     agentic_search_max_urls_to_rank: int = Field(
         default=20,
         ge=5,
         le=50,
-        description="Maximum number of search results to rank with LLM (reduce for lower costs)",
+        description=(
+            "Maximum number of search results to rank with LLM (reduce for "
+            "lower costs)"
+        ),
     )
 
     agentic_search_llm_temperature: float = Field(
@@ -391,7 +403,9 @@ class Settings(BaseSettings):
             "repo_min_free_space_gb": self.repo_min_free_space_gb,
             "repo_allow_size_override": self.repo_allow_size_override,
             "agentic_search_enabled": self.agentic_search_enabled,
-            "agentic_search_completeness_threshold": self.agentic_search_completeness_threshold,
+            "agentic_search_completeness_threshold": (
+                self.agentic_search_completeness_threshold
+            ),
             "model_choice": self.model_choice,
             "test_model_choice": self.test_model_choice,
         }

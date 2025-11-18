@@ -1,11 +1,12 @@
 """Application context and lifecycle management for the Crawl4AI MCP server."""
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from crawl4ai import BrowserConfig, MemoryAdaptiveDispatcher
+from crawl4ai import BrowserConfig, MemoryAdaptiveDispatcher, RateLimiter
 from fastmcp import FastMCP
 from sentence_transformers import CrossEncoder
 
@@ -39,8 +40,8 @@ def get_app_context() -> Optional["Crawl4AIContext"]:
 
 
 async def initialize_global_context() -> "Crawl4AIContext":
-    """
-    Initialize the global application context once.
+    """Initialize the global application context once.
+
     This should be called at application startup, not per-request.
 
     Returns:
@@ -50,7 +51,6 @@ async def initialize_global_context() -> "Crawl4AIContext":
 
     # Initialize lock if needed
     if _context_lock is None:
-        import asyncio
         _context_lock = asyncio.Lock()
 
     async with _context_lock:
@@ -76,7 +76,8 @@ async def initialize_global_context() -> "Crawl4AIContext":
         )
         logger.info(
             f"✓ BrowserConfig created for per-request crawler instances "
-            f"(headless={browser_config.headless}, browser_type={browser_config.browser_type})",
+            f"(headless={browser_config.headless}, "
+            f"browser_type={browser_config.browser_type})",
         )
 
         # Initialize database client
@@ -132,38 +133,46 @@ async def initialize_global_context() -> "Crawl4AIContext":
                         logger.info("✓ Repository extractor initialized")
 
                     except KnowledgeGraphError as e:
-                        logger.error(
-                            f"Knowledge graph error initializing Neo4j: {format_neo4j_error(e)}",
+                        error_msg = (
+                            f"Knowledge graph error initializing Neo4j: "
+                            f"{format_neo4j_error(e)}"
                         )
+                        logger.error(error_msg)
                         knowledge_validator = None
                         repo_extractor = None
                     except DatabaseError as e:
-                        logger.error(
-                            f"Database error initializing Neo4j: {format_neo4j_error(e)}",
+                        error_msg = (
+                            f"Database error initializing Neo4j: "
+                            f"{format_neo4j_error(e)}"
                         )
+                        logger.error(error_msg)
                         knowledge_validator = None
                         repo_extractor = None
                     except Exception as e:
-                        logger.error(
-                            f"Unexpected error initializing Neo4j components: {format_neo4j_error(e)}",
+                        error_msg = (
+                            f"Unexpected error initializing Neo4j components: "
+                            f"{format_neo4j_error(e)}"
                         )
+                        logger.error(error_msg)
                         knowledge_validator = None
                         repo_extractor = None
                 else:
-                    logger.warning(
-                        "Neo4j credentials not configured - knowledge graph tools will be unavailable",
+                    warning_msg = (
+                        "Neo4j credentials not configured - knowledge graph "
+                        "tools will be unavailable"
                     )
+                    logger.warning(warning_msg)
             except ImportError as e:
                 logger.warning(f"Knowledge graph dependencies not available: {e}")
         else:
-            logger.info(
-                "Knowledge graph functionality disabled - set USE_KNOWLEDGE_GRAPH=true to enable",
+            disabled_msg = (
+                "Knowledge graph functionality disabled - set "
+                "USE_KNOWLEDGE_GRAPH=true to enable"
             )
+            logger.info(disabled_msg)
 
         # Initialize shared dispatcher for global concurrency control
         # This ensures max_session_permit applies across ALL tool calls, not per-call
-        from crawl4ai import RateLimiter
-
         rate_limiter = RateLimiter(
             base_delay=(0.5, 1.5),
             max_delay=30.0,
@@ -177,7 +186,11 @@ async def initialize_global_context() -> "Crawl4AIContext":
             max_session_permit=settings.max_concurrent_sessions,
             rate_limiter=rate_limiter,
         )
-        logger.info(f"✓ Shared dispatcher initialized (max_session_permit={settings.max_concurrent_sessions})")
+        dispatcher_msg = (
+            f"✓ Shared dispatcher initialized "
+            f"(max_session_permit={settings.max_concurrent_sessions})"
+        )
+        logger.info(dispatcher_msg)
 
         context = Crawl4AIContext(
             browser_config=browser_config,
@@ -194,8 +207,8 @@ async def initialize_global_context() -> "Crawl4AIContext":
 
 
 async def cleanup_global_context() -> None:
-    """
-    Clean up the global application context.
+    """Clean up the global application context.
+
     This should be called at application shutdown.
     """
     global _app_context
@@ -213,18 +226,30 @@ async def cleanup_global_context() -> None:
             await _app_context.knowledge_validator.close()
             logger.info("✓ Knowledge graph validator closed")
         except KnowledgeGraphError as e:
-            logger.error(f"Knowledge graph error closing validator: {e}", exc_info=True)
+            logger.error(
+                f"Knowledge graph error closing validator: {e}",
+                exc_info=True,
+            )
         except Exception as e:
-            logger.error(f"Unexpected error closing knowledge validator: {e}", exc_info=True)
+            logger.error(
+                f"Unexpected error closing knowledge validator: {e}",
+                exc_info=True,
+            )
 
     if _app_context.repo_extractor:
         try:
             await _app_context.repo_extractor.close()
             logger.info("✓ Repository extractor closed")
         except KnowledgeGraphError as e:
-            logger.error(f"Knowledge graph error closing extractor: {e}", exc_info=True)
+            logger.error(
+                f"Knowledge graph error closing extractor: {e}",
+                exc_info=True,
+            )
         except Exception as e:
-            logger.error(f"Unexpected error closing repository extractor: {e}", exc_info=True)
+            logger.error(
+                f"Unexpected error closing repository extractor: {e}",
+                exc_info=True,
+            )
 
     _app_context = None
     logger.info("✓ Global application context cleanup completed")
@@ -234,12 +259,16 @@ async def cleanup_global_context() -> None:
 class Crawl4AIContext:
     """Context for the Crawl4AI MCP server."""
 
-    browser_config: BrowserConfig  # Shared config for creating crawlers per-request
+    # Shared config for creating crawlers per-request
+    browser_config: BrowserConfig
     database_client: VectorDatabase
-    dispatcher: MemoryAdaptiveDispatcher  # Shared dispatcher for global concurrency control
+    # Shared dispatcher for global concurrency control
+    dispatcher: MemoryAdaptiveDispatcher
     reranking_model: CrossEncoder | None = None
-    knowledge_validator: Any | None = None  # KnowledgeGraphValidator when available
-    repo_extractor: Any | None = None  # DirectNeo4jExtractor when available
+    # KnowledgeGraphValidator when available
+    knowledge_validator: Any | None = None
+    # DirectNeo4jExtractor when available
+    repo_extractor: Any | None = None
 
 
 def format_neo4j_error(error: Exception) -> str:
@@ -252,14 +281,20 @@ def format_neo4j_error(error: Exception) -> str:
         "failed to establish connection" in error_str
         or "connection refused" in error_str
     ):
-        return "Connection failed. Please ensure Neo4j is running and accessible at the specified URI."
+        return (
+            "Connection failed. Please ensure Neo4j is running and accessible "
+            "at the specified URI."
+        )
     if "unable to retrieve routing information" in error_str:
-        return "Connection failed. The Neo4j URI may be incorrect or the database may not be accessible."
+        return (
+            "Connection failed. The Neo4j URI may be incorrect or the database "
+            "may not be accessible."
+        )
     return f"Neo4j error: {error!s}"
 
 
 @asynccontextmanager
-async def crawl4ai_lifespan(server: FastMCP) -> AsyncIterator[Crawl4AIContext]:
+async def crawl4ai_lifespan(_server: FastMCP) -> AsyncIterator[Crawl4AIContext]:
     """
     Lifespan context manager for FastMCP.
 
@@ -267,7 +302,7 @@ async def crawl4ai_lifespan(server: FastMCP) -> AsyncIterator[Crawl4AIContext]:
     Therefore, we use a singleton pattern to ensure only one crawler instance exists.
 
     Args:
-        server: The FastMCP server instance
+        _server: The FastMCP server instance (required by FastMCP interface)
 
     Yields:
         Crawl4AIContext: The singleton context containing the Crawl4AI crawler

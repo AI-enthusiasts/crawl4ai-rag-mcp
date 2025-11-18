@@ -450,36 +450,51 @@ class HallucinationReporter:
         kg_hallucinations = list(validation_result.hallucinations_detected)
 
         if kg_hallucinations:
-            method_issues = [h for h in kg_hallucinations if h["type"] == "METHOD_NOT_FOUND"]
-            attr_issues = [h for h in kg_hallucinations if h["type"] == "ATTRIBUTE_NOT_FOUND"]
-            param_issues = [h for h in kg_hallucinations if h["type"] == "INVALID_PARAMETERS"]
+            method_issues = [
+                h for h in kg_hallucinations if h["type"] == "METHOD_NOT_FOUND"
+            ]
+            attr_issues = [
+                h for h in kg_hallucinations if h["type"] == "ATTRIBUTE_NOT_FOUND"
+            ]
+            param_issues = [
+                h for h in kg_hallucinations if h["type"] == "INVALID_PARAMETERS"
+            ]
 
             if method_issues:
+                method_count = len(method_issues)
                 recommendations.append(
-                    f"Found {len(method_issues)} non-existent methods in knowledge graph libraries. "
-                    "Consider checking the official documentation for correct method names.",
+                    f"Found {method_count} non-existent methods in "
+                    "knowledge graph libraries. Consider checking the "
+                    "official documentation for correct method names."
                 )
 
             if attr_issues:
+                attr_count = len(attr_issues)
                 recommendations.append(
-                    f"Found {len(attr_issues)} non-existent attributes in knowledge graph libraries. "
-                    "Verify attribute names against the class documentation.",
+                    f"Found {attr_count} non-existent attributes in "
+                    "knowledge graph libraries. Verify attribute names "
+                    "against the class documentation."
                 )
 
             if param_issues:
+                param_count = len(param_issues)
                 recommendations.append(
-                    f"Found {len(param_issues)} parameter mismatches in knowledge graph libraries. "
-                    "Check function signatures for correct parameter names and types.",
+                    f"Found {param_count} parameter mismatches in "
+                    "knowledge graph libraries. Check function signatures "
+                    "for correct parameter names and types."
                 )
         else:
             recommendations.append(
                 "No hallucinations detected in knowledge graph libraries. "
-                "External library usage appears to be working as expected.",
+                "External library usage appears to be working as "
+                "expected."
             )
 
-        if validation_result.overall_confidence < 0.7:
+        confidence_threshold = 0.7
+        if validation_result.overall_confidence < confidence_threshold:
             recommendations.append(
-                "Overall confidence is moderate. Most validations were for external libraries not in the knowledge graph.",
+                "Overall confidence is moderate. Most validations were "
+                "for external libraries not in the knowledge graph."
             )
 
         return recommendations
@@ -504,36 +519,64 @@ class HallucinationReporter:
         """Generate Markdown content from report"""
         md = []
 
+        # Extract common values
+        metadata = report["analysis_metadata"]
+        summary = report["validation_summary"]
+        total = summary["total_validations"]
+
         # Header
         md.append("# AI Hallucination Detection Report")
         md.append("")
-        md.append(f"**Script:** `{report['analysis_metadata']['script_path']}`")
-        md.append(f"**Analysis Date:** {report['analysis_metadata']['analysis_timestamp']}")
-        md.append(f"**Overall Confidence:** {report['validation_summary']['overall_confidence']:.2%}")
+        md.append(f"**Script:** `{metadata['script_path']}`")
+        md.append(f"**Analysis Date:** {metadata['analysis_timestamp']}")
+        confidence = summary["overall_confidence"]
+        md.append(
+            f"**Overall Confidence:** {confidence:.2%}"
+        )
         md.append("")
 
         # Summary
-        summary = report["validation_summary"]
         md.append("## Summary")
         md.append("")
-        md.append(f"- **Total Validations:** {summary['total_validations']}")
-        md.append(f"- **Valid:** {summary['valid_count']} ({summary['valid_count']/summary['total_validations']:.1%})")
-        md.append(f"- **Invalid:** {summary['invalid_count']} ({summary['invalid_count']/summary['total_validations']:.1%})")
-        md.append(f"- **Not Found:** {summary['not_found_count']} ({summary['not_found_count']/summary['total_validations']:.1%})")
-        md.append(f"- **Uncertain:** {summary['uncertain_count']} ({summary['uncertain_count']/summary['total_validations']:.1%})")
-        md.append(f"- **Hallucination Rate:** {summary['hallucination_rate']:.1%}")
+        md.append(
+            f"- **Total Validations:** {summary['total_validations']}"
+        )
+        valid_pct = summary["valid_count"] / total
+        md.append(
+            f"- **Valid:** {summary['valid_count']} ({valid_pct:.1%})"
+        )
+        invalid_pct = summary["invalid_count"] / total
+        md.append(
+            f"- **Invalid:** {summary['invalid_count']} ({invalid_pct:.1%})"
+        )
+        not_found_pct = summary["not_found_count"] / total
+        md.append(
+            f"- **Not Found:** {summary['not_found_count']} "
+            f"({not_found_pct:.1%})"
+        )
+        uncertain_pct = summary["uncertain_count"] / total
+        md.append(
+            f"- **Uncertain:** {summary['uncertain_count']} "
+            f"({uncertain_pct:.1%})"
+        )
+        md.append(
+            f"- **Hallucination Rate:** {summary['hallucination_rate']:.1%}"
+        )
         md.append("")
 
         # Hallucinations
         if report["hallucinations_detected"]:
             md.append("## 🚨 Hallucinations Detected")
             md.append("")
-            for i, hallucination in enumerate(report["hallucinations_detected"], 1):
-                md.append(f"### {i}. {hallucination['type'].replace('_', ' ').title()}")
-                md.append(f"**Location:** {hallucination['location']}")
-                md.append(f"**Description:** {hallucination['description']}")
-                if hallucination.get("suggestion"):
-                    md.append(f"**Suggestion:** {hallucination['suggestion']}")
+            for i, halluc in enumerate(
+                report["hallucinations_detected"], 1
+            ):
+                type_title = halluc["type"].replace("_", " ").title()
+                md.append(f"### {i}. {type_title}")
+                md.append(f"**Location:** {halluc['location']}")
+                md.append(f"**Description:** {halluc['description']}")
+                if halluc.get("suggestion"):
+                    md.append(f"**Suggestion:** {halluc['suggestion']}")
                 md.append("")
 
         # Libraries
@@ -548,26 +591,48 @@ class HallucinationReporter:
                 if lib["classes_used"]:
                     md.append("**Classes Used:**")
                     for cls in lib["classes_used"]:
-                        status_emoji = "✅" if cls["status"] == "VALID" else "❌"
-                        md.append(f"  - {status_emoji} `{cls['class_name']}` ({cls['confidence']:.1%})")
+                        is_valid = cls["status"] == "VALID"
+                        emoji = "✅" if is_valid else "❌"
+                        cls_name = cls["class_name"]
+                        conf = cls["confidence"]
+                        md.append(f"  - {emoji} `{cls_name}` ({conf:.1%})")
 
                 if lib["methods_called"]:
                     md.append("**Methods Called:**")
                     for method in lib["methods_called"]:
-                        status_emoji = "✅" if method["status"] == "VALID" else "❌"
-                        md.append(f"  - {status_emoji} `{method['class_name']}.{method['method_name']}()` ({method['confidence']:.1%})")
+                        is_valid = method["status"] == "VALID"
+                        emoji = "✅" if is_valid else "❌"
+                        cls_name = method["class_name"]
+                        method_name = method["method_name"]
+                        conf = method["confidence"]
+                        md.append(
+                            f"  - {emoji} `{cls_name}.{method_name}()` "
+                            f"({conf:.1%})"
+                        )
 
                 if lib["attributes_accessed"]:
                     md.append("**Attributes Accessed:**")
                     for attr in lib["attributes_accessed"]:
-                        status_emoji = "✅" if attr["status"] == "VALID" else "❌"
-                        md.append(f"  - {status_emoji} `{attr['class_name']}.{attr['attribute_name']}` ({attr['confidence']:.1%})")
+                        is_valid = attr["status"] == "VALID"
+                        emoji = "✅" if is_valid else "❌"
+                        cls_name = attr["class_name"]
+                        attr_name = attr["attribute_name"]
+                        conf = attr["confidence"]
+                        md.append(
+                            f"  - {emoji} `{cls_name}.{attr_name}` "
+                            f"({conf:.1%})"
+                        )
 
                 if lib["functions_called"]:
                     md.append("**Functions Called:**")
                     for func in lib["functions_called"]:
-                        status_emoji = "✅" if func["status"] == "VALID" else "❌"
-                        md.append(f"  - {status_emoji} `{func['function_name']}()` ({func['confidence']:.1%})")
+                        is_valid = func["status"] == "VALID"
+                        emoji = "✅" if is_valid else "❌"
+                        func_name = func["function_name"]
+                        conf = func["confidence"]
+                        md.append(
+                            f"  - {emoji} `{func_name}()` ({conf:.1%})"
+                        )
 
                 md.append("")
 
