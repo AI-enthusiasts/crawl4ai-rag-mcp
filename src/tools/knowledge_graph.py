@@ -12,7 +12,6 @@ This module contains Neo4j knowledge graph MCP tools including:
 
 import json
 import logging
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 

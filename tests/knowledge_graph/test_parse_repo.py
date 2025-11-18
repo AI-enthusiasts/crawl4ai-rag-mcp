@@ -20,32 +20,22 @@ Test coverage includes:
 
 import asyncio
 import os
-import shutil
 import subprocess
-import tempfile
 from pathlib import Path
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, Mock, patch, call
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 # Import custom exceptions
 from src.core.exceptions import (
+    AnalysisError,
     GitError,
     ParsingError,
-    AnalysisError,
-    RepositoryError,
     QueryError,
+    RepositoryError,
 )
 
 # Import fixtures
-from tests.fixtures.neo4j_fixtures import (
-    MockNeo4jDriver,
-    MockNeo4jSession,
-    mock_neo4j_driver,
-    sample_git_repo,
-)
-
 
 # =============================================================================
 # Mock Setup and Fixtures
@@ -99,10 +89,10 @@ def mock_analyzer():
                     {"name": "test_method", "line_number": 9, "parameters": ["self", "arg1"]},
                 ],
                 "attributes": [{"name": "test_attr", "type": "str"}],
-            }
+            },
         ],
         "functions": [
-            {"name": "test_function", "line_number": 15, "parameters": ["x", "y"], "return_type": "int"}
+            {"name": "test_function", "line_number": 15, "parameters": ["x", "y"], "return_type": "int"},
         ],
         "imports": [
             {"module": "os", "type": "import"},
@@ -150,7 +140,7 @@ async def extractor(mock_neo4j_driver, mock_git_manager, mock_analyzer, mock_ana
         extractor = DirectNeo4jExtractor(
             neo4j_uri="bolt://localhost:7687",
             neo4j_user="test_user",
-            neo4j_password="test_password"
+            neo4j_password="test_password",
         )
 
         extractor.driver = mock_neo4j_driver
@@ -182,7 +172,7 @@ class TestDirectNeo4jExtractorInit:
             extractor = DirectNeo4jExtractor(
                 neo4j_uri="bolt://localhost:7687",
                 neo4j_user="neo4j",
-                neo4j_password="password"
+                neo4j_password="password",
             )
 
             assert extractor.neo4j_uri == "bolt://localhost:7687"
@@ -214,7 +204,7 @@ class TestDirectNeo4jExtractorInit:
             extractor = DirectNeo4jExtractor(
                 neo4j_uri="bolt://localhost:7687",
                 neo4j_user="neo4j",
-                neo4j_password="password"
+                neo4j_password="password",
             )
 
             assert extractor.batch_size == 100
@@ -389,7 +379,7 @@ class TestRepositoryValidation:
     async def test_validate_repository_error(self, extractor):
         """Test validation with RepositoryError"""
         extractor.git_manager.validate_repository_size = AsyncMock(
-            side_effect=RepositoryError("Validation failed")
+            side_effect=RepositoryError("Validation failed"),
         )
 
         is_valid, info = await extractor.validate_before_processing("https://github.com/test/repo.git")
@@ -402,7 +392,7 @@ class TestRepositoryValidation:
     async def test_validate_unexpected_exception(self, extractor):
         """Test validation with unexpected exception"""
         extractor.git_manager.validate_repository_size = AsyncMock(
-            side_effect=Exception("Unexpected error")
+            side_effect=Exception("Unexpected error"),
         )
 
         is_valid, info = await extractor.validate_before_processing("https://github.com/test/repo.git")
@@ -422,13 +412,13 @@ class TestGitClone:
     async def test_clone_with_git_manager(self, extractor):
         """Test cloning using GitRepositoryManager"""
         extractor.git_manager.clone_repository_with_validation = AsyncMock(
-            return_value="/tmp/test_repo"
+            return_value="/tmp/test_repo",
         )
 
         result = await extractor.clone_repo(
             repo_url="https://github.com/test/repo.git",
             target_dir="/tmp/test_repo",
-            branch="main"
+            branch="main",
         )
 
         assert result == "/tmp/test_repo"
@@ -438,13 +428,13 @@ class TestGitClone:
     async def test_clone_with_force_flag(self, extractor):
         """Test cloning with force flag to bypass validation"""
         extractor.git_manager.clone_repository_with_validation = AsyncMock(
-            return_value="/tmp/test_repo"
+            return_value="/tmp/test_repo",
         )
 
         result = await extractor.clone_repo(
             repo_url="https://github.com/test/repo.git",
             target_dir="/tmp/test_repo",
-            force=True
+            force=True,
         )
 
         assert result == "/tmp/test_repo"
@@ -455,33 +445,33 @@ class TestGitClone:
     async def test_clone_git_error(self, extractor):
         """Test cloning with GitError"""
         extractor.git_manager.clone_repository_with_validation = AsyncMock(
-            side_effect=GitError("Clone failed")
+            side_effect=GitError("Clone failed"),
         )
 
         with pytest.raises(GitError, match="Clone failed"):
             await extractor.clone_repo(
                 repo_url="https://github.com/test/repo.git",
-                target_dir="/tmp/test_repo"
+                target_dir="/tmp/test_repo",
             )
 
     @pytest.mark.asyncio
     async def test_clone_validation_error(self, extractor):
         """Test cloning with RuntimeError (validation failure)"""
         extractor.git_manager.clone_repository_with_validation = AsyncMock(
-            side_effect=RuntimeError("Repository too large")
+            side_effect=RuntimeError("Repository too large"),
         )
 
         with pytest.raises(RuntimeError, match="Repository too large"):
             await extractor.clone_repo(
                 repo_url="https://github.com/test/repo.git",
-                target_dir="/tmp/test_repo"
+                target_dir="/tmp/test_repo",
             )
 
     @pytest.mark.asyncio
     async def test_clone_fallback_to_subprocess(self, extractor, tmp_path):
         """Test fallback to subprocess when GitRepositoryManager fails"""
         extractor.git_manager.clone_repository_with_validation = AsyncMock(
-            side_effect=Exception("Manager unavailable")
+            side_effect=Exception("Manager unavailable"),
         )
 
         target_dir = str(tmp_path / "fallback_repo")
@@ -491,7 +481,7 @@ class TestGitClone:
 
             result = await extractor.clone_repo(
                 repo_url="https://github.com/test/repo.git",
-                target_dir=target_dir
+                target_dir=target_dir,
             )
 
             assert result == target_dir
@@ -512,7 +502,7 @@ class TestGitClone:
             with pytest.raises(GitError, match="Git clone failed"):
                 await extractor.clone_repo(
                     repo_url="https://github.com/test/invalid.git",
-                    target_dir=target_dir
+                    target_dir=target_dir,
                 )
 
     @pytest.mark.asyncio
@@ -523,12 +513,12 @@ class TestGitClone:
         (target_dir / "old_file.txt").write_text("old content")
 
         extractor.git_manager.clone_repository_with_validation = AsyncMock(
-            return_value=str(target_dir)
+            return_value=str(target_dir),
         )
 
         await extractor.clone_repo(
             repo_url="https://github.com/test/repo.git",
-            target_dir=str(target_dir)
+            target_dir=str(target_dir),
         )
 
         # GitRepositoryManager should handle cleanup
@@ -565,7 +555,7 @@ class TestGitMetadata:
         """Test metadata extraction with GitError"""
         repo_dir = str(tmp_path / "test_repo")
         extractor.git_manager.get_repository_info = AsyncMock(
-            side_effect=GitError("Git operation failed")
+            side_effect=GitError("Git operation failed"),
         )
 
         metadata = await extractor.get_repository_metadata(repo_dir)
@@ -592,7 +582,7 @@ class TestGitMetadata:
         """Test metadata extraction with unexpected exception"""
         repo_dir = str(tmp_path / "test_repo")
         extractor.git_manager.get_branches = AsyncMock(
-            side_effect=Exception("Unexpected error")
+            side_effect=Exception("Unexpected error"),
         )
 
         metadata = await extractor.get_repository_metadata(repo_dir)
@@ -750,7 +740,7 @@ class TestRepositoryAnalysis:
             await extractor.analyze_repository(
                 repo_url="https://github.com/test/repo.git",
                 temp_dir=str(repo_dir),
-                branch="develop"
+                branch="develop",
             )
 
             # Should pass branch to clone_repo (as 3rd positional argument)
@@ -770,7 +760,7 @@ class TestRepositoryAnalysis:
 
             await extractor.analyze_repository(
                 repo_url="https://github.com/test/repo.git",
-                temp_dir=str(repo_dir)
+                temp_dir=str(repo_dir),
             )
 
             mock_clear.assert_called_once_with("repo")
@@ -788,7 +778,7 @@ class TestRepositoryAnalysis:
 
             await extractor.analyze_repository(
                 repo_url="https://github.com/test/repo.git",
-                temp_dir=str(repo_dir)
+                temp_dir=str(repo_dir),
             )
 
             # Directory should be removed after analysis
@@ -802,7 +792,7 @@ class TestRepositoryAnalysis:
 
             with pytest.raises(GitError, match="Clone failed"):
                 await extractor.analyze_repository(
-                    repo_url="https://github.com/test/repo.git"
+                    repo_url="https://github.com/test/repo.git",
                 )
 
     @pytest.mark.asyncio
@@ -817,7 +807,7 @@ class TestRepositoryAnalysis:
 
             await extractor.analyze_local_repository(
                 local_path=str(repo_dir),
-                repo_name="local-repo"
+                repo_name="local-repo",
             )
 
             mock_create.assert_called_once()
@@ -831,7 +821,7 @@ class TestRepositoryAnalysis:
         repo_dir.mkdir()
 
         extractor.analyzer.analyze_python_file = MagicMock(
-            side_effect=ParsingError("Parse failed")
+            side_effect=ParsingError("Parse failed"),
         )
 
         # Should handle ParsingError gracefully or raise
@@ -839,7 +829,7 @@ class TestRepositoryAnalysis:
             try:
                 await extractor.analyze_local_repository(
                     local_path=str(repo_dir),
-                    repo_name="local-repo"
+                    repo_name="local-repo",
                 )
             except (ParsingError, AnalysisError, RepositoryError):
                 # Expected behavior - errors should propagate
@@ -856,7 +846,7 @@ class TestRepositoryAnalysis:
             with pytest.raises(AnalysisError, match="Analysis failed"):
                 await extractor.analyze_local_repository(
                     local_path=str(repo_dir),
-                    repo_name="local-repo"
+                    repo_name="local-repo",
                 )
 
 
@@ -890,7 +880,7 @@ class TestNeo4jOperations:
                 extractor.driver,
                 "test-repo",
                 modules_data,
-                git_metadata
+                git_metadata,
             )
 
     @pytest.mark.asyncio
@@ -900,7 +890,7 @@ class TestNeo4jOperations:
 
             result = await extractor.search_graph(
                 query_type="files_importing",
-                target="models"
+                target="models",
             )
 
             assert result == [{"result": "data"}]
@@ -935,7 +925,7 @@ class TestErrorHandling:
     async def test_git_error_propagation(self, extractor):
         """Test GitError propagation through the stack"""
         extractor.git_manager.get_repository_info = AsyncMock(
-            side_effect=GitError("Git command failed")
+            side_effect=GitError("Git command failed"),
         )
 
         metadata = await extractor.get_repository_metadata("/tmp/repo")

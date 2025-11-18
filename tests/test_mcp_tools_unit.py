@@ -10,19 +10,16 @@ of external dependencies including Crawl4AI, databases, and Neo4j.
 Target coverage: >90% for all MCP tool functions
 """
 
-import pytest
-import asyncio
-import json
 import os
+
+import pytest
+
 npytestmark = pytest.mark.skip(reason="Test needs refactoring after module restructure")
 import sys
-import pytest
-import time
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock, mock_open, patch
 
 import pytest
-import requests
 
 # Add src to path for imports
 src_path = Path(__file__).parent.parent / "src"

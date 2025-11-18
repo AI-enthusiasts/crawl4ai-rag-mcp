@@ -39,7 +39,6 @@ async def parse_local_repository(
         JSON string with parsing results, statistics, and repository information
     """
     import json
-    import os
 
     try:
         # Get the app context

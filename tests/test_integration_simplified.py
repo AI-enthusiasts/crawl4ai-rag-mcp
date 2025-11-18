@@ -88,7 +88,7 @@ class TestIntegrationSimplified:
                 "vector": embedding,
             }
             for i, (chunk, embedding) in enumerate(
-                zip(chunks, embeddings, strict=False)
+                zip(chunks, embeddings, strict=False),
             )
         ]
 

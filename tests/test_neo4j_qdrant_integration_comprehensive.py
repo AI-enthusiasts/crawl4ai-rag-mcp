@@ -18,7 +18,6 @@ Test Structure:
 
 import asyncio
 import json
-import os
 import sys
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -153,7 +152,7 @@ class TestMCPToolContextWrappers:
 
             # Step 3: Simulate database operations
             await mock_app_context.database_client.delete_repository_code_examples(
-                "test-repo"
+                "test-repo",
             )
             await mock_app_context.database_client.add_code_examples(
                 urls=[
@@ -178,7 +177,7 @@ class TestMCPToolContextWrappers:
             # Verify workflow steps were executed
             mock_embeddings.assert_called_once_with(embedding_texts)
             mock_app_context.database_client.delete_repository_code_examples.assert_called_once_with(
-                "test-repo"
+                "test-repo",
             )
             mock_app_context.database_client.add_code_examples.assert_called_once()
 
@@ -249,7 +248,7 @@ class TestMCPToolContextWrappers:
 
         # Mock extraction failure
         with patch(
-            "knowledge_graph.code_extractor.extract_repository_code"
+            "knowledge_graph.code_extractor.extract_repository_code",
         ) as mock_extract:
             mock_extract.return_value = {
                 "success": False,
@@ -258,13 +257,13 @@ class TestMCPToolContextWrappers:
 
             # Simulate what the tool would return for this scenario
             result = await mock_extract(
-                mock_app_context.repo_extractor, "nonexistent-repo"
+                mock_app_context.repo_extractor, "nonexistent-repo",
             )
             assert result["success"] is False
 
     @pytest.mark.asyncio
     async def test_smart_code_search_workflow(
-        self, mock_app_context, mock_fastmcp_context
+        self, mock_app_context, mock_fastmcp_context,
     ):
         """Test smart code search workflow with validation."""
         set_app_context(mock_app_context)
@@ -307,7 +306,7 @@ class TestMCPToolContextWrappers:
         }
 
         with patch(
-            "services.validated_search.ValidatedCodeSearchService"
+            "services.validated_search.ValidatedCodeSearchService",
         ) as mock_service_class:
             mock_service = AsyncMock()
             mock_service.search_and_validate_code.return_value = mock_search_results
@@ -379,13 +378,13 @@ class TestMCPToolContextWrappers:
                     "content": "fast result",
                     "similarity": 0.8,
                     "validation": {"confidence_score": 0.7},
-                }
+                },
             ],
             "validation_summary": {"total_found": 1},
         }
 
         with patch(
-            "services.validated_search.ValidatedCodeSearchService"
+            "services.validated_search.ValidatedCodeSearchService",
         ) as mock_service_class:
             mock_service = AsyncMock()
             mock_service.search_and_validate_code.return_value = fast_results
@@ -498,7 +497,7 @@ class TestCodeExtractionWorkflow:
             mock_neo4j_session
         )
         mock_repo_extractor.driver.session.return_value.__aexit__ = AsyncMock(
-            return_value=None
+            return_value=None,
         )
 
         result = await extract_repository_code(mock_repo_extractor, "test-repo")
@@ -530,7 +529,7 @@ class TestCodeExtractionWorkflow:
 
     @pytest.mark.asyncio
     async def test_extract_repository_code_repository_not_found(
-        self, mock_neo4j_session
+        self, mock_neo4j_session,
     ):
         """Test extraction when repository doesn't exist."""
         # Mock repository not found
@@ -543,7 +542,7 @@ class TestCodeExtractionWorkflow:
             mock_neo4j_session
         )
         mock_repo_extractor.driver.session.return_value.__aexit__ = AsyncMock(
-            return_value=None
+            return_value=None,
         )
 
         result = await extract_repository_code(mock_repo_extractor, "nonexistent-repo")
@@ -659,12 +658,12 @@ class TestCodeIndexingInQdrant:
 
             for i, example in enumerate(mock_code_examples):
                 urls.append(
-                    f"neo4j://repository/auth-service/{example['code_type']}/{example['name']}"
+                    f"neo4j://repository/auth-service/{example['code_type']}/{example['name']}",
                 )
                 chunk_numbers.append(i)
                 code_texts.append(example["code_text"])
                 summaries.append(
-                    f"{example['code_type'].title()}: {example['full_name']}"
+                    f"{example['code_type'].title()}: {example['full_name']}",
                 )
                 metadatas.append(example["metadata"])
                 source_ids.append(example["repository_name"])
@@ -693,7 +692,7 @@ class TestCodeIndexingInQdrant:
 
     @pytest.mark.asyncio
     async def test_code_indexing_embedding_dimension_validation(
-        self, mock_code_examples
+        self, mock_code_examples,
     ):
         """Test validation of embedding dimensions during indexing."""
         mock_database_client = AsyncMock()
@@ -790,7 +789,7 @@ class TestValidatedSearchFunctionality:
 
     @pytest.mark.asyncio
     async def test_validated_search_with_high_confidence(
-        self, mock_validated_search_service
+        self, mock_validated_search_service,
     ):
         """Test validated search returning high confidence results."""
         result = await mock_validated_search_service.search_and_validate_code(
@@ -1127,7 +1126,7 @@ def fake_function():
 
     @pytest.mark.asyncio
     async def test_enhanced_hallucination_detection_performance(
-        self, mock_enhanced_detector
+        self, mock_enhanced_detector,
     ):
         """Test enhanced hallucination detection performance requirements."""
         # Mock fast detection
@@ -1252,7 +1251,7 @@ class TestIntegrationPerformanceBenchmarks:
 
         # Mock fast extraction
         with patch(
-            "knowledge_graph.code_extractor.extract_repository_code"
+            "knowledge_graph.code_extractor.extract_repository_code",
         ) as mock_extract:
             mock_extract.return_value = {
                 "success": True,
@@ -1276,7 +1275,7 @@ class TestIntegrationPerformanceBenchmarks:
 
                 # Simulate the extraction workflow
                 extraction_result = await extract_repository_code(
-                    mock_app_context.repo_extractor, "test-repo"
+                    mock_app_context.repo_extractor, "test-repo",
                 )
 
                 end_time = time.time()
@@ -1290,7 +1289,7 @@ class TestIntegrationPerformanceBenchmarks:
 
         # Mock fast search
         with patch(
-            "services.validated_search.ValidatedCodeSearchService"
+            "services.validated_search.ValidatedCodeSearchService",
         ) as mock_service_class:
             mock_service = AsyncMock()
             mock_service.search_and_validate_code.return_value = {
@@ -1327,7 +1326,7 @@ class TestIntegrationPerformanceBenchmarks:
 
         # Mock fast search service
         with patch(
-            "services.validated_search.ValidatedCodeSearchService"
+            "services.validated_search.ValidatedCodeSearchService",
         ) as mock_service_class:
             mock_service = AsyncMock()
             mock_service.search_and_validate_code.return_value = {

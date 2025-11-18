@@ -2,7 +2,6 @@
 """Test the batch URL fix with the actual MCP server."""
 
 import json
-import os
 import sys
 
 # Add the src directory to the path
@@ -115,12 +114,12 @@ def main():
 
     print("\\n" + "=" * 80)
     print(
-        f"MCP simulation result: {'✓ ALL TESTS PASSED' if success else '✗ SOME TESTS FAILED'}"
+        f"MCP simulation result: {'✓ ALL TESTS PASSED' if success else '✗ SOME TESTS FAILED'}",
     )
 
     if success:
         print(
-            "\\n✅ The batch URL processing fix should now work correctly with MCP clients!"
+            "\\n✅ The batch URL processing fix should now work correctly with MCP clients!",
         )
         print("   - Single URLs work as before")
         print("   - JSON string lists (from MCP protocol) are now properly parsed")

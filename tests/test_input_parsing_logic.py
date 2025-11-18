@@ -226,7 +226,7 @@ def test_url_parsing():
                 print(f"   Result: {'✅ PASS' if test_passed else '❌ FAIL'}")
                 print(f"   Success: {success}")
                 print(
-                    f"   URLs parsed: {actual_count} (expected: {test_case['expected_count']})"
+                    f"   URLs parsed: {actual_count} (expected: {test_case['expected_count']})",
                 )
                 print(f"   URLs: {result}")
             else:
@@ -241,7 +241,7 @@ def test_url_parsing():
                     "success": success,
                     "expected": test_case["expected_success"],
                     "result": result,
-                }
+                },
             )
 
         except Exception as e:
@@ -253,7 +253,7 @@ def test_url_parsing():
                     "success": False,
                     "expected": test_case["expected_success"],
                     "error": str(e),
-                }
+                },
             )
 
         print()

@@ -83,7 +83,7 @@ async def test_code_extraction_integration():
             print("✅ URL processing successful")
             print(f"   Chunks stored: {result_data.get('chunks_stored', 0)}")
             print(
-                f"   Code examples stored: {result_data.get('code_examples_stored', 0)}"
+                f"   Code examples stored: {result_data.get('code_examples_stored', 0)}",
             )
             print(f"   Content length: {result_data.get('content_length', 0)}")
 
@@ -104,13 +104,13 @@ async def test_code_extraction_integration():
 
                     if code_search_result:
                         print(
-                            f"✅ Found {len(code_search_result)} code examples in database"
+                            f"✅ Found {len(code_search_result)} code examples in database",
                         )
                         # Show first example
                         if code_search_result:
                             first_example = code_search_result[0]
                             print(
-                                f"   Sample code: {first_example.get('code_example', '')[:100]}..."
+                                f"   Sample code: {first_example.get('code_example', '')[:100]}...",
                             )
                     else:
                         print("⚠️ No code examples found in database search")
@@ -175,7 +175,7 @@ def greet(name):
         if code_blocks_small:
             for i, block in enumerate(code_blocks_small):
                 print(
-                    f"   Block {i + 1}: {len(block['code'])} chars, lang: {block.get('language', 'unknown')}"
+                    f"   Block {i + 1}: {len(block['code'])} chars, lang: {block.get('language', 'unknown')}",
                 )
 
         return len(code_blocks_small) > 0
@@ -231,7 +231,7 @@ if __name__ == "__main__":
                 test2_success
                 and "qdrant-dev"
                 in subprocess.run(
-                    ["docker", "ps"], check=False, capture_output=True, text=True
+                    ["docker", "ps"], check=False, capture_output=True, text=True,
                 ).stdout
             ):
                 print("• Database storage ✅")

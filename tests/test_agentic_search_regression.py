@@ -27,7 +27,6 @@ This can happen when:
 NO MOCKS - Real integration test that will FAIL if bug exists.
 """
 
-import asyncio
 import json
 import os
 
@@ -35,7 +34,6 @@ import pytest
 
 from src.config import get_settings, reset_settings
 from src.core.context import initialize_global_context
-
 
 # Mark as integration test
 pytestmark = pytest.mark.integration
@@ -63,10 +61,10 @@ def test_settings():
 
     # Force reload of settings module
     import sys
-    if 'src.config.settings' in sys.modules:
-        del sys.modules['src.config.settings']
-    if 'src.config' in sys.modules:
-        del sys.modules['src.config']
+    if "src.config.settings" in sys.modules:
+        del sys.modules["src.config.settings"]
+    if "src.config" in sys.modules:
+        del sys.modules["src.config"]
 
     reset_settings()
     settings = get_settings()
@@ -118,8 +116,8 @@ class TestAgenticSearchCompletenessEvaluationFailure:
         """
         # Force reload of mcp_wrapper to pick up test settings
         import sys
-        if 'src.services.agentic_search.mcp_wrapper' in sys.modules:
-            del sys.modules['src.services.agentic_search.mcp_wrapper']
+        if "src.services.agentic_search.mcp_wrapper" in sys.modules:
+            del sys.modules["src.services.agentic_search.mcp_wrapper"]
 
         from src.services.agentic_search import agentic_search_impl
 

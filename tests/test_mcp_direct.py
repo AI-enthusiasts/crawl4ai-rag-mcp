@@ -108,7 +108,6 @@ def test_container_access():
     results = []
 
     # Check if we're in container or host
-    import os
 
     in_container = Path("/app/src").exists()
 

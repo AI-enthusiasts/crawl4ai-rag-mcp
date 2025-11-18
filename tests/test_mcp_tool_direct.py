@@ -80,7 +80,7 @@ def test_scrape_urls_tool():
                         content = json.loads(result["result"]["content"][0]["text"])
                         if content.get("success"):
                             print(
-                                f"✓ Success - {content.get('message', 'Processed successfully')}"
+                                f"✓ Success - {content.get('message', 'Processed successfully')}",
                             )
                             if content.get("total_urls"):
                                 print(f"  Processed {content['total_urls']} URLs")

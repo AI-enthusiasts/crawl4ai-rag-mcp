@@ -6,7 +6,6 @@ This test actually runs the search tool and verifies the complete pipeline works
 
 import asyncio
 import json
-import os
 import sys
 import time
 
@@ -156,7 +155,7 @@ async def test_e2e_search_pipeline():
 
         else:
             print(
-                f"   ❌ RAG search failed: {result_data.get('error', 'Unknown error')}"
+                f"   ❌ RAG search failed: {result_data.get('error', 'Unknown error')}",
             )
             return False
 
@@ -202,7 +201,7 @@ def main():
         )
         if "searxng-dev" not in result.stdout:
             print(
-                "❌ SearXNG service not running. Please start with: make dev-bg-nobuild"
+                "❌ SearXNG service not running. Please start with: make dev-bg-nobuild",
             )
             return False
     except:
@@ -214,7 +213,7 @@ def main():
 
     if success:
         print(
-            "\n✅ All E2E tests passed! The search-scrape-RAG pipeline is fully functional."
+            "\n✅ All E2E tests passed! The search-scrape-RAG pipeline is fully functional.",
         )
         print("\n📋 PIPELINE VERIFICATION COMPLETE:")
         print("• SearXNG search → URL extraction ✅")

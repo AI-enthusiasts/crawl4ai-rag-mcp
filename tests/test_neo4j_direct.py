@@ -73,7 +73,7 @@ async def test_neo4j_connection():
 
             # Clean up
             await session.run(
-                "MATCH (t:TestNode {name: $name}) DELETE t", name="connection_test"
+                "MATCH (t:TestNode {name: $name}) DELETE t", name="connection_test",
             )
             print("✅ Cleaned up test node")
 

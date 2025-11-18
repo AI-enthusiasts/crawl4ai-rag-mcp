@@ -658,7 +658,7 @@ def mock_openai_embeddings():
         # Don't mock - let real OpenAI calls through
         # But ensure API key is set
         if not os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY").startswith(
-            "test-"
+            "test-",
         ):
             pytest.fail(
                 "ALLOW_OPENAI_TESTS=true but no valid OPENAI_API_KEY found. "

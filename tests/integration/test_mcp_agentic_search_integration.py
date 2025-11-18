@@ -11,9 +11,7 @@ Requirements:
 - OPENAI_API_KEY set in environment
 """
 
-import asyncio
 import json
-import os
 
 import httpx
 import pytest

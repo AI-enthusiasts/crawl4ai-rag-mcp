@@ -8,7 +8,7 @@ Tests the following tools:
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastmcp import Context
@@ -41,7 +41,7 @@ class TestGetAvailableSourcesTool:
         """Test get_available_sources tool with successful retrieval."""
         with patch("src.tools.rag.get_app_context") as mock_get_ctx:
             with patch(
-                "src.tools.rag.get_available_sources"
+                "src.tools.rag.get_available_sources",
             ) as mock_get_sources_func:
                 # Mock app context
                 mock_app_ctx = MagicMock()
@@ -57,9 +57,9 @@ class TestGetAvailableSourcesTool:
                                 "source_id": "example.com",
                                 "summary": "Test website",
                                 "total_word_count": 5000,
-                            }
+                            },
                         ],
-                    }
+                    },
                 )
 
                 # Register and get function
@@ -89,7 +89,7 @@ class TestGetAvailableSourcesTool:
 
     @pytest.mark.asyncio
     async def test_get_available_sources_no_database_client(
-        self, mock_mcp, mock_context
+        self, mock_mcp, mock_context,
     ):
         """Test get_available_sources when database client is not available."""
         with patch("src.tools.rag.get_app_context") as mock_get_ctx:
@@ -127,7 +127,7 @@ class TestGetAvailableSourcesTool:
         """Test get_available_sources with database error."""
         with patch("src.tools.rag.get_app_context") as mock_get_ctx:
             with patch(
-                "src.tools.rag.get_available_sources"
+                "src.tools.rag.get_available_sources",
             ) as mock_get_sources_func:
                 # Mock app context
                 mock_app_ctx = MagicMock()
@@ -136,7 +136,7 @@ class TestGetAvailableSourcesTool:
 
                 # Mock database error
                 mock_get_sources_func.side_effect = DatabaseError(
-                    "Connection failed"
+                    "Connection failed",
                 )
 
                 # Register and get function
@@ -186,9 +186,9 @@ class TestPerformRagQueryTool:
                                 "content": "Relevant content",
                                 "url": "https://example.com",
                                 "similarity_score": 0.95,
-                            }
+                            },
                         ],
-                    }
+                    },
                 )
 
                 # Register and get function
@@ -237,7 +237,7 @@ class TestPerformRagQueryTool:
                         "query": "test query",
                         "source_filter": "example.com",
                         "results": [],
-                    }
+                    },
                 )
 
                 # Register and get function
@@ -371,9 +371,9 @@ class TestSearchCodeExamplesTool:
                                 "summary": "User authentication function",
                                 "language": "python",
                                 "similarity_score": 0.92,
-                            }
+                            },
                         ],
-                    }
+                    },
                 )
 
                 # Register and get function
@@ -407,7 +407,7 @@ class TestSearchCodeExamplesTool:
 
     @pytest.mark.asyncio
     async def test_search_code_examples_with_source_filter(
-        self, mock_mcp, mock_context
+        self, mock_mcp, mock_context,
     ):
         """Test search_code_examples tool with source filter."""
         with patch("src.tools.rag.get_app_context") as mock_get_ctx:
@@ -424,7 +424,7 @@ class TestSearchCodeExamplesTool:
                         "query": "authentication",
                         "source_filter": "my-repo",
                         "results": [],
-                    }
+                    },
                 )
 
                 # Register and get function
@@ -459,7 +459,7 @@ class TestSearchCodeExamplesTool:
 
     @pytest.mark.asyncio
     async def test_search_code_examples_no_database_client(
-        self, mock_mcp, mock_context
+        self, mock_mcp, mock_context,
     ):
         """Test search_code_examples when database client is not available."""
         with patch("src.tools.rag.get_app_context") as mock_get_ctx:
@@ -536,7 +536,7 @@ class TestSearchCodeExamplesTool:
 
     @pytest.mark.asyncio
     async def test_search_code_examples_custom_match_count(
-        self, mock_mcp, mock_context
+        self, mock_mcp, mock_context,
     ):
         """Test search_code_examples with custom match_count."""
         with patch("src.tools.rag.get_app_context") as mock_get_ctx:
@@ -548,7 +548,7 @@ class TestSearchCodeExamplesTool:
 
                 # Mock code example search
                 mock_search_func.return_value = json.dumps(
-                    {"success": True, "query": "test", "results": []}
+                    {"success": True, "query": "test", "results": []},
                 )
 
                 # Register and get function

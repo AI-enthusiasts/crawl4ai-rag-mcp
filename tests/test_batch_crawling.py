@@ -2,7 +2,6 @@
 """Test script to reproduce the batch crawling URL validation error."""
 
 import asyncio
-import os
 import sys
 
 # Add src to Python path

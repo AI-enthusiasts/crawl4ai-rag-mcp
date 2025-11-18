@@ -2,7 +2,6 @@
 """Test script to verify the URL validation fix works with actual scraping."""
 
 import asyncio
-import os
 import sys
 
 # Add src to Python path for imports
@@ -40,7 +39,7 @@ async def test_scrape_with_validation():
 
     # Test actual crawling with valid URLs (commented out to avoid network calls)
     print(
-        "\nNote: Actual crawling test would require running crawler, which is skipped in this test"
+        "\nNote: Actual crawling test would require running crawler, which is skipped in this test",
     )
     print("The validation layer should prevent invalid URLs from reaching crawl4ai")
 

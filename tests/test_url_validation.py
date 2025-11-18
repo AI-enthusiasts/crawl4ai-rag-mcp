@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Test script to verify URL validation fix for crawl4ai compatibility."""
 
-import os
 import sys
 
 # Add src to Python path for imports

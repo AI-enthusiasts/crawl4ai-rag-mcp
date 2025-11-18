@@ -15,7 +15,7 @@ async def test_scrape_formats():
     """Test scrape_urls with different input formats using MCP tools."""
 
     print(
-        "🧪 Testing scrape_urls function with multiple input formats via MCP tools..."
+        "🧪 Testing scrape_urls function with multiple input formats via MCP tools...",
     )
     print("=" * 60)
 
@@ -89,7 +89,7 @@ async def test_scrape_formats():
                 if "results" in parsed_result:
                     # Multi-URL result
                     urls_processed = parsed_result.get("summary", {}).get(
-                        "urls_processed", 0
+                        "urls_processed", 0,
                     )
                     print(f"   URLs processed: {urls_processed}")
                 elif "url" in parsed_result:
@@ -106,7 +106,7 @@ async def test_scrape_formats():
                     "success": success,
                     "expected": test_case["expected_success"],
                     "result": parsed_result,
-                }
+                },
             )
 
         except Exception as e:
@@ -118,7 +118,7 @@ async def test_scrape_formats():
                     "success": False,
                     "expected": test_case["expected_success"],
                     "error": str(e),
-                }
+                },
             )
 
         print()

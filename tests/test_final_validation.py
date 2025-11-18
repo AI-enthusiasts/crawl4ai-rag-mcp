@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Final test to verify URL validation catches problematic URLs."""
 
-import os
 import sys
 
 # Add src to Python path for imports

@@ -12,13 +12,13 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 try:
     from rich.console import Console
-    from rich.table import Table
     from rich.panel import Panel
     from rich.progress import Progress, SpinnerColumn, TextColumn
+    from rich.table import Table
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
@@ -127,7 +127,7 @@ class LoadTestRunner:
                 continue
         return False
 
-    def check_services(self) -> Dict[str, any]:
+    def check_services(self) -> dict[str, any]:
         """Check status of required services.
 
         Returns:
@@ -155,7 +155,7 @@ class LoadTestRunner:
 
         return status
 
-    def print_service_status(self, status: Dict[str, any]):
+    def print_service_status(self, status: dict[str, any]):
         """Print service status.
 
         Args:
@@ -198,7 +198,7 @@ class LoadTestRunner:
 
         print()
 
-    def get_test_targets(self, mode: str) -> List[str]:
+    def get_test_targets(self, mode: str) -> list[str]:
         """Get test targets for specified mode.
 
         Args:

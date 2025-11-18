@@ -14,12 +14,11 @@ import json
 import statistics
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import Optional
 
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
 
 
 class LoadTestAnalyzer:
@@ -38,7 +37,7 @@ class LoadTestAnalyzer:
         """Print message with optional styling."""
         self.console.print(message, style=style)
 
-    def load_results(self) -> List[Dict]:
+    def load_results(self) -> list[dict]:
         """Load all test result files.
 
         Returns:
@@ -65,7 +64,7 @@ class LoadTestAnalyzer:
 
         return results
 
-    def get_latest_result(self, results: List[Dict]) -> Optional[Dict]:
+    def get_latest_result(self, results: list[dict]) -> Optional[dict]:
         """Get the most recent test result.
 
         Args:
@@ -78,7 +77,7 @@ class LoadTestAnalyzer:
             return None
         return max(results, key=lambda x: x["created"])
 
-    def print_summary(self, result: Dict):
+    def print_summary(self, result: dict):
         """Print summary of a single test result.
 
         Args:
@@ -104,7 +103,7 @@ class LoadTestAnalyzer:
 
         self.console.print(table)
 
-    def print_test_details(self, result: Dict):
+    def print_test_details(self, result: dict):
         """Print detailed test results.
 
         Args:
@@ -129,12 +128,12 @@ class LoadTestAnalyzer:
             table.add_row(
                 nodeid,
                 f"[{status_style}]{outcome}[/{status_style}]",
-                f"{duration:.2f}s"
+                f"{duration:.2f}s",
             )
 
         self.console.print(table)
 
-    def compare_results(self, results: List[Dict]):
+    def compare_results(self, results: list[dict]):
         """Compare multiple test results.
 
         Args:
@@ -192,7 +191,7 @@ class LoadTestAnalyzer:
             else:
                 self.print(f"⚠ Performance degrading: {trend_pct:.1f}% slower", "yellow")
 
-    def print_test_breakdown(self, result: Dict):
+    def print_test_breakdown(self, result: dict):
         """Print breakdown by test category.
 
         Args:
@@ -227,7 +226,7 @@ class LoadTestAnalyzer:
             passed = sum(1 for t in cat_tests if t.get("outcome") == "passed")
             failed = total - passed
             avg_duration = statistics.mean(
-                [t.get("call", {}).get("duration", 0) for t in cat_tests]
+                [t.get("call", {}).get("duration", 0) for t in cat_tests],
             )
 
             table.add_row(
@@ -235,12 +234,12 @@ class LoadTestAnalyzer:
                 str(total),
                 str(passed),
                 str(failed),
-                f"{avg_duration:.2f}s"
+                f"{avg_duration:.2f}s",
             )
 
         self.console.print(table)
 
-    def print_performance_sparkline(self, results: List[Dict]) -> None:
+    def print_performance_sparkline(self, results: list[dict]) -> None:
         """Print ASCII sparkline of performance trends.
 
         Args:
@@ -250,27 +249,27 @@ class LoadTestAnalyzer:
             return
 
         durations = [r.get("duration", 0) for r in results]
-        
+
         # Normalize to 0-8 range for sparkline characters
         min_val = min(durations)
         max_val = max(durations)
         range_val = max_val - min_val if max_val > min_val else 1
-        
+
         # Sparkline characters (8 levels)
         chars = "▁▂▃▄▅▆▇█"
-        
+
         sparkline = ""
         for duration in durations:
             normalized = (duration - min_val) / range_val
             index = min(int(normalized * 7), 7)
             sparkline += chars[index]
-        
+
         print("\n")
         self.print("Performance Trend (Duration):", "cyan")
         self.print(f"  {sparkline}", "blue")
         self.print(f"  Min: {min_val:.2f}s  Max: {max_val:.2f}s", "dim")
 
-    def export_csv(self, results: List[Dict], output_file: Path):
+    def export_csv(self, results: list[dict], output_file: Path):
         """Export results to CSV.
 
         Args:
@@ -279,19 +278,19 @@ class LoadTestAnalyzer:
         """
         import csv
 
-        with Path(output_file).open('w', newline='') as f:
+        with Path(output_file).open("w", newline="") as f:
             writer = csv.writer(f)
             writer.writerow([
-                'Timestamp',
-                'Total Tests',
-                'Passed',
-                'Failed',
-                'Duration (s)',
-                'Success Rate (%)'
+                "Timestamp",
+                "Total Tests",
+                "Passed",
+                "Failed",
+                "Duration (s)",
+                "Success Rate (%)",
             ])
 
             for result in results:
-                timestamp = result["timestamp"].strftime('%Y-%m-%d %H:%M:%S')
+                timestamp = result["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
                 summary = result.get("summary", {})
                 total = summary.get("total", 0)
                 passed = summary.get("passed", 0)
@@ -305,7 +304,7 @@ class LoadTestAnalyzer:
                     passed,
                     failed,
                     f"{duration:.2f}",
-                    f"{success_rate:.1f}"
+                    f"{success_rate:.1f}",
                 ])
 
         self.print(f"✓ CSV exported to: {output_file}", "green")

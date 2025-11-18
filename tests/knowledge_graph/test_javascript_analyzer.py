@@ -12,12 +12,11 @@ Tests cover:
 - Edge cases and malformed code
 """
 
+from unittest.mock import patch
+
 import pytest
-from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock
 
 from src.knowledge_graph.analyzers.javascript import JavaScriptAnalyzer
-from src.core.exceptions import ParsingError, AnalysisError
 
 
 class TestJavaScriptAnalyzer:
@@ -102,7 +101,7 @@ export class User {
 """
         with patch.object(self.analyzer, "read_file_content", return_value=js_content):
             result = await self.analyzer.analyze_file(
-                "/test/User.js", self.repo_path
+                "/test/User.js", self.repo_path,
             )
 
         assert result is not None
@@ -132,7 +131,7 @@ export class AdminUser extends User {
 """
         with patch.object(self.analyzer, "read_file_content", return_value=js_content):
             result = await self.analyzer.analyze_file(
-                "/test/AdminUser.js", self.repo_path
+                "/test/AdminUser.js", self.repo_path,
             )
 
         assert result is not None
@@ -165,7 +164,7 @@ export default function main() {
 """
         with patch.object(self.analyzer, "read_file_content", return_value=js_content):
             result = await self.analyzer.analyze_file(
-                "/test/utils.js", self.repo_path
+                "/test/utils.js", self.repo_path,
             )
 
         assert result is not None
@@ -204,7 +203,7 @@ let multilineArrow = (items) => {
 """
         with patch.object(self.analyzer, "read_file_content", return_value=js_content):
             result = await self.analyzer.analyze_file(
-                "/test/arrows.js", self.repo_path
+                "/test/arrows.js", self.repo_path,
             )
 
         assert result is not None
@@ -229,7 +228,7 @@ import Default, { named1, named2 } from './mixed';
 """
         with patch.object(self.analyzer, "read_file_content", return_value=js_content):
             result = await self.analyzer.analyze_file(
-                "/test/imports.js", self.repo_path
+                "/test/imports.js", self.repo_path,
             )
 
         assert result is not None
@@ -258,7 +257,7 @@ const { helper1, helper2 } = require('./helpers');
 """
         with patch.object(self.analyzer, "read_file_content", return_value=js_content):
             result = await self.analyzer.analyze_file(
-                "/test/server.js", self.repo_path
+                "/test/server.js", self.repo_path,
             )
 
         assert result is not None
@@ -291,7 +290,7 @@ export default function main() {
 """
         with patch.object(self.analyzer, "read_file_content", return_value=js_content):
             result = await self.analyzer.analyze_file(
-                "/test/exports.js", self.repo_path
+                "/test/exports.js", self.repo_path,
             )
 
         assert result is not None
@@ -327,7 +326,7 @@ export interface ApiResponse<T> {
 """
         with patch.object(self.analyzer, "read_file_content", return_value=ts_content):
             result = await self.analyzer.analyze_file(
-                "/test/types.ts", self.repo_path
+                "/test/types.ts", self.repo_path,
             )
 
         assert result is not None
@@ -366,7 +365,7 @@ export enum Size {
 """
         with patch.object(self.analyzer, "read_file_content", return_value=ts_content):
             result = await self.analyzer.analyze_file(
-                "/test/types.ts", self.repo_path
+                "/test/types.ts", self.repo_path,
             )
 
         assert result is not None
@@ -404,7 +403,7 @@ export default Container;
 """
         with patch.object(self.analyzer, "read_file_content", return_value=jsx_content):
             result = await self.analyzer.analyze_file(
-                "/test/Components.jsx", self.repo_path
+                "/test/Components.jsx", self.repo_path,
             )
 
         assert result is not None
@@ -434,7 +433,7 @@ const [first, second] = items;
 """
         with patch.object(self.analyzer, "read_file_content", return_value=js_content):
             result = await self.analyzer.analyze_file(
-                "/test/vars.js", self.repo_path
+                "/test/vars.js", self.repo_path,
             )
 
         assert result is not None
@@ -475,7 +474,7 @@ export class User {
 """
         with patch.object(self.analyzer, "read_file_content", return_value=js_content):
             result = await self.analyzer.analyze_file(
-                "/test/documented.js", self.repo_path
+                "/test/documented.js", self.repo_path,
             )
 
         assert result is not None
@@ -496,7 +495,7 @@ import http from 'http';  // Node built-in
 """
         with patch.object(self.analyzer, "read_file_content", return_value=js_content):
             result = await self.analyzer.analyze_file(
-                "/test/app.js", self.repo_path
+                "/test/app.js", self.repo_path,
             )
 
         assert result is not None
@@ -517,7 +516,7 @@ import http from 'http';  // Node built-in
         """Test handling of file read failures."""
         with patch.object(self.analyzer, "read_file_content", return_value=None):
             result = await self.analyzer.analyze_file(
-                "/test/nonexistent.js", self.repo_path
+                "/test/nonexistent.js", self.repo_path,
             )
 
         # Should return empty result
@@ -536,7 +535,7 @@ function broken(
 """
         with patch.object(self.analyzer, "read_file_content", return_value=invalid_js):
             result = await self.analyzer.analyze_file(
-                "/test/broken.js", self.repo_path
+                "/test/broken.js", self.repo_path,
             )
 
         # Should not raise exception, returns whatever it can parse
@@ -548,7 +547,7 @@ function broken(
         js_content = "const hello = () => 'world';"
 
         result = await self.analyzer.analyze_file(
-            "/test/hello.js", self.repo_path, content=js_content
+            "/test/hello.js", self.repo_path, content=js_content,
         )
 
         assert result is not None
@@ -644,7 +643,7 @@ export { default as Button } from './Button';
 """
         with patch.object(self.analyzer, "read_file_content", return_value=js_content):
             result = await self.analyzer.analyze_file(
-                "/test/exports.js", self.repo_path
+                "/test/exports.js", self.repo_path,
             )
 
         assert result is not None
@@ -663,7 +662,7 @@ async function loadModule() {
 """
         with patch.object(self.analyzer, "read_file_content", return_value=js_content):
             result = await self.analyzer.analyze_file(
-                "/test/dynamic.js", self.repo_path
+                "/test/dynamic.js", self.repo_path,
             )
 
         assert result is not None
@@ -688,7 +687,7 @@ module.exports.extra = 'value';
 """
         with patch.object(self.analyzer, "read_file_content", return_value=js_content):
             result = await self.analyzer.analyze_file(
-                "/test/exports.js", self.repo_path
+                "/test/exports.js", self.repo_path,
             )
 
         assert result is not None
@@ -705,7 +704,7 @@ module.exports.extra = 'value';
 
         with patch.object(self.analyzer, "read_file_content", return_value=js_content):
             result = await self.analyzer.analyze_file(
-                "/test/empty.js", self.repo_path
+                "/test/empty.js", self.repo_path,
             )
 
         assert result is not None
@@ -726,7 +725,7 @@ module.exports.extra = 'value';
 """
         with patch.object(self.analyzer, "read_file_content", return_value=js_content):
             result = await self.analyzer.analyze_file(
-                "/test/comments.js", self.repo_path
+                "/test/comments.js", self.repo_path,
             )
 
         assert result is not None
@@ -777,7 +776,7 @@ export default UserService;
 """
         with patch.object(self.analyzer, "read_file_content", return_value=ts_content):
             result = await self.analyzer.analyze_file(
-                "/test/UserService.ts", self.repo_path
+                "/test/UserService.ts", self.repo_path,
             )
 
         assert result is not None

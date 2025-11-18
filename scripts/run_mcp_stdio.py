@@ -12,6 +12,7 @@ os.environ["TRANSPORT"] = "stdio"
 
 # Load other settings from .env.test
 from dotenv import load_dotenv
+
 env_test_path = Path(__file__).parent.parent / ".env.test"
 load_dotenv(env_test_path)
 
@@ -22,8 +23,9 @@ os.environ["TRANSPORT"] = "stdio"
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 # Import after setting environment
-from crawl4ai_mcp import main
 import asyncio
+
+from crawl4ai_mcp import main
 
 if __name__ == "__main__":
     asyncio.run(main())

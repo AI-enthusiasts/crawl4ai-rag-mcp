@@ -79,7 +79,7 @@ class TestUpdateSourceSummary:
     async def test_update_source_summary_query_error(self, mock_database_client):
         """Test QueryError is propagated from database client."""
         mock_database_client.update_source.side_effect = QueryError(
-            "Database query failed"
+            "Database query failed",
         )
 
         with pytest.raises(QueryError) as exc_info:
@@ -95,7 +95,7 @@ class TestUpdateSourceSummary:
     async def test_update_source_summary_unexpected_error(self, mock_database_client):
         """Test unexpected exceptions are propagated."""
         mock_database_client.update_source.side_effect = ValueError(
-            "Unexpected error"
+            "Unexpected error",
         )
 
         with pytest.raises(ValueError) as exc_info:
@@ -205,7 +205,7 @@ class TestGetSourceStatistics:
     async def test_get_source_statistics_query_error(self, mock_database_client):
         """Test QueryError is propagated from database client."""
         mock_database_client.get_sources.side_effect = QueryError(
-            "Database query failed"
+            "Database query failed",
         )
 
         with pytest.raises(QueryError) as exc_info:
@@ -220,7 +220,7 @@ class TestGetSourceStatistics:
     async def test_get_source_statistics_unexpected_error(self, mock_database_client):
         """Test unexpected exceptions are propagated."""
         mock_database_client.get_sources.side_effect = RuntimeError(
-            "Unexpected database error"
+            "Unexpected database error",
         )
 
         with pytest.raises(RuntimeError) as exc_info:
@@ -354,7 +354,7 @@ class TestListAllSources:
     async def test_list_all_sources_query_error(self, mock_database_client):
         """Test QueryError is propagated from database client."""
         mock_database_client.get_sources.side_effect = QueryError(
-            "Failed to list sources"
+            "Failed to list sources",
         )
 
         with pytest.raises(QueryError) as exc_info:
@@ -366,7 +366,7 @@ class TestListAllSources:
     async def test_list_all_sources_unexpected_error(self, mock_database_client):
         """Test unexpected exceptions are propagated."""
         mock_database_client.get_sources.side_effect = ConnectionError(
-            "Connection lost"
+            "Connection lost",
         )
 
         with pytest.raises(ConnectionError) as exc_info:
@@ -382,7 +382,7 @@ class TestListAllSources:
                 "source_id": "example.com",
                 "total_chunks": 100,
                 "last_crawled": "2025-01-15T12:00:00",
-            }
+            },
         ]
 
         mock_database_client.get_sources.return_value = expected_sources
@@ -457,7 +457,7 @@ class TestListAllSources:
 
     @pytest.mark.asyncio
     async def test_list_all_sources_returns_copy_not_reference(
-        self, mock_database_client
+        self, mock_database_client,
     ):
         """Test that function returns the actual list from database client."""
         expected_sources = [
@@ -504,7 +504,7 @@ class TestIntegrationScenarios:
                 "source_id": source_id,
                 "total_chunks": total_chunks,
                 "last_crawled": last_crawled.isoformat(),
-            }
+            },
         ]
 
         # Retrieve statistics

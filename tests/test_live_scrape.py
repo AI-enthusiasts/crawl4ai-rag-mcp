@@ -29,7 +29,7 @@ def test_mcp_service():
             if result.get("success"):
                 print(f"   URL: {result.get('url', 'N/A')}")
                 content_length = len(
-                    result.get("results", {}).get(result.get("url", ""), "")
+                    result.get("results", {}).get(result.get("url", ""), ""),
                 )
                 print(f"   Content length: {content_length} chars")
         else:

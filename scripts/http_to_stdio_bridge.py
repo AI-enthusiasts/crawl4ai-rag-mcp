@@ -4,15 +4,16 @@ HTTP-to-STDIO bridge for Claude Desktop MCP integration.
 Connects to HTTP MCP server and translates to STDIO for Claude Desktop.
 """
 
-import sys
-import json
 import asyncio
+import json
+import sys
+from typing import Any
+
 import aiohttp
-from typing import Dict, Any
 
 MCP_SERVER_URL = "http://localhost:8051/mcp"
 
-async def send_request(session: aiohttp.ClientSession, request: Dict[str, Any]) -> Dict[str, Any]:
+async def send_request(session: aiohttp.ClientSession, request: dict[str, Any]) -> dict[str, Any]:
     """Send request to HTTP MCP server and return response."""
     async with session.post(MCP_SERVER_URL, json=request) as resp:
         return await resp.json()
@@ -25,22 +26,22 @@ async def main():
             try:
                 # Parse JSON-RPC request
                 request = json.loads(line.strip())
-                
+
                 # Forward to HTTP server
                 response = await send_request(session, request)
-                
+
                 # Write response to stdout
                 print(json.dumps(response), flush=True)
-                
+
             except json.JSONDecodeError as e:
                 # Send error response
                 error_response = {
                     "jsonrpc": "2.0",
                     "error": {
                         "code": -32700,
-                        "message": f"Parse error: {str(e)}"
+                        "message": f"Parse error: {str(e)}",
                     },
-                    "id": None
+                    "id": None,
                 }
                 print(json.dumps(error_response), flush=True)
             except Exception as e:
@@ -49,9 +50,9 @@ async def main():
                     "jsonrpc": "2.0",
                     "error": {
                         "code": -32603,
-                        "message": f"Internal error: {str(e)}"
+                        "message": f"Internal error: {str(e)}",
                     },
-                    "id": request.get("id") if "request" in locals() else None
+                    "id": request.get("id") if "request" in locals() else None,
                 }
                 print(json.dumps(error_response), flush=True)
 

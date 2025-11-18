@@ -8,11 +8,9 @@ without cluttering production code.
 from typing import Any
 
 from src.utils.embeddings import (
+    add_code_examples_to_database,
     add_documents_to_database,
     search_documents,
-    create_embedding,
-    add_code_examples_to_database,
-    search_code_examples,
 )
 
 
@@ -69,7 +67,7 @@ async def search_crawled_pages(
         filter_metadata = {"source": source}
     elif source and filter_metadata is not None:
         filter_metadata["source"] = source
-    
+
     return await search_documents(
         database=client,
         query=query,

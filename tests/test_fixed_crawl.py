@@ -31,13 +31,13 @@ async def test_smart_crawl_url():
 
         try:
             async with session.post(
-                f"{url}/v1/tools/list", headers=headers, json=list_tools_payload
+                f"{url}/v1/tools/list", headers=headers, json=list_tools_payload,
             ) as response:
                 print(f"List tools response: {response.status}")
                 if response.status == 200:
                     data = await response.json()
                     print(
-                        f"Available tools: {[tool.get('name', 'unknown') for tool in data.get('tools', [])]}"
+                        f"Available tools: {[tool.get('name', 'unknown') for tool in data.get('tools', [])]}",
                     )
 
                     # Now test smart_crawl_url
@@ -56,7 +56,7 @@ async def test_smart_crawl_url():
                     }
 
                     async with session.post(
-                        f"{url}/v1/tools/call", headers=headers, json=crawl_payload
+                        f"{url}/v1/tools/call", headers=headers, json=crawl_payload,
                     ) as crawl_response:
                         print(f"Smart crawl response: {crawl_response.status}")
                         crawl_data = await crawl_response.json()
@@ -86,7 +86,7 @@ async def test_smart_crawl_url():
 
             try:
                 async with session.post(
-                    mcp_url, headers=mcp_headers, json=mcp_payload
+                    mcp_url, headers=mcp_headers, json=mcp_payload,
                 ) as mcp_response:
                     print(f"FastMCP response: {mcp_response.status}")
                     mcp_data = await mcp_response.text()

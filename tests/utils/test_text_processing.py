@@ -17,7 +17,7 @@ Testing Approach:
 
 import pytest
 
-from src.utils.text_processing import smart_chunk_markdown, extract_section_info
+from src.utils.text_processing import extract_section_info, smart_chunk_markdown
 
 
 class TestSmartChunkMarkdown:
@@ -60,7 +60,7 @@ More text after the code block.
     def test_chunk_respects_paragraph_breaks(self):
         """Test that chunks break at paragraph boundaries"""
         # Create text with clear paragraph breaks
-        paragraphs = ["Paragraph {}. ".format(i) + "Content " * 50 for i in range(10)]
+        paragraphs = [f"Paragraph {i}. " + "Content " * 50 for i in range(10)]
         text = "\n\n".join(paragraphs)
 
         chunks = smart_chunk_markdown(text, chunk_size=500)

@@ -8,9 +8,7 @@ from pytest performance metrics JSON.
 
 import json
 import sys
-import os
 from datetime import datetime
-from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 
@@ -22,24 +20,24 @@ class PerformanceDashboard:
         :param metrics_file: Path to JSON performance metrics file
         """
         try:
-            with Path(metrics_file).open('r') as f:
+            with Path(metrics_file).open("r") as f:
                 data = json.load(f)
-            
+
             # Handle both custom plugin format and pytest-json-report format
-            if isinstance(data, dict) and 'tests' in data:
+            if isinstance(data, dict) and "tests" in data:
                 # Custom performance plugin format
-                self.metrics = list(data['tests'].values())
-                self.summary = data.get('summary', {})
-            elif isinstance(data, dict) and 'tests' in data:
+                self.metrics = list(data["tests"].values())
+                self.summary = data.get("summary", {})
+            elif isinstance(data, dict) and "tests" in data:
                 # pytest-json-report format
                 self.metrics = []
-                for test in data.get('tests', []):
+                for test in data.get("tests", []):
                     self.metrics.append({
-                        'name': test.get('nodeid', 'Unknown'),
-                        'duration': test.get('call', {}).get('duration', 0) or test.get('duration', 0),
-                        'outcome': test.get('outcome', 'unknown')
+                        "name": test.get("nodeid", "Unknown"),
+                        "duration": test.get("call", {}).get("duration", 0) or test.get("duration", 0),
+                        "outcome": test.get("outcome", "unknown"),
                     })
-                self.summary = data.get('summary', {})
+                self.summary = data.get("summary", {})
             elif isinstance(data, list):
                 # Simple list format
                 self.metrics = data
@@ -49,7 +47,7 @@ class PerformanceDashboard:
                 print(f"Warning: Unknown metrics format in {metrics_file}")
                 self.metrics = []
                 self.summary = {}
-                
+
         except FileNotFoundError:
             print(f"Error: Metrics file '{metrics_file}' not found")
             self.metrics = []
@@ -62,28 +60,28 @@ class PerformanceDashboard:
             print(f"Error loading metrics: {e}")
             self.metrics = []
             self.summary = {}
-        
+
         self.now = datetime.now().strftime("%Y-%m-%d %H:%M")
-    
-    def _extract_test_data(self) -> tuple[List[str], List[float]]:
+
+    def _extract_test_data(self) -> tuple[list[str], list[float]]:
         """Extract test names and durations from metrics."""
         test_names = []
         test_times = []
-        
+
         for test in self.metrics:
             if isinstance(test, dict):
-                name = test.get('name', 'Unknown')
-                duration = test.get('duration', 0)
-                
+                name = test.get("name", "Unknown")
+                duration = test.get("duration", 0)
+
                 # Clean up test names for display
-                if '::' in name:
-                    name = name.split('::')[-1]
-                
+                if "::" in name:
+                    name = name.split("::")[-1]
+
                 test_names.append(name)
                 test_times.append(float(duration) if duration else 0)
-        
+
         return test_names, test_times
-    
+
     def _generate_plotly_script(self) -> str:
         """
         Generate Plotly.js script for visualizations.
@@ -91,7 +89,7 @@ class PerformanceDashboard:
         :return: Plotly.js configuration script
         """
         test_names, test_times = self._extract_test_data()
-        
+
         if not test_names:
             return '''
             <script>
@@ -100,7 +98,7 @@ class PerformanceDashboard:
             });
             </script>
             '''
-        
+
         return f'''
         <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
         <script>
@@ -122,7 +120,7 @@ class PerformanceDashboard:
         }});
         </script>
         '''
-    
+
     def _generate_slowest_tests_table(self) -> str:
         """
         Generate HTML table of slowest tests.
@@ -131,12 +129,12 @@ class PerformanceDashboard:
         """
         test_data = []
         for test in self.metrics:
-            if isinstance(test, dict) and 'duration' in test:
+            if isinstance(test, dict) and "duration" in test:
                 test_data.append({
-                    'name': test.get('name', 'Unknown'),
-                    'duration': float(test.get('duration', 0))
+                    "name": test.get("name", "Unknown"),
+                    "duration": float(test.get("duration", 0)),
                 })
-        
+
         if not test_data:
             return '''
             <div class="slowest-tests">
@@ -144,17 +142,17 @@ class PerformanceDashboard:
                 <p>No test data available</p>
             </div>
             '''
-        
-        sorted_tests = sorted(test_data, key=lambda x: x['duration'], reverse=True)[:10]
-        
-        table_rows = ''.join([
+
+        sorted_tests = sorted(test_data, key=lambda x: x["duration"], reverse=True)[:10]
+
+        table_rows = "".join([
             f'<tr><td>{test["name"]}</td><td>{test["duration"]:.2f}s</td></tr>'
-            for test in sorted_tests if test['duration'] > 0
+            for test in sorted_tests if test["duration"] > 0
         ])
-        
+
         if not table_rows:
             table_rows = '<tr><td colspan="2">No test timing data available</td></tr>'
-        
+
         return f'''
         <div class="slowest-tests">
             <h2>10 Slowest Tests</h2>
@@ -168,15 +166,15 @@ class PerformanceDashboard:
             </table>
         </div>
         '''
-    
+
     def _generate_summary_section(self) -> str:
         """Generate summary statistics section."""
         total_tests = len(self.metrics)
-        total_duration = sum(float(test.get('duration', 0)) for test in self.metrics if isinstance(test, dict))
-        
-        passed_tests = sum(1 for test in self.metrics if isinstance(test, dict) and test.get('outcome') == 'passed')
-        failed_tests = sum(1 for test in self.metrics if isinstance(test, dict) and test.get('outcome') == 'failed')
-        
+        total_duration = sum(float(test.get("duration", 0)) for test in self.metrics if isinstance(test, dict))
+
+        passed_tests = sum(1 for test in self.metrics if isinstance(test, dict) and test.get("outcome") == "passed")
+        failed_tests = sum(1 for test in self.metrics if isinstance(test, dict) and test.get("outcome") == "failed")
+
         return f'''
         <div class="summary">
             <h2>Test Summary</h2>
@@ -188,7 +186,7 @@ class PerformanceDashboard:
             </ul>
         </div>
         '''
-    
+
     def generate_dashboard(self) -> str:
         """
         Generate complete performance dashboard HTML.
@@ -242,7 +240,7 @@ def main():
     if len(sys.argv) != 2:
         print("Usage: python generate_performance_dashboard.py <metrics_json_file>")
         sys.exit(1)
-    
+
     metrics_file = sys.argv[1]
 
     # Check if file exists
@@ -270,21 +268,21 @@ def main():
         </html>
         '''
 
-        output_file = 'performance_dashboard.html'
-        with Path(output_file).open('w') as f:
+        output_file = "performance_dashboard.html"
+        with Path(output_file).open("w") as f:
             f.write(dashboard_html)
-        
+
         print(f"Performance dashboard generated: {output_file} (no data)")
         sys.exit(0)
-    
+
     dashboard = PerformanceDashboard(metrics_file)
 
-    output_file = 'performance_dashboard.html'
-    with Path(output_file).open('w') as f:
+    output_file = "performance_dashboard.html"
+    with Path(output_file).open("w") as f:
         f.write(dashboard.generate_dashboard())
-    
+
     print(f"Performance dashboard generated: {output_file}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

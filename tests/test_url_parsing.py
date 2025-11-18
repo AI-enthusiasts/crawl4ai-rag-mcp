@@ -13,15 +13,15 @@ which only supports string parameters.
 Related outcomes: See mcp_tools_test_results.md for test results showing successful JSON array parsing
 """
 
-import os
 import sys
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from src.core.exceptions import MCPToolError
 # _parse_url_input is no longer exposed after refactoring
 # from src.utils.url_helpers import clean_url as _parse_url_input
 import pytest
+
+from src.core.exceptions import MCPToolError
 
 pytestmark = pytest.mark.skip(reason="_parse_url_input is internal function after refactoring")
 

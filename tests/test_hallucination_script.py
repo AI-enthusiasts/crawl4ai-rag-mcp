@@ -17,7 +17,7 @@ def test_hallucinations():
 
     # Hallucination 3: requests.post(..., auto_retry=True) - parameter doesn't exist
     result = requests.post(
-        "https://api.example.com/endpoint", json={"key": "value"}, auto_retry=True
+        "https://api.example.com/endpoint", json={"key": "value"}, auto_retry=True,
     )
 
     print("Test completed")

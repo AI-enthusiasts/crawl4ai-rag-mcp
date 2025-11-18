@@ -4,7 +4,6 @@ Test script to verify the search-scrape-RAG pipeline functionality.
 This script tests the complete pipeline: search → scrape → RAG
 """
 
-import os
 import sys
 
 import requests
@@ -57,7 +56,7 @@ def test_qdrant_connection():
         collections = response.json()
         print("✅ Qdrant connected successfully")
         print(
-            f"   Available collections: {list(collections.get('result', {}).get('collections', []))}"
+            f"   Available collections: {list(collections.get('result', {}).get('collections', []))}",
         )
 
         return True
@@ -119,7 +118,7 @@ def analyze_search_function():
         # Check for metadata_filter issues
         if "metadata_filter" in content:
             issues.append(
-                "Uses metadata_filter (deprecated) - should use filter_metadata"
+                "Uses metadata_filter (deprecated) - should use filter_metadata",
             )
 
         if issues:
@@ -190,7 +189,7 @@ def main():
 
     if passed == total:
         print(
-            "🎉 All tests passed! The search-scrape-RAG pipeline appears to be properly implemented."
+            "🎉 All tests passed! The search-scrape-RAG pipeline appears to be properly implemented.",
         )
     else:
         print("⚠️ Some tests failed. Check the issues above.")
