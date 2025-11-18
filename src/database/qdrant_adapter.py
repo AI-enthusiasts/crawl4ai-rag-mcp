@@ -65,11 +65,15 @@ class QdrantAdapter:
                     )
                 except VectorStoreError as create_error:
                     logger.warning(
-                        f"Could not create collection {collection_name}: {create_error}",
+                        "Could not create collection %s: %s",
+                        collection_name,
+                        create_error,
                     )
                 except Exception as create_error:
                     logger.exception(
-                        f"Unexpected error creating collection {collection_name}: {create_error}",
+                        "Unexpected error creating collection %s: %s",
+                        collection_name,
+                        create_error,
                     )
             except Exception:
                 # Collection doesn't exist or other error, try to create it
@@ -80,11 +84,15 @@ class QdrantAdapter:
                     )
                 except VectorStoreError as create_error:
                     logger.warning(
-                        f"Could not create collection {collection_name}: {create_error}",
+                        "Could not create collection %s: %s",
+                        collection_name,
+                        create_error,
                     )
                 except Exception as create_error:
                     logger.exception(
-                        f"Unexpected error creating collection {collection_name}: {create_error}",
+                        "Unexpected error creating collection %s: %s",
+                        collection_name,
+                        create_error,
                     )
 
     # Document operations - delegate to qdrant.operations
