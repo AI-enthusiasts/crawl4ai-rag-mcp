@@ -147,15 +147,15 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
         try:
             return await query_knowledge_graph_wrapper(ctx, command)
         except KnowledgeGraphError as e:
-            logger.error(f"Knowledge graph error: {e}")
+            logger.error("Knowledge graph error: %s", e)
             msg = f"Knowledge graph query failed: {e!s}"
             raise MCPToolError(msg) from e
         except DatabaseError as e:
-            logger.error(f"Database error in knowledge graph: {e}")
+            logger.error("Database error in knowledge graph: %s", e)
             msg = f"Knowledge graph query failed: {e!s}"
             raise MCPToolError(msg) from e
         except Exception as e:
-            logger.exception(f"Unexpected error in query_knowledge_graph tool: {e}")
+            logger.exception("Unexpected error in query_knowledge_graph tool: %s", e)
             msg = f"Knowledge graph query failed: {e!s}"
             raise MCPToolError(msg) from e
 
@@ -194,15 +194,15 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
         except MCPToolError:
             raise
         except ValidationError as e:
-            logger.error(f"Validation error: {e}")
+            logger.error("Validation error: %s", e)
             msg = f"Repository parsing failed: {e!s}"
             raise MCPToolError(msg) from e
         except KnowledgeGraphError as e:
-            logger.error(f"Knowledge graph error: {e}")
+            logger.error("Knowledge graph error: %s", e)
             msg = f"Repository parsing failed: {e!s}"
             raise MCPToolError(msg) from e
         except Exception as e:
-            logger.exception(f"Unexpected error in parse_github_repository tool: {e}")
+            logger.exception("Unexpected error in parse_github_repository tool: %s", e)
             msg = f"Repository parsing failed: {e!s}"
             raise MCPToolError(msg) from e
 
@@ -248,15 +248,15 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
         except MCPToolError:
             raise
         except ValidationError as e:
-            logger.error(f"Validation error: {e}")
+            logger.error("Validation error: %s", e)
             msg = f"Repository branch parsing failed: {e!s}"
             raise MCPToolError(msg) from e
         except KnowledgeGraphError as e:
-            logger.error(f"Knowledge graph error: {e}")
+            logger.error("Knowledge graph error: %s", e)
             msg = f"Repository branch parsing failed: {e!s}"
             raise MCPToolError(msg) from e
         except Exception as e:
-            logger.exception(f"Unexpected error in parse_repository_branch tool: {e}")
+            logger.exception("Unexpected error in parse_repository_branch tool: %s", e)
             msg = f"Repository branch parsing failed: {e!s}"
             raise MCPToolError(msg) from e
 
@@ -291,15 +291,15 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
 
             return await get_repository_metadata_from_neo4j(ctx, repo_name)
         except KnowledgeGraphError as e:
-            logger.error(f"Knowledge graph error: {e}")
+            logger.error("Knowledge graph error: %s", e)
             msg = f"Failed to get repository info: {e!s}"
             raise MCPToolError(msg) from e
         except DatabaseError as e:
-            logger.error(f"Database error: {e}")
+            logger.error("Database error: %s", e)
             msg = f"Failed to get repository info: {e!s}"
             raise MCPToolError(msg) from e
         except Exception as e:
-            logger.exception(f"Unexpected error in get_repository_info tool: {e}")
+            logger.exception("Unexpected error in get_repository_info tool: %s", e)
             msg = f"Failed to get repository info: {e!s}"
             raise MCPToolError(msg) from e
 
@@ -338,15 +338,15 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
         except MCPToolError:
             raise
         except ValidationError as e:
-            logger.error(f"Validation error: {e}")
+            logger.error("Validation error: %s", e)
             msg = f"Repository update failed: {e!s}"
             raise MCPToolError(msg) from e
         except KnowledgeGraphError as e:
-            logger.error(f"Knowledge graph error: {e}")
+            logger.error("Knowledge graph error: %s", e)
             msg = f"Repository update failed: {e!s}"
             raise MCPToolError(msg) from e
         except Exception as e:
-            logger.exception(f"Unexpected error in update_parsed_repository tool: {e}")
+            logger.exception("Unexpected error in update_parsed_repository tool: %s", e)
             msg = f"Repository update failed: {e!s}"
             raise MCPToolError(msg) from e
 
@@ -457,7 +457,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
             # Extract repository name from path
             repo_name = Path(local_path).resolve().name
 
-            logger.info(f"Parsing local repository: {repo_name} at {local_path}")
+            logger.info("Parsing local repository: %s at %s", repo_name, local_path)
 
             # Use a custom method to analyze local repository
             await repo_extractor.analyze_local_repository(local_path, repo_name)
@@ -506,7 +506,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
             )
 
         except ValidationError as e:
-            logger.error(f"Validation error parsing local repository: {e}")
+            logger.error("Validation error parsing local repository: %s", e)
             return json.dumps(
                 {
                     "success": False,
@@ -516,7 +516,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
         except KnowledgeGraphError as e:
-            logger.error(f"Knowledge graph error parsing local repository: {e}")
+            logger.error("Knowledge graph error parsing local repository: %s", e)
             return json.dumps(
                 {
                     "success": False,
@@ -526,7 +526,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
         except Exception as e:
-            logger.exception(f"Unexpected error parsing local repository {local_path}: {e}")
+            logger.exception("Unexpected error parsing local repository %s: %s", local_path, e)
             return json.dumps(
                 {
                     "success": False,
