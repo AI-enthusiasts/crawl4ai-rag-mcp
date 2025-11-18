@@ -336,7 +336,7 @@ async def _crawl_text_file(
         )
 
     except CrawlError as e:
-        logger.error("Text file crawl error: %s", e)
+        logger.exception("Text file crawl error")
         return json.dumps(
             {
                 "success": False,
@@ -346,7 +346,7 @@ async def _crawl_text_file(
             },
         )
     except DatabaseError as e:
-        logger.error("Database error storing text file: %s", e)
+        logger.exception("Database error storing text file")
         return json.dumps(
             {
                 "success": False,
@@ -356,7 +356,7 @@ async def _crawl_text_file(
             },
         )
     except Exception as e:
-        logger.exception("Unexpected error in text file crawl: %s", e)
+        logger.exception("Unexpected error in text file crawl")
         return json.dumps(
             {
                 "success": False,
@@ -427,9 +427,9 @@ async def _crawl_recursive(
                         chunk_size=chunk_size,
                     )
                     stored_count += 1
-                except DatabaseError as e:
+                except DatabaseError:
                     logger.exception("Database error storing %s", result["url"])
-                except Exception as e:
+                except Exception:
                     logger.exception("Failed to store %s", result["url"])
 
         # Create response data
