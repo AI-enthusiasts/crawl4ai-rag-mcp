@@ -5,7 +5,7 @@ Handles source tracking, metadata, and statistics.
 """
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from src.core.exceptions import QueryError
@@ -30,7 +30,7 @@ async def update_source_summary(
     """
     try:
         if last_crawled is None:
-            last_crawled = datetime.utcnow()
+            last_crawled = datetime.now(UTC)
 
         await database_client.update_source(
             source_id=source_id,
@@ -38,11 +38,14 @@ async def update_source_summary(
             last_crawled=last_crawled,
         )
         logger.info("Updated source summary for %s", source_id)
-    except QueryError as e:
-        logger.error("Failed to update source summary for %s: %s", source_id, e)
+    except QueryError:
+        logger.exception("Failed to update source summary for %s", source_id)
         raise
-    except Exception as e:
-        logger.exception("Unexpected error updating source summary for %s: %s", source_id, e)
+    except Exception:
+        logger.exception(
+            "Unexpected error updating source summary for %s",
+            source_id,
+        )
         raise
 
 
@@ -65,13 +68,17 @@ async def get_source_statistics(
         for source in sources:
             if source.get("source_id") == source_id:
                 return source  # type: ignore[no-any-return]
+    except QueryError:
+        logger.exception("Failed to get source statistics for %s", source_id)
+        raise
+    except Exception:
+        logger.exception(
+            "Unexpected error getting source statistics for %s",
+            source_id,
+        )
+        raise
+    else:
         return None
-    except QueryError as e:
-        logger.error("Failed to get source statistics for %s: %s", source_id, e)
-        raise
-    except Exception as e:
-        logger.exception("Unexpected error getting source statistics for %s: %s", source_id, e)
-        raise
 
 
 async def list_all_sources(database_client: Any) -> list[dict[str, Any]]:
@@ -86,10 +93,11 @@ async def list_all_sources(database_client: Any) -> list[dict[str, Any]]:
     """
     try:
         sources = await database_client.get_sources()
+    except QueryError:
+        logger.exception("Failed to list sources")
+        raise
+    except Exception:
+        logger.exception("Unexpected error listing sources")
+        raise
+    else:
         return sources or []
-    except QueryError as e:
-        logger.error("Failed to list sources: %s", e)
-        raise
-    except Exception as e:
-        logger.exception("Unexpected error listing sources: %s", e)
-        raise

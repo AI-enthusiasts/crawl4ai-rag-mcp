@@ -89,31 +89,39 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
         """
         Query and explore the Neo4j knowledge graph containing repository data.
 
-        This tool provides comprehensive access to the knowledge graph for exploring repositories,
-        classes, methods, functions, and their relationships. Perfect for understanding what data
-        is available for hallucination detection and debugging validation results.
+        This tool provides comprehensive access to the knowledge graph for
+        exploring repositories, classes, methods, functions, and their
+        relationships. Perfect for understanding what data is available for
+        hallucination detection and debugging validation results.
 
         **⚠️ IMPORTANT: Always start with the `repos` command first!**
-        Before using any other commands, run `repos` to see what repositories are available
-        in your knowledge graph. This will help you understand what data you can explore.
+        Before using any other commands, run `repos` to see what repositories
+        are available in your knowledge graph. This will help you understand
+        what data you can explore.
 
         ## Available Commands:
 
         **Repository Commands:**
-        - `repos` - **START HERE!** List all repositories in the knowledge graph
-        - `explore <repo_name>` - Get detailed overview of a specific repository
+        - `repos` - **START HERE!** List all repositories in the knowledge
+          graph
+        - `explore <repo_name>` - Get detailed overview of a specific
+          repository
 
         **Class Commands:**
         - `classes` - List all classes across all repositories (limited to 20)
         - `classes <repo_name>` - List classes in a specific repository
-        - `class <class_name>` - Get detailed information about a specific class including methods and attributes
+        - `class <class_name>` - Get detailed information about a specific
+          class including methods and attributes
 
         **Method Commands:**
-        - `method <method_name>` - Search for methods by name across all classes
-        - `method <method_name> <class_name>` - Search for a method within a specific class
+        - `method <method_name>` - Search for methods by name across all
+          classes
+        - `method <method_name> <class_name>` - Search for a method within a
+          specific class
 
         **Custom Query:**
-        - `query <cypher_query>` - Execute a custom Cypher query (results limited to 20 records)
+        - `query <cypher_query>` - Execute a custom Cypher query (results
+          limited to 20 records)
 
         ## Knowledge Graph Schema:
 
@@ -121,8 +129,10 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
         - Repository: `(r:Repository {name: string})`
         - File: `(f:File {path: string, module_name: string})`
         - Class: `(c:Class {name: string, full_name: string})`
-        - Method: `(m:Method {name: string, params_list: [string], params_detailed: [string], return_type: string, args: [string]})`
-        - Function: `(func:Function {name: string, params_list: [string], params_detailed: [string], return_type: string, args: [string]})`
+        - Method: `(m:Method {name: string, params_list: [string],
+          params_detailed: [string], return_type: string, args: [string]})`
+        - Function: `(func:Function {name: string, params_list: [string],
+          params_detailed: [string], return_type: string, args: [string]})`
         - Attribute: `(a:Attribute {name: string, type: string})`
 
         **Relationships:**
@@ -134,13 +144,14 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
 
         ## Example Workflow:
         ```
-        1. repos                                    # See what repositories are available
-        2. explore pydantic-ai                      # Explore a specific repository
-        3. classes pydantic-ai                      # List classes in that repository
-        4. class Agent                              # Explore the Agent class
-        5. method run_stream                        # Search for run_stream method
-        6. method __init__ Agent                    # Find Agent constructor
-        7. query "MATCH (c:Class)-[:HAS_METHOD]->(m:Method) WHERE m.name = 'run' RETURN c.name, m.name LIMIT 5"
+        1. repos                                    # See what repos exist
+        2. explore pydantic-ai                      # Explore repository
+        3. classes pydantic-ai                      # List classes in repo
+        4. class Agent                              # Explore Agent class
+        5. method run_stream                        # Search run_stream method
+        6. method __init__ Agent                    # Find constructor
+        7. query "MATCH (c:Class)-[:HAS_METHOD]->(m:Method) WHERE
+          m.name = 'run' RETURN c.name, m.name LIMIT 5"
         ```
 
         Args:
