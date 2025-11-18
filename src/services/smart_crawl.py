@@ -21,6 +21,8 @@ from .crawling import (
 
 logger = logging.getLogger(__name__)
 
+HTTP_OK = 200
+
 
 async def _perform_rag_query_with_context(
     _ctx: Context,
@@ -130,7 +132,7 @@ async def smart_crawl_url(
 async def _crawl_sitemap(
     ctx: Context,
     url: str,
-    chunk_size: int,
+    _chunk_size: int,
     return_raw_markdown: bool,
     query: list[str] | None,
 ) -> str:
@@ -139,7 +141,7 @@ async def _crawl_sitemap(
         # Fetch and parse sitemap
         async with httpx.AsyncClient() as client:
             response = await client.get(url)
-            if response.status_code != 200:
+            if response.status_code != HTTP_OK:
                 msg = f"Failed to fetch sitemap: HTTP {response.status_code}"
                 raise MCPToolError(
                     msg,
@@ -196,7 +198,7 @@ async def _crawl_sitemap(
         return json.dumps(data)
 
     except FetchError as e:
-        logger.error("Failed to fetch sitemap: %s", e)
+        logger.exception("Failed to fetch sitemap")
         return json.dumps(
             {
                 "success": False,
@@ -206,7 +208,7 @@ async def _crawl_sitemap(
             },
         )
     except CrawlError as e:
-        logger.error("Sitemap crawl error: %s", e)
+        logger.exception("Sitemap crawl error")
         return json.dumps(
             {
                 "success": False,
@@ -216,7 +218,7 @@ async def _crawl_sitemap(
             },
         )
     except Exception as e:
-        logger.exception("Unexpected error in sitemap crawl: %s", e)
+        logger.exception("Unexpected error in sitemap crawl")
         return json.dumps(
             {
                 "success": False,
