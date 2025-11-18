@@ -61,7 +61,7 @@ class AnalyzerFactory:
                 # Return None for Python - will use existing analyzer
                 return None
 
-        logger.debug(f"No analyzer found for file extension: {ext}")
+        logger.debug("No analyzer found for file extension: %s", ext)
         return None
 
     def can_analyze(self, file_path: str) -> bool:
