@@ -28,7 +28,7 @@ async def test_basic_connectivity():
 
     # Server command
     server_command = [
-        "uv", "run", "python", 
+        "uv", "run", "python",
         "src/crawl4ai_mcp.py",
     ]
 

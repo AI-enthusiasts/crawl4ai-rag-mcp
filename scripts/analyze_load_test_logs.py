@@ -89,7 +89,6 @@ class LoadTestAnalyzer:
 
     def analyze_output(self, stdout: str, stderr: str):
         """Analyze test output for issues."""
-
         # Combine output
         full_output = stdout + "\n" + stderr
 
@@ -156,7 +155,6 @@ class LoadTestAnalyzer:
 
     def generate_report(self, stdout: str, stderr: str, return_code: int):
         """Generate comprehensive markdown report."""
-
         report = []
         report.append(f"# Load Test Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         report.append("")

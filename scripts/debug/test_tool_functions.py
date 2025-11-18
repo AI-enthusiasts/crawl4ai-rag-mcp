@@ -9,7 +9,6 @@ sys.path.insert(0, "src")
 
 async def test_array_parsing():
     """Test array parameter parsing in tools."""
-
     print("Testing array parameter parsing...")
 
     # Test 1: Single URL as string

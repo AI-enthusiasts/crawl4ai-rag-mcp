@@ -13,7 +13,7 @@ def test_mixed_functions():
 
     # Invalid code (hallucinations)
     fake_response = requests.fetch("https://api.example.com/data")  # fetch method doesn't exist
-    fake_time = datetime.current()  # current method doesn't exist  
+    fake_time = datetime.current()  # current method doesn't exist
     fake_data = json.parse('{"key": "value"}')  # parse method doesn't exist
 
     return data, fake_data

@@ -15,8 +15,8 @@ def test_function():
 
     # Known hallucination 3: requests.post doesn't have auto_retry parameter
     result = requests.post(
-        "https://api.example.com/submit", 
-        json=data, 
+        "https://api.example.com/submit",
+        json=data,
         auto_retry=True,
         retry_attempts=3,
     )

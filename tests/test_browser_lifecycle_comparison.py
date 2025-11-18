@@ -47,7 +47,7 @@ def get_chrome_process_count() -> int:
             timeout=5,
         )
         # Count lines containing 'chrome' or 'chromium' (case-insensitive)
-        count = sum(1 for line in result.stdout.lower().split("\n") 
+        count = sum(1 for line in result.stdout.lower().split("\n")
                    if "chrome" in line or "chromium" in line)
         return count
     except Exception as e:
@@ -67,7 +67,7 @@ def get_system_memory_mb() -> float:
         total_mem = 0
         for proc in psutil.process_iter(["name", "memory_info"]):
             try:
-                if proc.info["name"] and ("chrome" in proc.info["name"].lower() or 
+                if proc.info["name"] and ("chrome" in proc.info["name"].lower() or
                                          "chromium" in proc.info["name"].lower()):
                     total_mem += proc.info["memory_info"].rss
             except (psutil.NoSuchProcess, psutil.AccessDenied):

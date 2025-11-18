@@ -15,7 +15,6 @@ sys.path.append(str(Path(__file__).parent.parent / "tests"))
 
 async def test_tool_invocation():
     """Test MCP tool calls after proper initialization"""
-
     # First load the real API key from .env.test
     from dotenv import load_dotenv
     env_test_path = Path(__file__).parent.parent / ".env.test"
@@ -81,7 +80,7 @@ USE_KNOWLEDGE_GRAPH=false
             "description": "List all sources (no params needed)",
         },
         {
-            "name": "scrape_url", 
+            "name": "scrape_url",
             "args": {"url": "https://example.com"},
             "description": "Scrape a simple test URL",
         },

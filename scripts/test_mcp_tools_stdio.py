@@ -13,7 +13,6 @@ from pathlib import Path
 
 async def test_tool_invocation():
     """Test MCP tool calls with stdio transport"""
-
     # Use .env.test file
     env_test_path = Path(__file__).parent.parent / ".env.test"
 
@@ -67,7 +66,7 @@ async def test_tool_invocation():
                 "description": "List all sources (no params needed)",
             },
             {
-                "name": "scrape_urls", 
+                "name": "scrape_urls",
                 "args": {"url": "https://example.com"},
                 "description": "Scrape a simple test URL",
             },
