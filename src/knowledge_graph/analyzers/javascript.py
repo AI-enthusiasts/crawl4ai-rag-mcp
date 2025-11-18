@@ -154,10 +154,10 @@ class JavaScriptAnalyzer(CodeAnalyzer):
             }
 
         except (ParsingError, AnalysisError) as e:
-            logger.error(f"Analysis failed for {file_path}: {e}")
+            logger.error("Analysis failed for %s: %s", file_path, e)
             return self._empty_result(file_path, repo_path)
         except Exception as e:
-            logger.exception(f"Unexpected error analyzing {file_path}: {e}")
+            logger.exception("Unexpected error analyzing %s: %s", file_path, e)
             return self._empty_result(file_path, repo_path)
 
     def _empty_result(self, file_path: str, repo_path: str) -> dict[str, Any]:
