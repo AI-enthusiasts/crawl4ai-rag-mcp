@@ -399,7 +399,7 @@ class EnhancedHallucinationDetector:
                 await session.close()
 
         except QueryError as e:
-            logger.error(f"Neo4j query failed during validation: {e}")
+            logger.error("Neo4j query failed during validation: %s", e)
             return {
                 "available": False,
                 "reason": f"Query error: {e!s}",
@@ -409,7 +409,7 @@ class EnhancedHallucinationDetector:
                 "function_validations": [],
             }
         except Exception as e:
-            logger.exception(f"Unexpected Neo4j validation error: {e}")
+            logger.exception("Unexpected Neo4j validation error: %s", e)
             return {
                 "available": False,
                 "reason": f"Validation error: {e!s}",
@@ -477,7 +477,7 @@ class EnhancedHallucinationDetector:
             }
 
         except QueryError as e:
-            logger.error(f"Qdrant query failed during validation: {e}")
+            logger.error("Qdrant query failed during validation: %s", e)
             return {
                 "available": False,
                 "reason": f"Query error: {e!s}",
@@ -485,7 +485,7 @@ class EnhancedHallucinationDetector:
                 "suggestions": [],
             }
         except Exception as e:
-            logger.exception(f"Unexpected Qdrant validation error: {e}")
+            logger.exception("Unexpected Qdrant validation error: %s", e)
             return {
                 "available": False,
                 "reason": f"Validation error: {e!s}",
@@ -599,7 +599,7 @@ class EnhancedHallucinationDetector:
                     )
 
             except QueryError as e:
-                logger.error(f"Query failed validating import {module}.{name}: {e}")
+                logger.error("Query failed validating import %s.%s: %s", module, name, e)
                 validations.append(
                     {
                         "import": import_info,
@@ -609,7 +609,7 @@ class EnhancedHallucinationDetector:
                     },
                 )
             except Exception as e:
-                logger.exception(f"Unexpected error validating import {module}.{name}: {e}")
+                logger.exception("Unexpected error validating import %s.%s: %s", module, name, e)
                 validations.append(
                     {
                         "import": import_info,
@@ -649,7 +649,7 @@ class EnhancedHallucinationDetector:
                 )
 
             except QueryError as e:
-                logger.error(f"Query failed validating class {class_name}: {e}")
+                logger.error("Query failed validating class %s: %s", class_name, e)
                 validations.append(
                     {
                         "class": class_info,
@@ -659,7 +659,7 @@ class EnhancedHallucinationDetector:
                     },
                 )
             except Exception as e:
-                logger.exception(f"Unexpected error validating class {class_name}: {e}")
+                logger.exception("Unexpected error validating class %s: %s", class_name, e)
                 validations.append(
                     {
                         "class": class_info,
@@ -702,7 +702,7 @@ class EnhancedHallucinationDetector:
                 )
 
             except QueryError as e:
-                logger.error(f"Query failed validating method call {method_name}: {e}")
+                logger.error("Query failed validating method call %s: %s", method_name, e)
                 validations.append(
                     {
                         "method_call": call_info,
@@ -712,7 +712,7 @@ class EnhancedHallucinationDetector:
                     },
                 )
             except Exception as e:
-                logger.exception(f"Unexpected error validating method call {method_name}: {e}")
+                logger.exception("Unexpected error validating method call %s: %s", method_name, e)
                 validations.append(
                     {
                         "method_call": call_info,
@@ -752,7 +752,7 @@ class EnhancedHallucinationDetector:
                 )
 
             except QueryError as e:
-                logger.error(f"Query failed validating function {function_name}: {e}")
+                logger.error("Query failed validating function %s: %s", function_name, e)
                 validations.append(
                     {
                         "function": func_info,
@@ -762,7 +762,7 @@ class EnhancedHallucinationDetector:
                     },
                 )
             except Exception as e:
-                logger.exception(f"Unexpected error validating function {function_name}: {e}")
+                logger.exception("Unexpected error validating function %s: %s", function_name, e)
                 validations.append(
                     {
                         "function": func_info,
@@ -1079,7 +1079,7 @@ async def check_ai_script_hallucinations_enhanced(
         return json.dumps(result, indent=2)
 
     except (ParsingError, AnalysisError, QueryError) as e:
-        logger.error(f"Analysis/Query error in enhanced hallucination detection: {e}")
+        logger.error("Analysis/Query error in enhanced hallucination detection: %s", e)
         return json.dumps(
             {
                 "success": False,
@@ -1089,7 +1089,7 @@ async def check_ai_script_hallucinations_enhanced(
             indent=2,
         )
     except Exception as e:
-        logger.exception(f"Unexpected error in enhanced hallucination detection: {e}")
+        logger.exception("Unexpected error in enhanced hallucination detection: %s", e)
         return json.dumps(
             {
                 "success": False,
