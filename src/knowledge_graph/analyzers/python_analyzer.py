@@ -787,7 +787,7 @@ class Neo4jCodeAnalyzer:
                 func_name = self._get_name(value_node.func)
                 builtins = [
                     "list", "dict", "set", "tuple", "str", "int",
-                    "float", "bool"
+                    "float", "bool",
                 ]
                 if func_name in builtins:
                     return func_name
@@ -866,7 +866,12 @@ class Neo4jCodeAnalyzer:
     ) -> str:
         """Determine the actual importable module name for a Python file"""
         # Start with the default: convert file path to module path
-        default_module = relative_path.replace("/", ".").replace("\\", ".").replace(".py", "")
+        default_module = (
+            relative_path
+            .replace("/", ".")
+            .replace("\\", ".")
+            .replace(".py", "")
+        )
 
         # Common patterns to detect the actual package root
         path_parts = Path(relative_path).parts
