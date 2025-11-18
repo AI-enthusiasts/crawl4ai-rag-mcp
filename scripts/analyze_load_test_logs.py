@@ -74,7 +74,7 @@ class LoadTestAnalyzer:
         try:
             result = subprocess.run(
                 cmd,
-                capture_output=True,
+                check=False, capture_output=True,
                 text=True,
                 timeout=600,  # 10 minutes timeout
                 cwd=Path.cwd(),

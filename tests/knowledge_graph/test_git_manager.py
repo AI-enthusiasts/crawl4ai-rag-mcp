@@ -565,13 +565,13 @@ class TestGetRepositoryInfo:
 
             if "remote.origin.url" in cmd_str:
                 return "https://github.com/test/repo.git\n"
-            elif "rev-parse --abbrev-ref HEAD" in cmd_str:
+            if "rev-parse --abbrev-ref HEAD" in cmd_str:
                 return "main\n"
-            elif "ls-files" in cmd_str:
+            if "ls-files" in cmd_str:
                 return "src/main.py\nsrc/utils.py\nREADME.md\n"
-            elif "count-objects" in cmd_str:
+            if "count-objects" in cmd_str:
                 return "size-pack: 100 MiB\n"
-            elif "log --format=%an" in cmd_str:
+            if "log --format=%an" in cmd_str:
                 return "John Doe\nJane Smith\nJohn Doe\n"
             return ""
 

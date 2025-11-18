@@ -39,7 +39,7 @@ async def main():
                     "jsonrpc": "2.0",
                     "error": {
                         "code": -32700,
-                        "message": f"Parse error: {str(e)}",
+                        "message": f"Parse error: {e!s}",
                     },
                     "id": None,
                 }
@@ -50,7 +50,7 @@ async def main():
                     "jsonrpc": "2.0",
                     "error": {
                         "code": -32603,
-                        "message": f"Internal error: {str(e)}",
+                        "message": f"Internal error: {e!s}",
                     },
                     "id": request.get("id") if "request" in locals() else None,
                 }

@@ -1,6 +1,7 @@
 """Type stubs for crawl4ai library."""
 
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 class BrowserConfig:
     """Browser configuration for crawling."""
@@ -49,7 +50,7 @@ class AsyncWebCrawler:
     ) -> None: ...
 
     async def __aenter__(self) -> AsyncWebCrawler: ...
-    async def __aexit__(self, *args: Any) -> None: ...
+    async def __aexit__(self, *args: object) -> None: ...
 
     async def arun(
         self,

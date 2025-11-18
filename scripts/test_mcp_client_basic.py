@@ -66,9 +66,8 @@ async def test_basic_connectivity():
         if len(tools) >= 10:
             print("\n✅ Test PASSED: Server is responding correctly")
             return True
-        else:
-            print(f"\n❌ Test FAILED: Expected at least 10 tools, got {len(tools)}")
-            return False
+        print(f"\n❌ Test FAILED: Expected at least 10 tools, got {len(tools)}")
+        return False
 
     except Exception as e:
         print(f"\n❌ Test FAILED with exception: {e}")

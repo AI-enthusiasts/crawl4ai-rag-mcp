@@ -28,4 +28,4 @@ print(f"Batch timeout: {extractor.batch_timeout_seconds} seconds")
 print(f"Has _process_modules_in_batches: {hasattr(extractor, '_process_modules_in_batches')}")
 print(f"Has _process_batch_transaction: {hasattr(extractor, '_process_batch_transaction')}")
 
-print("\nBatching implementation verified successfully\!")
+print("\nBatching implementation verified successfully\\!")
