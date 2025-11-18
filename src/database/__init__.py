@@ -1,5 +1,5 @@
-"""
-Database adapter package for vector database operations.
+"""Database adapter package for vector database operations.
+
 Supports multiple backends: Supabase and Qdrant.
 """
 

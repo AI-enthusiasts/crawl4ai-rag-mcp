@@ -244,7 +244,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
 
         Args:
             repo_url: GitHub repository URL (e.g., 'https://github.com/user/repo.git')
-            branch: Branch name to parse (e.g., 'main', 'develop', 'feature/new-feature')
+            branch: Branch name (e.g., 'main', 'develop', 'feature/branch')
 
         Returns:
             JSON string with parsing results, statistics, and branch information
@@ -295,7 +295,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
         Use this after parsing a repository to understand its structure and history.
 
         Args:
-            repo_name: Name of the repository in the knowledge graph (without .git extension)
+            repo_name: Repository name in the knowledge graph (no .git ext)
 
         Returns:
             JSON string with comprehensive repository information

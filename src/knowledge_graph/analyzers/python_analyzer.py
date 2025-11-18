@@ -229,7 +229,7 @@ class Neo4jCodeAnalyzer:
             return None
 
     def _extract_class_attributes(
-        self, class_node: ast.ClassDef
+        self, class_node: ast.ClassDef,
     ) -> list[dict[str, Any]]:
         """Comprehensively extract all class attributes including:
 
@@ -266,7 +266,7 @@ class Neo4jCodeAnalyzer:
                             # assuming dataclass/attrs semantics
                             is_class_var = (
                                 self._is_class_var_annotation(
-                                    item.annotation
+                                    item.annotation,
                                 )
                             )
 
@@ -331,7 +331,8 @@ class Neo4jCodeAnalyzer:
                                             attributes.append({
                                                 "name": slot_name,
                                                 "type": "Any",
-                                                "is_instance": True,  # slots are instance attributes
+                                                # Slots are instance attributes
+                                                "is_instance": True,
                                                 "is_class": False,
                                                 "is_property": False,
                                                 "has_type_hint": False,
@@ -348,14 +349,14 @@ class Neo4jCodeAnalyzer:
                                     # Regular class attribute
                                     inferred_type = (
                                         self._infer_type_from_value(
-                                            item.value
+                                            item.value,
                                         )
                                         if item.value
                                         else "Any"
                                     )
                                     default_val = (
                                         self._get_default_value(
-                                            item.value
+                                            item.value,
                                         )
                                         if item.value
                                         else None
@@ -412,14 +413,14 @@ class Neo4jCodeAnalyzer:
                     continue
                 except Exception:
                     logger.exception(
-                        "Unexpected error extracting attribute"
+                        "Unexpected error extracting attribute",
                     )
                     continue
 
             # Extract attributes from __init__ method
             # (unless dataclass/attrs class with no __init__)
             init_attributes = self._extract_init_attributes(
-                class_node
+                class_node,
             )
             for init_attr in init_attributes:
                 # Ensure init attributes have framework metadata
@@ -588,7 +589,7 @@ class Neo4jCodeAnalyzer:
             return "ClassVar" in annotation_str
 
     def _extract_init_attributes(
-        self, class_node: ast.ClassDef
+        self, class_node: ast.ClassDef,
     ) -> list[dict[str, Any]]:
         """Extract attributes from __init__ method"""
         attributes: list[dict[str, Any]] = []
@@ -607,11 +608,11 @@ class Neo4jCodeAnalyzer:
         try:
             for node in ast.walk(init_method):
                 try:
-                    # Handle annotated assignments:
-                    # self.attr: Type = value
+                    # Handle annotated assignments (e.g.,
+                    # self.attr: Type = value)
                     if (isinstance(node, ast.AnnAssign)
                             and isinstance(
-                                node.target, ast.Attribute
+                                node.target, ast.Attribute,
                             )):
                         is_self = (
                             isinstance(node.target.value, ast.Name)
@@ -619,7 +620,7 @@ class Neo4jCodeAnalyzer:
                         )
                         if (is_self
                                 and not node.target.attr.startswith(
-                                    "_"
+                                    "_",
                                 )):
                             type_hint = (
                                 self._get_name(node.annotation)
@@ -648,23 +649,23 @@ class Neo4jCodeAnalyzer:
                             if isinstance(target, ast.Attribute):
                                 is_self = (
                                     isinstance(
-                                        target.value, ast.Name
+                                        target.value, ast.Name,
                                     )
                                     and target.value.id == "self"
                                 )
                                 if (is_self
                                         and not target.attr.startswith(
-                                            "_"
+                                            "_",
                                         )):
                                     # Infer type from assignment
                                     inferred = (
                                         self._infer_type_from_value(
-                                            node.value
+                                            node.value,
                                         )
                                     )
                                     default = (
                                         self._get_default_value(
-                                            node.value
+                                            node.value,
                                         )
                                     )
                                     attributes.append({
@@ -678,29 +679,29 @@ class Neo4jCodeAnalyzer:
                                         "line_number": node.lineno,
                                     })
 
-                            # Handle multiple assignments:
-                            # self.x = self.y = value
+                            # Handle multiple assignments (e.g.,
+                            # self.x = self.y = value)
                             elif isinstance(target, ast.Tuple):
                                 for elt in target.elts:
                                     is_self = (
                                         isinstance(elt, ast.Attribute)
                                         and isinstance(
-                                            elt.value, ast.Name
+                                            elt.value, ast.Name,
                                         )
                                         and elt.value.id == "self"
                                     )
                                     if (is_self
                                             and not elt.attr.startswith(
-                                                "_"
+                                                "_",
                                             )):
                                         inferred = (
                                             self._infer_type_from_value(
-                                                node.value
+                                                node.value,
                                             )
                                         )
                                         default = (
                                             self._get_default_value(
-                                                node.value
+                                                node.value,
                                             )
                                         )
                                         attributes.append({
@@ -845,13 +846,13 @@ class Neo4jCodeAnalyzer:
                 return True
 
         # If it's not obviously external, consider it internal
-        MIN_MODULE_LENGTH = 2
+        min_module_length = 2
         test_keywords = ["test", "mock", "fake"]
         is_not_test = not any(
             ext in base_module.lower() for ext in test_keywords
         )
         is_not_private = not base_module.startswith("_")
-        is_long_enough = len(base_module) > MIN_MODULE_LENGTH
+        is_long_enough = len(base_module) > min_module_length
         return bool(is_not_test and is_not_private and is_long_enough)
 
     def _get_importable_module_name(
@@ -886,7 +887,7 @@ class Neo4jCodeAnalyzer:
         # Fallback: look for common Python project structures
         # Skip common non-package directories
         skip_dirs = {
-            "src", "lib", "source", "python", "pkg", "packages"
+            "src", "lib", "source", "python", "pkg", "packages",
         }
 
         # Find the first directory that's not in skip_dirs
@@ -904,7 +905,7 @@ class Neo4jCodeAnalyzer:
         return default_module
 
     def _extract_function_parameters(
-        self, func_node: Any
+        self, func_node: Any,
     ) -> list[dict[str, Any]]:
         """Comprehensive parameter extraction from function def"""
         params: list[dict[str, Any]] = []
@@ -948,7 +949,7 @@ class Neo4jCodeAnalyzer:
         if func_node.args.vararg:
             vararg_type = (
                 self._get_name(
-                    func_node.args.vararg.annotation
+                    func_node.args.vararg.annotation,
                 )
                 if func_node.args.vararg.annotation
                 else "Any"
@@ -999,7 +1000,7 @@ class Neo4jCodeAnalyzer:
         if func_node.args.kwarg:
             kwarg_type = (
                 self._get_name(
-                    func_node.args.kwarg.annotation
+                    func_node.args.kwarg.annotation,
                 )
                 if func_node.args.kwarg.annotation
                 else "Dict[str, Any]"
