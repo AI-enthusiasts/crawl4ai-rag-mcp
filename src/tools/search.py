@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from fastmcp import FastMCP
 
 from src.core import MCPToolError, track_request
+from src.core.context import get_app_context
 from src.core.exceptions import DatabaseError, SearchError
 from src.database import (
     get_available_sources,
@@ -41,28 +42,31 @@ def register_search_tools(mcp: "FastMCP") -> None:
     async def search(
         ctx: Context,
         query: str,
+        *,
         return_raw_markdown: bool = False,
         num_results: int = 6,
         batch_size: int = 20,
     ) -> str:
         """
-        Comprehensive search tool that integrates SearXNG search with scraping and RAG functionality.
-        Optionally, use `return_raw_markdown=true` to return raw markdown for more detailed analysis.
+        Comprehensive search tool integrating SearXNG, scraping, and RAG.
 
-        This tool performs a complete search, scrape, and RAG workflow:
-        1. Searches SearXNG with the provided query, obtaining `num_results` URLs
-        2. Extracts markdown from URLs, chunks embedding data into Supabase
-        3. Scrapes all returned URLs using existing scraping functionality
+        Optionally, use `return_raw_markdown=true` to return raw markdown for
+        more detailed analysis. This tool performs a complete search, scrape,
+        and RAG workflow:
+        1. Searches SearXNG with the provided query, obtaining `num_results`
+        2. Extracts markdown from URLs, chunks into embedding data
+        3. Scrapes all returned URLs using existing functionality
         4. Returns organized results with comprehensive metadata
 
         Args:
+            ctx: The MCP context for execution
             query: The search query for SearXNG
-            return_raw_markdown: If True, skip embedding/RAG and return raw markdown content (default: False)
-            num_results: Number of search results to return from SearXNG (default: 6)
+            return_raw_markdown: Skip embedding/RAG, return raw markdown
+            num_results: Number of search results to return (default: 6)
             batch_size: Batch size for database operations (default: 20)
 
         Returns:
-            JSON string with search results, or raw markdown of each URL if `return_raw_markdown=true`
+            JSON string with search results, or raw markdown if enabled.
         """
         try:
             return await search_and_process(
@@ -73,15 +77,15 @@ def register_search_tools(mcp: "FastMCP") -> None:
                 batch_size=batch_size,
             )
         except SearchError as e:
-            logger.error("Search error: %s", e)
+            logger.exception("Search error")
             msg = f"Search failed: {e!s}"
             raise MCPToolError(msg) from e
         except DatabaseError as e:
-            logger.error("Database error during search: %s", e)
+            logger.exception("Database error during search")
             msg = f"Search failed: {e!s}"
             raise MCPToolError(msg) from e
         except Exception as e:
-            logger.exception("Unexpected error in search tool: %s", e)
+            logger.exception("Unexpected error in search tool")
             msg = f"Search failed: {e!s}"
             raise MCPToolError(msg) from e
 
@@ -90,6 +94,7 @@ def register_search_tools(mcp: "FastMCP") -> None:
     async def agentic_search(
         ctx: Context,
         query: str,
+        *,
         completeness_threshold: float | None = None,
         max_iterations: int | None = None,
         max_urls_per_iteration: int | None = None,
@@ -97,35 +102,32 @@ def register_search_tools(mcp: "FastMCP") -> None:
         use_search_hints: bool | None = None,
     ) -> str:
         """
-        Intelligent search tool that automatically finds comprehensive answers from local knowledge base or web sources.
+        Intelligent search finding comprehensive answers from local or web.
 
-        SMART MODE OPERATION:
-        1. First checks local Qdrant vector database for existing knowledge
-        2. LLM evaluates answer completeness (0.0-1.0 score)
-        3. If completeness >= threshold (default: 0.95), returns answer immediately from local storage
-        4. If incomplete, automatically searches web (SearXNG), intelligently selects and crawls relevant URLs,
-           indexes new content, and performs iterative search-crawl-evaluate cycles until answer quality
-           meets threshold or max iterations reached (default: 3)
+        Operates in SMART MODE:
+        1. Checks Qdrant vector database for existing knowledge
+        2. LLM evaluates answer completeness (0.0-1.0)
+        3. If complete, returns from local storage immediately
+        4. If incomplete, searches web (SearXNG), intelligently selects URLs,
+           indexes new content, and performs iterative cycles
 
-        This adaptive approach minimizes latency when knowledge exists locally, while ensuring comprehensive
-        answers through automated web research when needed.
-
-        Best for: comprehensive research questions, technical documentation queries, finding up-to-date information,
-        discovering content not yet in local database.
+        Minimizes latency when knowledge exists locally while ensuring
+        comprehensive answers through automated web research.
 
         Args:
+            ctx: The MCP context for execution
             query: Search question (required)
-            completeness_threshold: Minimum answer quality score 0.0-1.0 (default: 0.95, higher = stricter)
-            max_iterations: Maximum search-crawl cycles (default: 3, range: 1-10)
-            max_urls_per_iteration: Maximum URLs to crawl per cycle (default: 3, range: 1-20)
-            url_score_threshold: Minimum URL relevance score to crawl 0.0-1.0 (default: 0.7, higher = more selective)
-            use_search_hints: Enable experimental smart query refinement from metadata (default: false)
+            completeness_threshold: Quality score 0.0-1.0, default 0.95
+            max_iterations: Max search-crawl cycles, default 3 (1-10)
+            max_urls_per_iteration: Max URLs per cycle, default 3 (1-20)
+            url_score_threshold: Min URL relevance 0.0-1.0, default 0.7
+            use_search_hints: Enable smart query refinement (default: false)
 
         Returns:
-            JSON with search results, completeness score, iterations performed, and detailed search history
+            JSON with results, completeness, iterations, search history.
 
         Raises:
-            MCPToolError: If agentic search is disabled in configuration or search fails critically
+            MCPToolError: If disabled or search fails critically.
         """
         try:
             return await agentic_search_impl(
@@ -138,55 +140,55 @@ def register_search_tools(mcp: "FastMCP") -> None:
                 use_search_hints=use_search_hints,
             )
         except SearchError as e:
-            logger.error("Search error in agentic search: %s", e)
+            logger.exception("Search error in agentic search")
             msg = f"Agentic search failed: {e!s}"
             raise MCPToolError(msg) from e
         except DatabaseError as e:
-            logger.error("Database error in agentic search: %s", e)
+            logger.exception("Database error in agentic search")
             msg = f"Agentic search failed: {e!s}"
             raise MCPToolError(msg) from e
         except Exception as e:
-            logger.exception("Unexpected error in agentic_search tool: %s", e)
+            logger.exception("Unexpected error in agentic_search tool")
             msg = f"Agentic search failed: {e!s}"
             raise MCPToolError(msg) from e
 
     @mcp.tool()
     @track_request("analyze_code_cross_language")
     async def analyze_code_cross_language(
-        ctx: Context,
+        _ctx: Context,
         query: str,
+        *,
         languages: list[str] | str | None = None,
         match_count: int = 10,
         source_filter: str | None = None,
         include_file_context: bool = True,
     ) -> str:
         """
-        Cross-language code analysis using semantic search across multiple programming languages.
+        Cross-language code analysis using semantic search.
 
-        This tool performs advanced code analysis by searching across multiple programming languages
-        simultaneously, enabling developers to:
-        - Find similar patterns across different languages (e.g., authentication logic in Python, JS, Go)
-        - Compare implementation approaches between languages
-        - Discover code reuse opportunities
-        - Understand how concepts are implemented across your stack
+        Searches across multiple programming languages simultaneously to enable:
+        - Finding patterns across languages (auth in Python, JS, Go)
+        - Comparing implementation approaches
+        - Discovering code reuse opportunities
+        - Understanding stack-wide concepts
 
-        Supported languages include Python, JavaScript, TypeScript, Go, and more based on
-        the parsed repositories in your knowledge graph.
+        Supports Python, JavaScript, TypeScript, Go, and more based on
+        parsed repositories in the knowledge graph.
 
         Args:
-            query: Search query for finding code patterns across languages
-            languages: Optional list of languages to search (e.g., ['python', 'javascript', 'go']). If None, searches all languages
-            match_count: Maximum number of results to return per language (default: 10)
+            ctx: The MCP context for execution
+            query: Search query for code patterns across languages
+            languages: Optional language list, e.g. ['python', 'js'].
+                None searches all languages
+            match_count: Max results per language (default: 10)
             source_filter: Optional repository filter (e.g., 'repo-name')
-            include_file_context: Whether to include file path and language context (default: True)
+            include_file_context: Include file and language info (default: True)
 
         Returns:
-            JSON string with cross-language search results, organized by language and confidence scores
+            JSON with cross-language results by language and confidence.
         """
         try:
             # Get the app context
-            from src.core.context import get_app_context
-
             app_ctx = get_app_context()
 
             if not app_ctx:
@@ -213,7 +215,8 @@ def register_search_tools(mcp: "FastMCP") -> None:
             parsed_languages = None
             if languages is not None:
                 if isinstance(languages, str):
-                    if languages.strip().startswith("[") and languages.strip().endswith("]"):
+                    stripped = languages.strip()
+                    if stripped.startswith("[") and stripped.endswith("]"):
                         try:
                             parsed_languages = json.loads(languages)
                         except json.JSONDecodeError:
@@ -317,8 +320,10 @@ def register_search_tools(mcp: "FastMCP") -> None:
                             break
 
                 # Filter by languages if specified
-                if parsed_languages and language not in [lang.lower() for lang in parsed_languages]:
-                    continue
+                if parsed_languages:
+                    lower_langs = [lang.lower() for lang in parsed_languages]
+                    if language not in lower_langs:
+                        continue
 
                 # Initialize language group if needed
                 if language not in results_by_language:
@@ -341,16 +346,41 @@ def register_search_tools(mcp: "FastMCP") -> None:
                 results_by_language[language].append(result_item)
 
             # Limit results per language and sort by similarity
-            for language in results_by_language:
-                results_by_language[language] = sorted(
-                    results_by_language[language],
+            for language, results in results_by_language.items():
+                sorted_results = sorted(
+                    results,
                     key=lambda x: x.get("similarity_score", 0),
                     reverse=True,
-                )[:match_count]
+                )
+                results_by_language[language] = sorted_results[:match_count]
 
             # Calculate summary statistics
-            total_results = sum(len(results) for results in results_by_language.values())
+            total_results = sum(
+                len(results) for results in results_by_language.values()
+            )
             languages_found = list(results_by_language.keys())
+
+            # Calculate most relevant language
+            most_relevant = None
+            if results_by_language:
+                most_relevant = max(
+                    results_by_language.keys(),
+                    key=lambda k: len(results_by_language[k]),
+                )
+
+            # Calculate average similarity per language
+            avg_similarity = {}
+            for lang, results in results_by_language.items():
+                if results:
+                    scores = [r.get("similarity_score", 0) for r in results]
+                    avg_similarity[lang] = round(sum(scores) / len(results), 3)
+                else:
+                    avg_similarity[lang] = 0
+
+            message = (
+                f"Found {total_results} code examples across "
+                f"{len(languages_found)} languages"
+            )
 
             return json.dumps(
                 {
@@ -361,22 +391,17 @@ def register_search_tools(mcp: "FastMCP") -> None:
                     "total_results": total_results,
                     "results_by_language": results_by_language,
                     "analysis_summary": {
-                        "most_relevant_language": max(results_by_language.keys(), key=lambda k: len(results_by_language[k])) if results_by_language else None,
+                        "most_relevant_language": most_relevant,
                         "coverage": f"{len(languages_found)} languages analyzed",
-                        "avg_similarity_per_language": {
-                            lang: round(
-                                sum(r.get("similarity_score", 0) for r in results) / len(results), 3,
-                            ) if results else 0
-                            for lang, results in results_by_language.items()
-                        },
+                        "avg_similarity_per_language": avg_similarity,
                     },
-                    "message": f"Found {total_results} code examples across {len(languages_found)} languages",
+                    "message": message,
                 },
                 indent=2,
             )
 
         except DatabaseError as e:
-            logger.error("Database error in cross-language code analysis: %s", e)
+            logger.exception("Database error in cross-language code analysis")
             return json.dumps(
                 {
                     "success": False,
@@ -386,7 +411,7 @@ def register_search_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
         except Exception as e:
-            logger.exception("Unexpected error in cross-language code analysis: %s", e)
+            logger.exception("Unexpected error in cross-language code analysis")
             return json.dumps(
                 {
                     "success": False,

@@ -12,7 +12,8 @@ from typing import Any
 async def find_modules(driver: Any, module_name: str) -> list[str]:
     """Find repository matching the module name, then return its files"""
     async with driver.session() as session:
-        # First, try to find files with module names that match or start with the search term
+        # Try to find files with module names matching or starting
+        # with the search term
         module_query = """
         MATCH (r:Repository)-[:CONTAINS]->(f:File)
         WHERE f.module_name = $module_name
@@ -24,9 +25,9 @@ async def find_modules(driver: Any, module_name: str) -> list[str]:
         """
 
         result = await session.run(module_query, module_name=module_name)
-        repos_from_modules = []
-        async for record in result:
-            repos_from_modules.append(record["repo_name"])
+        repos_from_modules = [
+            record["repo_name"] async for record in result
+        ]
 
         # Also try repository name matching as fallback
         repo_query = """
@@ -45,12 +46,15 @@ async def find_modules(driver: Any, module_name: str) -> list[str]:
         """
 
         result = await session.run(repo_query, module_name=module_name)
-        repos_from_names = []
-        async for record in result:
-            repos_from_names.append(record["repo_name"])
+        repos_from_names = [
+            record["repo_name"] async for record in result
+        ]
 
         # Combine results, prioritizing module-based matches
-        all_repos = repos_from_modules + [r for r in repos_from_names if r not in repos_from_modules]
+        additional = [
+            r for r in repos_from_names if r not in repos_from_modules
+        ]
+        all_repos = repos_from_modules + additional
 
         if not all_repos:
             return []
@@ -64,15 +68,14 @@ async def find_modules(driver: Any, module_name: str) -> list[str]:
         """
 
         result = await session.run(files_query, repo_name=best_repo)
-        files = []
-        async for record in result:
-            files.append(record["f.path"])
-
-        return files
+        return [record["f.path"] async for record in result]
 
 
-async def get_module_contents(driver: Any, module_name: str) -> tuple[list[str], list[str]]:
-    """Get classes and functions available in a repository matching the module name"""
+async def get_module_contents(
+    driver: Any,
+    module_name: str,
+) -> tuple[list[str], list[str]]:
+    """Get classes and functions for a repository matching module name"""
     async with driver.session() as session:
         # First, try to find repository by module names in files
         module_query = """
@@ -101,8 +104,10 @@ async def get_module_contents(driver: Any, module_name: str) -> tuple[list[str],
             ORDER BY
                 CASE
                     WHEN toLower(r.name) = toLower($module_name) THEN 1
-                    WHEN toLower(replace(r.name, '-', '_')) = toLower($module_name) THEN 2
-                    WHEN toLower(replace(r.name, '_', '-')) = toLower($module_name) THEN 3
+                    WHEN toLower(replace(r.name, '-', '_')) =
+                        toLower($module_name) THEN 2
+                    WHEN toLower(replace(r.name, '_', '-')) =
+                        toLower($module_name) THEN 3
                 END
             LIMIT 1
             """
@@ -117,31 +122,31 @@ async def get_module_contents(driver: Any, module_name: str) -> tuple[list[str],
 
         # Get classes from this repository
         class_query = """
-        MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)-[:DEFINES]->(c:Class)
+        MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)
+               -[:DEFINES]->(c:Class)
         RETURN DISTINCT c.name as class_name
         """
 
         result = await session.run(class_query, repo_name=repo_name)
-        classes = []
-        async for record in result:
-            classes.append(record["class_name"])
+        classes = [record["class_name"] async for record in result]
 
         # Get functions from this repository
         func_query = """
-        MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)-[:DEFINES]->(func:Function)
+        MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)
+               -[:DEFINES]->(func:Function)
         RETURN DISTINCT func.name as function_name
         """
 
         result = await session.run(func_query, repo_name=repo_name)
-        functions = []
-        async for record in result:
-            functions.append(record["function_name"])
+        functions = [record["function_name"] async for record in result]
 
         return classes, functions
 
 
 async def find_repository_for_module(
-    driver: Any, module_name: str, repo_cache: dict[str, str | None],
+    driver: Any,
+    module_name: str,
+    repo_cache: dict[str, str | None],
 ) -> str | None:
     """Find the repository name that matches a module name"""
     if module_name in repo_cache:
@@ -177,7 +182,8 @@ async def find_repository_for_module(
             ORDER BY
                 CASE
                     WHEN toLower(r.name) = toLower($module_name) THEN 1
-                    WHEN toLower(replace(r.name, '-', '_')) = toLower($module_name) THEN 2
+                    WHEN toLower(replace(r.name, '-', '_')) =
+                        toLower($module_name) THEN 2
                     ELSE 3
                 END
             LIMIT 1
@@ -192,7 +198,11 @@ async def find_repository_for_module(
         return repo_name
 
 
-async def find_class(driver: Any, class_name: str, repo_cache: dict[str, str | None]) -> dict[str, Any] | None:
+async def find_class(
+    driver: Any,
+    class_name: str,
+    repo_cache: dict[str, str | None],
+) -> dict[str, Any] | None:
     """Find class information in knowledge graph"""
     async with driver.session() as session:
         # First try exact match
@@ -219,18 +229,25 @@ async def find_class(driver: Any, class_name: str, repo_cache: dict[str, str | N
             class_part = parts[-1]  # e.g., "Agent"
 
             # Find repository for the module
-            repo_name = await find_repository_for_module(driver, module_part, repo_cache)
+            repo_name = await find_repository_for_module(
+                driver, module_part, repo_cache,
+            )
 
             if repo_name:
                 # Search for class within this repository
                 repo_query = """
-                MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)-[:DEFINES]->(c:Class)
+                MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)
+                       -[:DEFINES]->(c:Class)
                 WHERE c.name = $class_name
                 RETURN c.name as name, c.full_name as full_name
                 LIMIT 1
                 """
 
-                result = await session.run(repo_query, repo_name=repo_name, class_name=class_part)
+                result = await session.run(
+                    repo_query,
+                    repo_name=repo_name,
+                    class_name=class_part,
+                )
                 record = await result.single()
 
                 if record:
@@ -261,17 +278,22 @@ async def find_method(
         MATCH (c:Class)-[:HAS_METHOD]->(m:Method)
         WHERE (c.name = $class_name OR c.full_name = $class_name)
           AND m.name = $method_name
-        RETURN m.name as name, m.params_list as params_list, m.params_detailed as params_detailed,
+        RETURN m.name as name, m.params_list as params_list,
+               m.params_detailed as params_detailed,
                m.return_type as return_type, m.args as args
         LIMIT 1
         """
 
-        result = await session.run(query, class_name=class_name, method_name=method_name)
+        result = await session.run(
+            query, class_name=class_name, method_name=method_name,
+        )
         record = await result.single()
 
         if record:
-            # Use detailed params if available, fall back to simple params
-            params_to_use = record["params_detailed"] or record["params_list"] or []
+            # Use detailed params if available
+            params_detailed = record["params_detailed"]
+            params_list = record["params_list"]
+            params_to_use = params_detailed or params_list or []
 
             method_info = {
                 "name": record["name"],
@@ -289,24 +311,35 @@ async def find_method(
             class_part = parts[-1]  # e.g., "Agent"
 
             # Find repository for the module
-            repo_name = await find_repository_for_module(driver, module_part, repo_cache)
+            repo_name = await find_repository_for_module(
+                driver, module_part, repo_cache,
+            )
 
             if repo_name:
                 # Search for method within this repository's classes
                 repo_query = """
-                MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)-[:DEFINES]->(c:Class)-[:HAS_METHOD]->(m:Method)
+                MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)
+                       -[:DEFINES]->(c:Class)-[:HAS_METHOD]->(m:Method)
                 WHERE c.name = $class_name AND m.name = $method_name
-                RETURN m.name as name, m.params_list as params_list, m.params_detailed as params_detailed,
+                RETURN m.name as name, m.params_list as params_list,
+                       m.params_detailed as params_detailed,
                        m.return_type as return_type, m.args as args
                 LIMIT 1
                 """
 
-                result = await session.run(repo_query, repo_name=repo_name, class_name=class_part, method_name=method_name)
+                result = await session.run(
+                    repo_query,
+                    repo_name=repo_name,
+                    class_name=class_part,
+                    method_name=method_name,
+                )
                 record = await result.single()
 
                 if record:
-                    # Use detailed params if available, fall back to simple params
-                    params_to_use = record["params_detailed"] or record["params_list"] or []
+                    # Use detailed params if available
+                    params_detailed = record["params_detailed"]
+                    params_list = record["params_list"]
+                    params_to_use = params_detailed or params_list or []
 
                     method_info = {
                         "name": record["name"],
@@ -322,7 +355,10 @@ async def find_method(
 
 
 async def find_attribute(
-    driver: Any, class_name: str, attr_name: str, repo_cache: dict[str, str | None],
+    driver: Any,
+    class_name: str,
+    attr_name: str,
+    repo_cache: dict[str, str | None],
 ) -> dict[str, Any] | None:
     """Find attribute information for a class"""
     async with driver.session() as session:
@@ -351,18 +387,26 @@ async def find_attribute(
             class_part = parts[-1]  # e.g., "Agent"
 
             # Find repository for the module
-            repo_name = await find_repository_for_module(driver, module_part, repo_cache)
+            repo_name = await find_repository_for_module(
+                driver, module_part, repo_cache,
+            )
 
             if repo_name:
-                # Search for attribute within this repository's classes
+                # Search for attribute within repository's classes
                 repo_query = """
-                MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)-[:DEFINES]->(c:Class)-[:HAS_ATTRIBUTE]->(a:Attribute)
+                MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)
+                       -[:DEFINES]->(c:Class)-[:HAS_ATTRIBUTE]->(a:Attribute)
                 WHERE c.name = $class_name AND a.name = $attr_name
                 RETURN a.name as name, a.type as type
                 LIMIT 1
                 """
 
-                result = await session.run(repo_query, repo_name=repo_name, class_name=class_part, attr_name=attr_name)
+                result = await session.run(
+                    repo_query,
+                    repo_name=repo_name,
+                    class_name=class_part,
+                    attr_name=attr_name,
+                )
                 record = await result.single()
 
                 if record:
@@ -375,7 +419,9 @@ async def find_attribute(
 
 
 async def find_function(
-    driver: Any, func_name: str, repo_cache: dict[str, str | None],
+    driver: Any,
+    func_name: str,
+    repo_cache: dict[str, str | None],
 ) -> dict[str, Any] | None:
     """Find function information"""
     async with driver.session() as session:
@@ -383,7 +429,8 @@ async def find_function(
         query = """
         MATCH (f:Function)
         WHERE f.name = $func_name OR f.full_name = $func_name
-        RETURN f.name as name, f.params_list as params_list, f.params_detailed as params_detailed,
+        RETURN f.name as name, f.params_list as params_list,
+               f.params_detailed as params_detailed,
                f.return_type as return_type, f.args as args
         LIMIT 1
         """
@@ -409,24 +456,34 @@ async def find_function(
             func_part = parts[-1]  # e.g., "some_function"
 
             # Find repository for the module
-            repo_name = await find_repository_for_module(driver, module_part, repo_cache)
+            repo_name = await find_repository_for_module(
+                driver, module_part, repo_cache,
+            )
 
             if repo_name:
                 # Search for function within this repository
                 repo_query = """
-                MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)-[:DEFINES]->(func:Function)
+                MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)
+                       -[:DEFINES]->(func:Function)
                 WHERE func.name = $func_name
-                RETURN func.name as name, func.params_list as params_list, func.params_detailed as params_detailed,
+                RETURN func.name as name, func.params_list as params_list,
+                       func.params_detailed as params_detailed,
                        func.return_type as return_type, func.args as args
                 LIMIT 1
                 """
 
-                result = await session.run(repo_query, repo_name=repo_name, func_name=func_part)
+                result = await session.run(
+                    repo_query,
+                    repo_name=repo_name,
+                    func_name=func_part,
+                )
                 record = await result.single()
 
                 if record:
-                    # Use detailed params if available, fall back to simple params
-                    params_to_use = record["params_detailed"] or record["params_list"] or []
+                    # Use detailed params if available
+                    params_detailed = record["params_detailed"]
+                    params_list = record["params_list"]
+                    params_to_use = params_detailed or params_list or []
 
                     return {
                         "name": record["name"],
@@ -438,21 +495,30 @@ async def find_function(
         return None
 
 
-async def find_pydantic_ai_result_method(driver: Any, method_name: str) -> dict[str, Any] | None:
+async def find_pydantic_ai_result_method(
+    driver: Any,
+    method_name: str,
+) -> dict[str, Any] | None:
     """Find method information for pydantic_ai result objects"""
     # Look for methods on pydantic_ai classes that could be result objects
     async with driver.session() as session:
         # Search for common result methods in pydantic_ai repository
         query = """
-        MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)-[:DEFINES]->(c:Class)-[:HAS_METHOD]->(m:Method)
+        MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)
+               -[:DEFINES]->(c:Class)-[:HAS_METHOD]->(m:Method)
         WHERE m.name = $method_name
-          AND (c.name CONTAINS 'Result' OR c.name CONTAINS 'Stream' OR c.name CONTAINS 'Run')
-        RETURN m.name as name, m.params_list as params_list, m.params_detailed as params_detailed,
-               m.return_type as return_type, m.args as args, c.name as class_name
+          AND (c.name CONTAINS 'Result' OR c.name CONTAINS 'Stream'
+               OR c.name CONTAINS 'Run')
+        RETURN m.name as name, m.params_list as params_list,
+               m.params_detailed as params_detailed,
+               m.return_type as return_type, m.args as args,
+               c.name as class_name
         LIMIT 1
         """
 
-        result = await session.run(query, repo_name="pydantic_ai", method_name=method_name)
+        result = await session.run(
+            query, repo_name="pydantic_ai", method_name=method_name,
+        )
         record = await result.single()
 
         if record:
@@ -483,15 +549,14 @@ async def find_similar_modules(driver: Any, module_name: str) -> list[str]:
         """
 
         result = await session.run(query, partial_name=module_name[:3])
-        suggestions = []
-        async for record in result:
-            suggestions.append(record["name"])
-
-        return suggestions
+        return [record["name"] async for record in result]
 
 
 async def find_similar_methods(
-    driver: Any, class_name: str, method_name: str, repo_cache: dict[str, str | None],
+    driver: Any,
+    class_name: str,
+    method_name: str,
+    repo_cache: dict[str, str | None],
 ) -> list[str]:
     """Find similar method names for suggestions"""
     async with driver.session() as session:
@@ -504,10 +569,10 @@ async def find_similar_methods(
         LIMIT 5
         """
 
-        result = await session.run(query, class_name=class_name, partial_name=method_name[:3])
-        suggestions = []
-        async for record in result:
-            suggestions.append(record["name"])
+        result = await session.run(
+            query, class_name=class_name, partial_name=method_name[:3],
+        )
+        suggestions = [record["name"] async for record in result]
 
         # If no suggestions and class_name has dots, try repository-based search
         if not suggestions and "." in class_name:
@@ -516,18 +581,27 @@ async def find_similar_methods(
             class_part = parts[-1]  # e.g., "Agent"
 
             # Find repository for the module
-            repo_name = await find_repository_for_module(driver, module_part, repo_cache)
+            repo_name = await find_repository_for_module(
+                driver, module_part, repo_cache,
+            )
 
             if repo_name:
                 repo_query = """
-                MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)-[:DEFINES]->(c:Class)-[:HAS_METHOD]->(m:Method)
+                MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)
+                       -[:DEFINES]->(c:Class)-[:HAS_METHOD]->(m:Method)
                 WHERE c.name = $class_name AND m.name CONTAINS $partial_name
                 RETURN m.name as name
                 LIMIT 5
                 """
 
-                result = await session.run(repo_query, repo_name=repo_name, class_name=class_part, partial_name=method_name[:3])
-                async for record in result:
-                    suggestions.append(record["name"])
+                result = await session.run(
+                    repo_query,
+                    repo_name=repo_name,
+                    class_name=class_part,
+                    partial_name=method_name[:3],
+                )
+                suggestions.extend(
+                    [record["name"] async for record in result],
+                )
 
         return suggestions
