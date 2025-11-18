@@ -100,7 +100,7 @@ async def check_ai_script_hallucinations(
                 indent=2,
             )
         except Exception as e:
-            logger.exception(f"Unexpected error reading script: {e}")
+            logger.exception("Unexpected error reading script: %s", e)
             return json.dumps(
                 {
                     "success": False,
@@ -110,7 +110,7 @@ async def check_ai_script_hallucinations(
                 indent=2,
             )
 
-        logger.info(f"Analyzing script for hallucinations: {script_path}")
+        logger.info("Analyzing script for hallucinations: %s", script_path)
 
         # Step 1: Analyze the script structure
         # The script_analyzer extracts:
@@ -164,7 +164,7 @@ async def check_ai_script_hallucinations(
         )
 
     except (ParsingError, AnalysisError) as e:
-        logger.error(f"Analysis/Parsing error checking script: {e}")
+        logger.error("Analysis/Parsing error checking script: %s", e)
         return json.dumps(
             {
                 "success": False,
@@ -174,7 +174,7 @@ async def check_ai_script_hallucinations(
             indent=2,
         )
     except QueryError as e:
-        logger.error(f"Neo4j query failed: {e}")
+        logger.error("Neo4j query failed: %s", e)
         return json.dumps(
             {
                 "success": False,
@@ -184,7 +184,7 @@ async def check_ai_script_hallucinations(
             indent=2,
         )
     except Exception as e:
-        logger.exception(f"Unexpected error checking script hallucinations: {e}")
+        logger.exception("Unexpected error checking script hallucinations: %s", e)
         return json.dumps(
             {
                 "success": False,
