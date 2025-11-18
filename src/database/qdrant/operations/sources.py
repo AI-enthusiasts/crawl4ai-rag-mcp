@@ -135,10 +135,10 @@ async def update_source(
             points=[point_id],
         )
     except QueryError as e:
-        logger.error(f"Failed to update source: {e}")
+        logger.error("Failed to update source: %s", e)
         raise
     except Exception as e:
-        logger.exception(f"Unexpected error updating source: {e}")
+        logger.exception("Unexpected error updating source: %s", e)
         raise
 
 
@@ -201,10 +201,10 @@ async def get_sources(client: AsyncQdrantClient) -> list[dict[str, Any]]:
         return all_sources
 
     except QueryError as e:
-        logger.error(f"Failed to get sources: {e}")
+        logger.error("Failed to get sources: %s", e)
         return []
     except Exception as e:
-        logger.exception(f"Unexpected error getting sources: {e}")
+        logger.exception("Unexpected error getting sources: %s", e)
         return []
 
 
@@ -287,10 +287,10 @@ async def update_source_info(
             )
 
     except QueryError as e:
-        logger.error(f"Failed to update source info: {e}")
+        logger.error("Failed to update source info: %s", e)
         raise
     except Exception as e:
-        logger.exception(f"Unexpected error updating source info: {e}")
+        logger.exception("Unexpected error updating source info: %s", e)
         raise
 
 
@@ -355,8 +355,8 @@ async def _create_new_source(
             points=points,
         )
     except VectorStoreError as e:
-        logger.error(f"Failed to create new source: {e}")
+        logger.error("Failed to create new source: %s", e)
         raise
     except Exception as e:
-        logger.exception(f"Unexpected error creating new source: {e}")
+        logger.exception("Unexpected error creating new source: %s", e)
         raise
