@@ -16,11 +16,8 @@ from .service import ValidatedCodeSearchService
 from .validator import CodeValidator
 
 __all__ = [
-    # Main service
-    "ValidatedCodeSearchService",
-    # Data models
-    "ValidationResult",
-    # Sub-services
-    "Neo4jValidationClient",
     "CodeValidator",
+    "Neo4jValidationClient",
+    "ValidatedCodeSearchService",
+    "ValidationResult",
 ]

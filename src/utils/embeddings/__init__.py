@@ -23,23 +23,17 @@ from .documents import (
 _get_embedding_dimensions = get_embedding_dimensions
 
 __all__ = [
-    # Basic embedding functions
+    "_add_web_sources_to_database",
+    "_get_embedding_dimensions",
+    "add_code_examples_to_database",
+    "add_documents_to_database",
     "create_embedding",
     "create_embeddings_batch",
-    # Configuration functions
+    "generate_contextual_embedding",
+    "get_contextual_embedding_config",
     "get_embedding_dimensions",
     "get_embedding_model",
-    "get_contextual_embedding_config",
-    # Contextual embedding functions
-    "generate_contextual_embedding",
     "process_chunk_with_context",
-    # Document management functions
-    "add_documents_to_database",
-    "search_documents",
-    # Code example functions
-    "add_code_examples_to_database",
     "search_code_examples",
-    # Private functions (for testing and internal use)
-    "_get_embedding_dimensions",
-    "_add_web_sources_to_database",
+    "search_documents",
 ]

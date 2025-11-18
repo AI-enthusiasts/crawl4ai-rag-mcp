@@ -30,24 +30,20 @@ from .utils import BATCH_SIZE, CODE_EXAMPLES, CRAWLED_PAGES, SOURCES, generate_p
 _generate_point_id = generate_point_id
 
 __all__ = [
-    # Document operations
-    "add_documents",
-    "url_exists",
-    "get_documents_by_url",
-    "delete_documents_by_url",
-    # Source operations
-    "add_source",
-    "search_sources",
-    "update_source",
-    "get_sources",
-    "update_source_info",
-    # Utilities and constants
     "BATCH_SIZE",
     "CODE_EXAMPLES",
     "CRAWLED_PAGES",
     "SOURCES",
-    "generate_point_id",
-    "_generate_point_id",  # Alias for tests
-    # Private (for tests)
     "_create_new_source",
+    "_generate_point_id",
+    "add_documents",
+    "add_source",
+    "delete_documents_by_url",
+    "generate_point_id",
+    "get_documents_by_url",
+    "get_sources",
+    "search_sources",
+    "update_source",
+    "update_source_info",
+    "url_exists",
 ]

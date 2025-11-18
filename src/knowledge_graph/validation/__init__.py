@@ -27,24 +27,21 @@ from .utils import (
 )
 
 __all__ = [
-    # Query functions
-    "find_modules",
-    "get_module_contents",
-    "find_repository_for_module",
-    "find_class",
-    "find_method",
-    "find_attribute",
-    "find_function",
-    "find_pydantic_ai_result_method",
-    "find_similar_modules",
-    "find_similar_methods",
-    # Validation classes
-    "ValidationStatus",
-    "ValidationResult",
     "ScriptValidationResult",
-    # Validation utility functions
+    "ValidationResult",
+    "ValidationStatus",
     "calculate_overall_confidence",
     "detect_hallucinations",
+    "find_attribute",
+    "find_class",
+    "find_function",
+    "find_method",
+    "find_modules",
+    "find_pydantic_ai_result_method",
+    "find_repository_for_module",
+    "find_similar_methods",
+    "find_similar_modules",
+    "get_module_contents",
     "is_from_knowledge_graph",
     "validate_parameters",
 ]
