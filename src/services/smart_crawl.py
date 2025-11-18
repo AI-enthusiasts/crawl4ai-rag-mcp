@@ -380,7 +380,7 @@ async def _crawl_recursive(
 
         if not app_ctx or not hasattr(app_ctx, "browser_config"):
             msg = "Browser config not available in application context"
-            raise MCPToolError(msg) from None
+            raise MCPToolError(msg) from None  # noqa: TRY301
 
         # Call crawl_recursive_internal_links with correct parameters
         crawl_results = await crawl_recursive_internal_links(
@@ -412,7 +412,7 @@ async def _crawl_recursive(
         app_ctx = get_app_context()
         if not app_ctx or not app_ctx.database_client:
             msg = "Database client not available in application context"
-            raise MCPToolError(msg) from None
+            raise MCPToolError(msg) from None  # noqa: TRY301
         db_client = app_ctx.database_client
 
         stored_count = 0

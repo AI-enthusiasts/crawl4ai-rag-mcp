@@ -1,6 +1,4 @@
-"""
-Factory for creating database adapters based on configuration.
-"""
+"""Factory for creating database adapters based on configuration."""
 
 import os
 from typing import cast
