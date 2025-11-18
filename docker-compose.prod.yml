@@ -51,14 +51,14 @@ services:
       - SEARXNG_URL=http://searxng:8080
       - QDRANT_URL=http://qdrant:6333
       - NEO4J_URI=bolt://neo4j:7687
-      - VALKEY_URL=redis://:${SERVICE_PASSWORDWITHSYMBOLS_64_VALKEY}@valkey:6379
+      - VALKEY_URL=redis://:${SERVICE_PASSWORD_64_VALKEY}@valkey:6379
       
       # Database Configuration
       - VECTOR_DATABASE=${VECTOR_DATABASE:-qdrant}
       - QDRANT_API_KEY=$SERVICE_PASSWORD_64_QDRANT
       - NEO4J_USERNAME=neo4j
       - NEO4J_PASSWORD=$SERVICE_PASSWORD_64_NEO4J
-      - VALKEY_PASSWORD=$SERVICE_PASSWORDWITHSYMBOLS_64_VALKEY
+      - VALKEY_PASSWORD=$SERVICE_PASSWORD_64_VALKEY
       
       # API Keys (Required - must be set in Coolify UI)
       - OPENAI_API_KEY=${OPENAI_API_KEY:?}
@@ -224,20 +224,20 @@ services:
     restart: unless-stopped
     command: >
       valkey-server
-      --requirepass ${SERVICE_PASSWORDWITHSYMBOLS_64_VALKEY}
+      --requirepass ${SERVICE_PASSWORD_64_VALKEY}
       --maxmemory 256mb
       --maxmemory-policy allkeys-lru
       --save 60 1
       --save 300 10
       --save 900 100
     environment:
-      - VALKEY_PASSWORD=$SERVICE_PASSWORDWITHSYMBOLS_64_VALKEY
+      - VALKEY_PASSWORD=$SERVICE_PASSWORD_64_VALKEY
     volumes:
       - valkey-data:/data
     networks:
       - crawl4ai-network
     healthcheck:
-      test: ["CMD", "valkey-cli", "--pass", "${SERVICE_PASSWORDWITHSYMBOLS_64_VALKEY}", "ping"]
+      test: ["CMD", "valkey-cli", "--pass", "${SERVICE_PASSWORD_64_VALKEY}", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -274,7 +274,7 @@ services:
       - SEARXNG_BASE_URL=${SEARXNG_BASE_URL:-http://localhost:8080/}
       - SEARXNG_SECRET_KEY=$SERVICE_REALBASE64_64_SEARXNG
       - SEARXNG_LIMITER=true
-      - SEARXNG_VALKEY_URL=redis://:${SERVICE_PASSWORDWITHSYMBOLS_64_VALKEY}@valkey:6379/0
+      - SEARXNG_VALKEY_URL=redis://:${SERVICE_PASSWORD_64_VALKEY}@valkey:6379/0
     networks:
       - crawl4ai-network
     depends_on:
