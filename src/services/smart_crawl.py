@@ -187,10 +187,10 @@ async def _crawl_sitemap(
                     )
                     data["query_results"][q] = json.loads(rag_result)
                 except DatabaseError as e:
-                    logger.error("Database error during RAG query '%s': %s", q, e)
+                    logger.exception("Database error during RAG query %s", q)
                     data["query_results"][q] = {"error": str(e)}
                 except Exception as e:
-                    logger.exception("RAG query failed for '%s': %s", q, e)
+                    logger.exception("RAG query failed for %s", q)
                     data["query_results"][q] = {"error": str(e)}
 
         return json.dumps(data)
@@ -396,12 +396,12 @@ async def _crawl_recursive(
         # Process results - it returns a list of dicts
         if return_raw_markdown:
             # Return raw markdown from all crawled pages
-            markdown_content = "\n\n---\n\n".join(
-                [
-                    f"# {result.get('url', 'Unknown URL')}\n\n{result.get('markdown', '')}"
-                    for result in crawl_results
-                ],
-            )
+            markdown_parts = []
+            for result in crawl_results:
+                url = result.get("url", "Unknown URL")
+                markdown = result.get("markdown", "")
+                markdown_parts.append(f"# {url}\n\n{markdown}")
+            markdown_content = "\n\n---\n\n".join(markdown_parts)
             return json.dumps(
                 {
                     "success": True,
@@ -429,9 +429,9 @@ async def _crawl_recursive(
                     )
                     stored_count += 1
                 except DatabaseError as e:
-                    logger.error("Database error storing %s: %s", result['url'], e)
+                    logger.exception("Database error storing %s", result["url"])
                 except Exception as e:
-                    logger.exception("Failed to store %s: %s", result['url'], e)
+                    logger.exception("Failed to store %s", result["url"])
 
         # Create response data
         data = {
@@ -455,16 +455,16 @@ async def _crawl_recursive(
                     )
                     data["query_results"][q] = json.loads(rag_result)
                 except DatabaseError as e:
-                    logger.error("Database error during RAG query '%s': %s", q, e)
+                    logger.exception("Database error during RAG query %s", q)
                     data["query_results"][q] = {"error": str(e)}
                 except Exception as e:
-                    logger.exception("RAG query failed for '%s': %s", q, e)
+                    logger.exception("RAG query failed for %s", q)
                     data["query_results"][q] = {"error": str(e)}
 
         return json.dumps(data)
 
     except CrawlError as e:
-        logger.error("Recursive crawl error: %s", e)
+        logger.exception("Recursive crawl error")
         return json.dumps(
             {
                 "success": False,
@@ -474,7 +474,7 @@ async def _crawl_recursive(
             },
         )
     except DatabaseError as e:
-        logger.error("Database error in recursive crawl: %s", e)
+        logger.exception("Database error in recursive crawl")
         return json.dumps(
             {
                 "success": False,
@@ -484,7 +484,7 @@ async def _crawl_recursive(
             },
         )
     except Exception as e:
-        logger.exception("Unexpected error in recursive crawl: %s", e)
+        logger.exception("Unexpected error in recursive crawl")
         return json.dumps(
             {
                 "success": False,
