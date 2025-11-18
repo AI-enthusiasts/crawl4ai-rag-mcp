@@ -514,7 +514,9 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                     ),
                 },
                 {
-                    "description": "Analyze with just filename (defaults to user_scripts)",
+                    "description": (
+                        "Analyze with filename (defaults to user_scripts)"
+                    ),
                     "host_path": "./analysis_scripts/user_scripts/script.py",
                     "tool_call": (
                         "check_ai_script_hallucinations(script_path='script.py')"
@@ -533,7 +535,8 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                     "3. Results will be saved to ./analysis_scripts/validation_results/"
                 ),
                 (
-                    "4. The path translation is automatic - you can use convenient paths"
+                    "4. The path translation is automatic - you can use convenient"
+                    " paths"
                 ),
             ],
             "container_mappings": {
