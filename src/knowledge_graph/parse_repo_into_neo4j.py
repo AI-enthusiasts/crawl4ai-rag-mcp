@@ -68,9 +68,9 @@ class DirectNeo4jExtractor:
         self.repo_allow_size_override = os.environ.get("REPO_ALLOW_SIZE_OVERRIDE", "false").lower() == "true"
 
         logger.info("Git metadata collection enabled with GitRepositoryManager")
-        logger.info(f"Multi-language support enabled for: {', '.join(self.analyzer_factory.get_supported_languages())}")
-        logger.info(f"Repository limits - Max size: {self.repo_max_size_mb}MB, Max files: {self.repo_max_file_count}, "
-                   f"Min free space: {self.repo_min_free_space_gb}GB, Allow override: {self.repo_allow_size_override}")
+        logger.info("Multi-language support enabled for: %s", ', '.join(self.analyzer_factory.get_supported_languages()))
+        logger.info("Repository limits - Max size: %sMB, Max files: %s, Min free space: %sGB, Allow override: %s",
+                   self.repo_max_size_mb, self.repo_max_file_count, self.repo_min_free_space_gb, self.repo_allow_size_override)
 
     async def initialize(self) -> None:
         """Initialize Neo4j connection"""
@@ -132,19 +132,19 @@ class DirectNeo4jExtractor:
             )
 
             if not is_valid and not self.repo_allow_size_override:
-                logger.error(f"Repository validation failed: {info.get('errors', [])}")
+                logger.error("Repository validation failed: %s", info.get('errors', []))
                 return False, info
             if not is_valid and self.repo_allow_size_override:
-                logger.warning(f"Repository exceeds limits but override is enabled: {info.get('errors', [])}")
+                logger.warning("Repository exceeds limits but override is enabled: %s", info.get('errors', []))
                 info["override_applied"] = True
                 return True, info
 
             return is_valid, info
         except RepositoryError as e:
-            logger.error(f"Repository validation failed: {e}")
+            logger.error("Repository validation failed: %s", e)
             return False, {"errors": [str(e)]}
         except Exception as e:
-            logger.exception(f"Unexpected error during validation: {e}")
+            logger.exception("Unexpected error during validation: %s", e)
             return False, {"errors": [str(e)]}
 
     async def clone_repo(self, repo_url: str, target_dir: str, branch: str | None = None, force: bool = False) -> str:
@@ -162,7 +162,7 @@ class DirectNeo4jExtractor:
         Raises:
             RuntimeError: If validation fails (unless force=True)
         """
-        logger.info(f"Cloning repository to: {target_dir}")
+        logger.info("Cloning repository to: %s", target_dir)
 
         # Use GitRepositoryManager with validation if available
         if self.git_manager:
@@ -183,14 +183,14 @@ class DirectNeo4jExtractor:
                 # Re-raise validation errors
                 raise
             except GitError as e:
-                logger.error(f"Git operation failed: {e}")
+                logger.error("Git operation failed: %s", e)
                 raise
             except Exception as e:
-                logger.warning(f"GitRepositoryManager failed, falling back to subprocess: {e}")
+                logger.warning("GitRepositoryManager failed, falling back to subprocess: %s", e)
 
         # Fallback to original implementation
         if Path(target_dir).exists():
-            logger.info(f"Removing existing directory: {target_dir}")
+            logger.info("Removing existing directory: %s", target_dir)
             try:
                 def handle_remove_readonly(func: Callable[[str], None], path: str, exc: Any) -> None:
                     try:
@@ -198,12 +198,12 @@ class DirectNeo4jExtractor:
                             Path(path).chmod(0o777)
                             func(path)
                     except PermissionError:
-                        logger.warning(f"Could not remove {path} - file in use, skipping")
+                        logger.warning("Could not remove %s - file in use, skipping", path)
                 shutil.rmtree(target_dir, onerror=handle_remove_readonly)
             except Exception as e:
-                logger.warning(f"Could not fully remove {target_dir}: {e}. Proceeding anyway...")
+                logger.warning("Could not fully remove %s: %s. Proceeding anyway...", target_dir, e)
 
-        logger.info(f"Running git clone from {repo_url}")
+        logger.info("Running git clone from %s", repo_url)
         cmd = ["git", "clone", "--depth", "1"]
         if branch:
             cmd.extend(["--branch", branch])
@@ -214,9 +214,9 @@ class DirectNeo4jExtractor:
             logger.info("Repository cloned successfully")
             return target_dir
         except subprocess.CalledProcessError as e:
-            msg = f"Git clone failed: {e}"
-            logger.error(msg)
-            raise GitError(msg) from e
+            msg = "Git clone failed: %s"
+            logger.error(msg, e)
+            raise GitError(msg % e) from e
 
     async def get_repository_metadata(self, repo_dir: str) -> dict[str, Any]:
         """Extract Git repository metadata using GitRepositoryManager"""
@@ -229,31 +229,31 @@ class DirectNeo4jExtractor:
 
         if self.git_manager:
             try:
-                logger.info(f"Extracting Git metadata from {repo_dir}")
+                logger.info("Extracting Git metadata from %s", repo_dir)
 
                 # Get repository info
                 metadata["info"] = await self.git_manager.get_repository_info(repo_dir)
-                logger.debug(f"Repository info: {metadata['info']}")
+                logger.debug("Repository info: %s", metadata['info'])
 
                 # Get branches
                 metadata["branches"] = await self.git_manager.get_branches(repo_dir)
-                logger.debug(f"Found {len(metadata['branches'])} branches")
+                logger.debug("Found %s branches", len(metadata['branches']))
 
                 # Get tags
                 metadata["tags"] = await self.git_manager.get_tags(repo_dir)
-                logger.debug(f"Found {len(metadata['tags'])} tags")
+                logger.debug("Found %s tags", len(metadata['tags']))
 
                 # Get recent commits (last 10)
                 metadata["recent_commits"] = await self.git_manager.get_commits(repo_dir, limit=10)
-                logger.debug(f"Found {len(metadata['recent_commits'])} recent commits")
+                logger.debug("Found %s recent commits", len(metadata['recent_commits']))
 
-                logger.info(f"Successfully extracted Git metadata: {len(metadata['branches'])} branches, "
-                          f"{len(metadata['tags'])} tags, {len(metadata['recent_commits'])} commits")
+                logger.info("Successfully extracted Git metadata: %s branches, %s tags, %s commits",
+                          len(metadata['branches']), len(metadata['tags']), len(metadata['recent_commits']))
             except GitError as e:
-                logger.error(f"Git operation failed during metadata extraction: {e}")
+                logger.error("Git operation failed during metadata extraction: %s", e)
                 logger.warning("Continuing without Git metadata")
             except Exception as e:
-                logger.exception(f"Unexpected error extracting Git metadata: {e}")
+                logger.exception("Unexpected error extracting Git metadata: %s", e)
                 logger.warning("Continuing without Git metadata")
         else:
             logger.warning("GitRepositoryManager not available - skipping Git metadata extraction")
@@ -342,7 +342,7 @@ class DirectNeo4jExtractor:
             RuntimeError: If repository validation fails (unless force=True)
         """
         repo_name = repo_url.split("/")[-1].replace(".git", "")
-        logger.info(f"Analyzing repository: {repo_name}")
+        logger.info("Analyzing repository: %s", repo_name)
 
         # Clear existing data for this repository before re-processing
         await self.clear_repository_data(repo_name)
@@ -361,10 +361,10 @@ class DirectNeo4jExtractor:
             code_files = self.get_code_files(str(repo_path))
 
             total_files = sum(len(files) for files in code_files.values())
-            logger.info(f"Found {total_files} code files to analyze:")
+            logger.info("Found %s code files to analyze:", total_files)
             for lang, files in code_files.items():
                 if files:
-                    logger.info(f"  - {lang}: {len(files)} files")
+                    logger.info("  - %s: %s files", lang, len(files))
 
             # First pass: identify project modules (for Python)
             logger.info("Identifying project modules...")
@@ -376,7 +376,7 @@ class DirectNeo4jExtractor:
                     project_modules.add(module_parts[0])
 
             if project_modules:
-                logger.info(f"Identified Python project modules: {sorted(project_modules)}")
+                logger.info("Identified Python project modules: %s", sorted(project_modules))
 
             # Second pass: analyze files and collect data
             modules_data = []
@@ -385,7 +385,7 @@ class DirectNeo4jExtractor:
             # Analyze Python files
             for file_path in code_files.get("python", []):
                 if file_counter % 20 == 0:
-                    logger.info(f"Analyzing file {file_counter+1}/{total_files}: {file_path.name}")
+                    logger.info("Analyzing file %s/%s: %s", file_counter+1, total_files, file_path.name)
                 file_counter += 1
 
                 analysis = self.analyzer.analyze_python_file(file_path, repo_path, project_modules)
@@ -398,7 +398,7 @@ class DirectNeo4jExtractor:
             for lang, _ext in [("javascript", ".js"), ("typescript", ".ts")]:
                 for file_path in code_files.get(lang, []):
                     if file_counter % 20 == 0:
-                        logger.info(f"Analyzing file {file_counter+1}/{total_files}: {file_path.name}")
+                        logger.info("Analyzing file %s/%s: %s", file_counter+1, total_files, file_path.name)
                     file_counter += 1
 
                     if js_analyzer:
@@ -410,7 +410,7 @@ class DirectNeo4jExtractor:
             go_analyzer = self.analyzer_factory.get_analyzer(".go")
             for file_path in code_files.get("go", []):
                 if file_counter % 20 == 0:
-                    logger.info(f"Analyzing file {file_counter+1}/{total_files}: {file_path.name}")
+                    logger.info("Analyzing file %s/%s: %s", file_counter+1, total_files, file_path.name)
                 file_counter += 1
 
                 if go_analyzer:
@@ -418,7 +418,7 @@ class DirectNeo4jExtractor:
                     if analysis:
                         modules_data.append(analysis)
 
-            logger.info(f"Found {len(modules_data)} files with content")
+            logger.info("Found %s files with content", len(modules_data))
 
             # Get Git metadata if available
             git_metadata = await self.get_repository_metadata(str(repo_path))
@@ -433,18 +433,18 @@ class DirectNeo4jExtractor:
             total_functions = sum(len(mod["functions"]) for mod in modules_data)
             total_imports = sum(len(mod["imports"]) for mod in modules_data)
 
-            logger.info(f"\n=== Direct Neo4j Repository Analysis for {repo_name} ===")
-            logger.info(f"Files processed: {len(modules_data)}")
-            logger.info(f"Classes created: {total_classes}")
-            logger.info(f"Methods created: {total_methods}")
-            logger.info(f"Functions created: {total_functions}")
-            logger.info(f"Import relationships: {total_imports}")
+            logger.info("\n=== Direct Neo4j Repository Analysis for %s ===", repo_name)
+            logger.info("Files processed: %s", len(modules_data))
+            logger.info("Classes created: %s", total_classes)
+            logger.info("Methods created: %s", total_methods)
+            logger.info("Functions created: %s", total_functions)
+            logger.info("Import relationships: %s", total_imports)
 
-            logger.info(f"Successfully created Neo4j graph for {repo_name}")
+            logger.info("Successfully created Neo4j graph for %s", repo_name)
 
         finally:
             if Path(temp_dir).exists():
-                logger.info(f"Cleaning up temporary directory: {temp_dir}")
+                logger.info("Cleaning up temporary directory: %s", temp_dir)
                 try:
                     def handle_remove_readonly(func: Callable[[str], None], path: str, exc: Any) -> None:
                         try:
@@ -452,15 +452,15 @@ class DirectNeo4jExtractor:
                                 Path(path).chmod(0o777)
                                 func(path)
                         except PermissionError:
-                            logger.warning(f"Could not remove {path} - file in use, skipping")
+                            logger.warning("Could not remove %s - file in use, skipping", path)
 
                     shutil.rmtree(temp_dir, onerror=handle_remove_readonly)
                     logger.info("Cleanup completed")
                 except Exception as e:
-                    logger.warning(f"Cleanup failed: {e}. Directory may remain at {temp_dir}")
+                    logger.warning("Cleanup failed: %s. Directory may remain at %s", e, temp_dir)
                     # Don't fail the whole process due to cleanup issues
                 except GitError as e:
-                    logger.error(f"Git-related cleanup failed: {e}")
+                    logger.error("Git-related cleanup failed: %s", e)
 
 
     async def analyze_local_repository(self, local_path: str, repo_name: str) -> None:
@@ -473,7 +473,7 @@ class DirectNeo4jExtractor:
         """
         from pathlib import Path
 
-        logger.info(f"Analyzing local repository: {repo_name} at {local_path}")
+        logger.info("Analyzing local repository: %s at %s", repo_name, local_path)
 
         # Clear existing data for this repository before re-processing
         await self.clear_repository_data(repo_name)
@@ -486,10 +486,10 @@ class DirectNeo4jExtractor:
             code_files = self.get_code_files(str(repo_path))
 
             total_files = sum(len(files) for files in code_files.values())
-            logger.info(f"Found {total_files} code files to analyze:")
+            logger.info("Found %s code files to analyze:", total_files)
             for lang, files in code_files.items():
                 if files:
-                    logger.info(f"  - {lang}: {len(files)} files")
+                    logger.info("  - %s: %s files", lang, len(files))
 
             # First pass: identify project modules (for Python)
             logger.info("Identifying project modules...")
@@ -501,7 +501,7 @@ class DirectNeo4jExtractor:
                 if module_name and not module_name.startswith("test") and "__pycache__" not in module_name:
                     project_modules.add(module_name.split(".")[0])
 
-            logger.info(f"Identified {len(project_modules)} project modules: {sorted(project_modules)}")
+            logger.info("Identified %s project modules: %s", len(project_modules), sorted(project_modules))
 
             # Second pass: analyze all files
             logger.info("Analyzing code structure...")
@@ -511,13 +511,13 @@ class DirectNeo4jExtractor:
                 if not files:
                     continue
 
-                logger.info(f"Analyzing {len(files)} {lang} files...")
+                logger.info("Analyzing %s %s files...", len(files), lang)
                 analyzer = self.analyzer_factory.get_analyzer(lang)
 
                 for file_path in files:
                     try:
                         file_path_obj = Path(file_path)
-                        logger.debug(f"Processing {lang} file: {file_path_obj.relative_to(repo_path)}")
+                        logger.debug("Processing %s file: %s", lang, file_path_obj.relative_to(repo_path))
 
                         # Use language-specific analyzer
                         if lang == "python":
@@ -537,10 +537,10 @@ class DirectNeo4jExtractor:
                             all_modules.append(module_data)
 
                     except Exception as e:
-                        logger.warning(f"Failed to analyze {file_path}: {e}")
+                        logger.warning("Failed to analyze %s: %s", file_path, e)
                         continue
 
-            logger.info(f"Successfully analyzed {len(all_modules)} files")
+            logger.info("Successfully analyzed %s files", len(all_modules))
 
             # Get Git metadata for local repository
             git_metadata = {}
@@ -563,24 +563,24 @@ class DirectNeo4jExtractor:
                         "commits": commits,
                     }
 
-                    logger.info(f"Collected metadata: {len(branches)} branches, {len(commits)} commits")
+                    logger.info("Collected metadata: %s branches, %s commits", len(branches), len(commits))
 
                 except GitError as e:
-                    logger.error(f"Git operation failed during metadata collection: {e}")
+                    logger.error("Git operation failed during metadata collection: %s", e)
                 except Exception as e:
-                    logger.exception(f"Unexpected error collecting Git metadata: {e}")
+                    logger.exception("Unexpected error collecting Git metadata: %s", e)
 
             # Create Neo4j graph
             logger.info("Creating Neo4j graph...")
             await self._create_graph(repo_name, all_modules, git_metadata)
 
-            logger.info(f"Analysis complete for local repository: {repo_name}")
+            logger.info("Analysis complete for local repository: %s", repo_name)
 
         except (GitError, ParsingError, AnalysisError, RepositoryError) as e:
-            logger.error(f"Analysis failed for local repository {local_path}: {e}")
+            logger.error("Analysis failed for local repository %s: %s", local_path, e)
             raise
         except Exception as e:
-            logger.exception(f"Unexpected error analyzing local repository {local_path}: {e}")
+            logger.exception("Unexpected error analyzing local repository %s: %s", local_path, e)
             raise
     async def _create_graph(self, repo_name: str, modules_data: list[dict[str, Any]], git_metadata: dict[str, Any] | None = None) -> None:
         """Delegate to neo4j.create_graph"""

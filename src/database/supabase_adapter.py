@@ -124,10 +124,10 @@ class SupabaseAdapter:
 
             return result.data or []
         except (QueryError, VectorStoreError) as e:
-            logger.error(f"Vector search failed: {e}")
+            logger.error("Vector search failed: %s", e)
             return []
         except Exception as e:
-            logger.exception(f"Unexpected error searching documents: {e}")
+            logger.exception("Unexpected error searching documents: %s", e)
             return []
 
     async def delete_documents_by_url(self, urls: list[str]) -> None:
@@ -162,9 +162,9 @@ class SupabaseAdapter:
             try:
                 self.client.table("code_examples").delete().eq("url", url).execute()
             except QueryError as e:
-                logger.error(f"Failed to delete existing code examples for {url}: {e}")
+                logger.error("Failed to delete existing code examples for %s: %s", url, e)
             except Exception as e:
-                logger.exception(f"Unexpected error deleting code examples for {url}: {e}")
+                logger.exception("Unexpected error deleting code examples for %s: %s", url, e)
 
         # Process in batches
         for i in range(0, len(urls), self.batch_size):
@@ -219,10 +219,10 @@ class SupabaseAdapter:
 
             return result.data or []
         except (QueryError, VectorStoreError) as e:
-            logger.error(f"Code example search failed: {e}")
+            logger.error("Code example search failed: %s", e)
             return []
         except Exception as e:
-            logger.exception(f"Unexpected error searching code examples: {e}")
+            logger.exception("Unexpected error searching code examples: %s", e)
             return []
 
     async def delete_code_examples_by_url(self, urls: list[str]) -> None:
@@ -235,9 +235,9 @@ class SupabaseAdapter:
             try:
                 self.client.table("code_examples").delete().eq("url", url).execute()
             except QueryError as e:
-                logger.error(f"Failed to delete code examples for {url}: {e}")
+                logger.error("Failed to delete code examples for %s: %s", url, e)
             except Exception as e:
-                logger.exception(f"Unexpected error deleting code examples for {url}: {e}")
+                logger.exception("Unexpected error deleting code examples for %s: %s", url, e)
 
     async def update_source_info(
         self,
@@ -274,14 +274,14 @@ class SupabaseAdapter:
                         "total_word_count": word_count,
                     },
                 ).execute()
-                logger.info(f"Created new source: {source_id}")
+                logger.info("Created new source: %s", source_id)
             else:
-                logger.info(f"Updated source: {source_id}")
+                logger.info("Updated source: %s", source_id)
 
         except QueryError as e:
-            logger.error(f"Failed to update source {source_id}: {e}")
+            logger.error("Failed to update source %s: %s", source_id, e)
         except Exception as e:
-            logger.exception(f"Unexpected error updating source {source_id}: {e}")
+            logger.exception("Unexpected error updating source %s: %s", source_id, e)
 
     async def get_documents_by_url(self, url: str) -> list[dict[str, Any]]:
         """Get all document chunks for a specific URL"""
@@ -296,10 +296,10 @@ class SupabaseAdapter:
             # Supabase may return None if no results
             return result.data or []
         except QueryError as e:
-            logger.error(f"Query failed for URL {url}: {e}")
+            logger.error("Query failed for URL %s: %s", url, e)
             return []
         except Exception as e:
-            logger.exception(f"Unexpected error getting documents by URL: {e}")
+            logger.exception("Unexpected error getting documents by URL: %s", e)
             return []
 
     async def search_documents_by_keyword(
@@ -326,10 +326,10 @@ class SupabaseAdapter:
             result = query.limit(match_count).execute()
             return result.data or []
         except QueryError as e:
-            logger.error(f"Keyword search failed for '{keyword}': {e}")
+            logger.error("Keyword search failed for '%s': %s", keyword, e)
             return []
         except Exception as e:
-            logger.exception(f"Unexpected error searching documents by keyword: {e}")
+            logger.exception("Unexpected error searching documents by keyword: %s", e)
             return []
 
     async def search_code_examples_by_keyword(
@@ -356,10 +356,10 @@ class SupabaseAdapter:
             result = query.limit(match_count).execute()
             return result.data or []
         except QueryError as e:
-            logger.error(f"Keyword search failed for code examples '{keyword}': {e}")
+            logger.error("Keyword search failed for code examples '%s': %s", keyword, e)
             return []
         except Exception as e:
-            logger.exception(f"Unexpected error searching code examples by keyword: {e}")
+            logger.exception("Unexpected error searching code examples by keyword: %s", e)
             return []
 
     async def get_sources(self) -> list[dict[str, Any]]:
@@ -375,10 +375,10 @@ class SupabaseAdapter:
             # Supabase may return None if no results
             return result.data or []
         except QueryError as e:
-            logger.error(f"Failed to get sources: {e}")
+            logger.error("Failed to get sources: %s", e)
             return []
         except Exception as e:
-            logger.exception(f"Unexpected error getting sources: {e}")
+            logger.exception("Unexpected error getting sources: %s", e)
             return []
 
     # Private helper methods
@@ -394,17 +394,17 @@ class SupabaseAdapter:
                 # Try batch deletion
                 self.client.table("crawled_pages").delete().in_("url", urls).execute()
         except QueryError as e:
-            logger.warning(f"Batch delete failed: {e}. Trying one-by-one deletion as fallback.")
+            logger.warning("Batch delete failed: %s. Trying one-by-one deletion as fallback.", e)
             # Fallback: delete records one by one
             for url in urls:
                 try:
                     self.client.table("crawled_pages").delete().eq("url", url).execute()
                 except QueryError as inner_e:
-                    logger.error(f"Failed to delete record for URL {url}: {inner_e}")
+                    logger.error("Failed to delete record for URL %s: %s", url, inner_e)
                 except Exception as inner_e:
-                    logger.exception(f"Unexpected error deleting record for URL {url}: {inner_e}")
+                    logger.exception("Unexpected error deleting record for URL %s: %s", url, inner_e)
         except Exception as e:
-            logger.exception(f"Unexpected error in batch delete: {e}")
+            logger.exception("Unexpected error in batch delete: %s", e)
 
     async def _insert_with_retry(
         self,
@@ -426,15 +426,17 @@ class SupabaseAdapter:
             except QueryError as e:
                 if retry < self.max_retries - 1:
                     logger.warning(
-                        f"Insert failed for {table_name} (attempt {retry + 1}/{self.max_retries}): {e}",
+                        "Insert failed for %s (attempt %s/%s): %s",
+                        table_name, retry + 1, self.max_retries, e,
                     )
-                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    logger.info("Retrying in %s seconds...", retry_delay)
                     time.sleep(retry_delay)
                     retry_delay *= 2  # Exponential backoff
                 else:
                     # Final attempt failed
                     logger.error(
-                        f"Failed to insert batch after {self.max_retries} attempts: {e}",
+                        "Failed to insert batch after %s attempts: %s",
+                        self.max_retries, e,
                     )
                     # Try inserting records one by one as a last resort
                     logger.info("Attempting to insert records individually...")
@@ -445,17 +447,20 @@ class SupabaseAdapter:
                             successful_inserts += 1
                         except QueryError as individual_error:
                             logger.error(
-                                f"Failed to insert individual record: {individual_error}",
+                                "Failed to insert individual record: %s",
+                                individual_error,
                             )
                         except Exception as individual_error:
                             logger.exception(
-                                f"Unexpected error inserting individual record: {individual_error}",
+                                "Unexpected error inserting individual record: %s",
+                                individual_error,
                             )
 
                     if successful_inserts > 0:
                         logger.info(
-                            f"Successfully inserted {successful_inserts}/{len(batch_data)} records individually",
+                            "Successfully inserted %s/%s records individually",
+                            successful_inserts, len(batch_data),
                         )
             except Exception as e:
-                logger.exception(f"Unexpected error inserting into {table_name}: {e}")
+                logger.exception("Unexpected error inserting into %s: %s", table_name, e)
                 break
