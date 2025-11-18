@@ -16,7 +16,7 @@ class PerformanceDashboard:
     def __init__(self, metrics_file: str):
         """
         Initialize dashboard with performance metrics.
-        
+
         :param metrics_file: Path to JSON performance metrics file
         """
         try:
@@ -85,7 +85,7 @@ class PerformanceDashboard:
     def _generate_plotly_script(self) -> str:
         """
         Generate Plotly.js script for visualizations.
-        
+
         :return: Plotly.js configuration script
         """
         test_names, test_times = self._extract_test_data()
@@ -109,13 +109,13 @@ class PerformanceDashboard:
                 type: 'bar',
                 name: 'Test Execution Times'
             }};
-            
+
             var testTimesLayout = {{
                 title: 'Test Execution Times',
                 xaxis: {{title: 'Test Name', tickangle: 45}},
                 yaxis: {{title: 'Duration (seconds)'}}
             }};
-            
+
             Plotly.newPlot('testTimesChart', [testTimesTrace], testTimesLayout);
         }});
         </script>
@@ -124,7 +124,7 @@ class PerformanceDashboard:
     def _generate_slowest_tests_table(self) -> str:
         """
         Generate HTML table of slowest tests.
-        
+
         :return: HTML table of slowest tests
         """
         test_data = []
@@ -190,7 +190,7 @@ class PerformanceDashboard:
     def generate_dashboard(self) -> str:
         """
         Generate complete performance dashboard HTML.
-        
+
         :return: Complete HTML dashboard
         """
         dashboard_html = f"""
@@ -220,15 +220,15 @@ class PerformanceDashboard:
                 <h1>Performance Dashboard</h1>
                 <p>Generated: {self.now}</p>
             </div>
-            
+
             {self._generate_summary_section()}
-            
+
             <div class="charts">
                 <div id="testTimesChart" class="chart"></div>
             </div>
-            
+
             {self._generate_slowest_tests_table()}
-            
+
             {self._generate_plotly_script()}
         </body>
         </html>
