@@ -20,11 +20,11 @@ def create_database_client() -> VectorDatabase:
     Raises:
         ValueError: If an unknown database type is specified
     """
-    db_type = os.getenv("VECTOR_DATABASE", "supabase").lower()
+    db_type = os.getenv("VECTOR_DATABASE", "qdrant").lower()
 
     # Handle empty string as default
     if not db_type:
-        db_type = "supabase"
+        db_type = "qdrant"
 
     if db_type == "supabase":
         return cast("VectorDatabase", SupabaseAdapter())
