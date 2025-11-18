@@ -14,6 +14,7 @@ Related outcomes: See mcp_tools_test_results.md for test results showing success
 """
 
 import sys
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
@@ -24,6 +25,9 @@ import pytest
 from src.core.exceptions import MCPToolError
 
 pytestmark = pytest.mark.skip(reason="_parse_url_input is internal function after refactoring")
+
+# Suppress F821 for refactored function (file is skipped anyway)
+_parse_url_input = None  # noqa: F821
 
 
 def test_url_parsing():

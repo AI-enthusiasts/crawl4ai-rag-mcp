@@ -5,6 +5,7 @@ This script tests the complete pipeline: search → scrape → RAG
 """
 
 import sys
+from pathlib import Path
 
 import requests
 

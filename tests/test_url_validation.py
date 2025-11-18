@@ -2,6 +2,7 @@
 """Test script to verify URL validation fix for crawl4ai compatibility."""
 
 import sys
+from pathlib import Path
 
 # Add src to Python path for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))

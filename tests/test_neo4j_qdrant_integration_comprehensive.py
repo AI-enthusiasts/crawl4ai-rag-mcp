@@ -42,6 +42,10 @@ pytestmark = pytest.mark.skip(reason="Test needs refactoring after module restru
 
 # Suppress F821 for refactored classes (file is skipped anyway)
 ValidatedCodeSearchService = None  # noqa: F821
+extract_repository_code = None  # noqa: F821
+CodeExample = None  # noqa: F821
+EnhancedHallucinationDetector = None  # noqa: F821
+check_ai_script_hallucinations_enhanced = None  # noqa: F821
 
 
 class TestMCPToolContextWrappers:
