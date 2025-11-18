@@ -161,12 +161,12 @@ class Neo4jCodeAnalyzer:
             }
 
         except (SyntaxError, ValueError) as e:
-            logger.error(f"Failed to parse Python file {file_path}: {e}")
+            logger.error("Failed to parse Python file %s: %s", file_path, e)
             raise ParsingError(f"Python parsing failed for {file_path}: {e}") from e
         except ParsingError:
             raise
         except Exception as e:
-            logger.exception(f"Unexpected error analyzing {file_path}: {e}")
+            logger.exception("Unexpected error analyzing %s: %s", file_path, e)
             return None
 
     def _extract_class_attributes(self, class_node: ast.ClassDef) -> list[dict[str, Any]]:
