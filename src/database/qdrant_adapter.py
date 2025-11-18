@@ -12,7 +12,7 @@ from typing import Any
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import Distance, VectorParams
 
-from src.core.exceptions import ConnectionError, VectorStoreError
+from src.core.exceptions import DatabaseConnectionError, VectorStoreError
 
 # Import qdrant package modules
 from . import qdrant
@@ -56,7 +56,7 @@ class QdrantAdapter:
         for collection_name, vector_size in collections:
             try:
                 await self.client.get_collection(collection_name)
-            except ConnectionError:
+            except Exception:
                 # Collection doesn't exist, create it
                 try:
                     await self.client.create_collection(

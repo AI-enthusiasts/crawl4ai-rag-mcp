@@ -192,7 +192,7 @@ class GitRepositoryManager:
             return True, info
 
         except Exception as e:
-            self.logger.exception("Error validating repository: %s", e)
+            self.logger.exception("Error validating repository")
             info["errors"].append(f"Validation error: {e!s}")
             return False, info
 
@@ -238,11 +238,11 @@ class GitRepositoryManager:
                     )
             except OSError as api_error:
                 self.logger.debug("GitHub API network error: %s", api_error)
-            except Exception as api_error:
-                self.logger.exception("Unexpected error with GitHub API: %s", api_error)
+            except Exception:
+                self.logger.exception("Unexpected error with GitHub API")
 
-        except Exception as e:
-            self.logger.exception("Unexpected error checking GitHub API: %s", e)
+        except Exception:
+            self.logger.exception("Unexpected error checking GitHub API")
 
         return info
 
@@ -555,8 +555,8 @@ class GitRepositoryManager:
         except GitError as e:
             self.logger.debug("Failed to get remote URL: %s", e)
             info["remote_url"] = None
-        except Exception as e:
-            self.logger.exception("Unexpected error getting remote URL: %s", e)
+        except Exception:
+            self.logger.exception("Unexpected error getting remote URL")
             info["remote_url"] = None
 
         # Get current branch
@@ -568,8 +568,8 @@ class GitRepositoryManager:
         except GitError as e:
             self.logger.debug("Failed to get current branch: %s", e)
             info["current_branch"] = None
-        except Exception as e:
-            self.logger.exception("Unexpected error getting current branch: %s", e)
+        except Exception:
+            self.logger.exception("Unexpected error getting current branch")
             info["current_branch"] = None
 
         # Get file statistics
@@ -589,8 +589,8 @@ class GitRepositoryManager:
             self.logger.debug("Failed to get file statistics: %s", e)
             info["file_count"] = 0
             info["file_extensions"] = {}
-        except Exception as e:
-            self.logger.exception("Unexpected error getting file statistics: %s", e)
+        except Exception:
+            self.logger.exception("Unexpected error getting file statistics")
             info["file_count"] = 0
             info["file_extensions"] = {}
 
@@ -604,8 +604,8 @@ class GitRepositoryManager:
         except GitError as e:
             self.logger.debug("Failed to get repository size: %s", e)
             info["size"] = "unknown"
-        except Exception as e:
-            self.logger.exception("Unexpected error getting repository size: %s", e)
+        except Exception:
+            self.logger.exception("Unexpected error getting repository size")
             info["size"] = "unknown"
 
         # Get contributor count
@@ -618,8 +618,8 @@ class GitRepositoryManager:
         except GitError as e:
             self.logger.debug("Failed to get contributor count: %s", e)
             info["contributor_count"] = 0
-        except Exception as e:
-            self.logger.exception("Unexpected error getting contributor count: %s", e)
+        except Exception:
+            self.logger.exception("Unexpected error getting contributor count")
             info["contributor_count"] = 0
 
         return info
@@ -640,8 +640,10 @@ class GitRepositoryManager:
             return True
         except GitError:
             return False
-        except Exception as e:
-            self.logger.exception("Unexpected error checking if path is git repository: %s", e)
+        except Exception:
+            self.logger.exception(
+                "Unexpected error checking if path is git repository",
+            )
             return False
 
     async def get_changed_files(
@@ -721,7 +723,7 @@ class GitRepositoryManager:
         except GitError:
             raise
         except Exception as e:
-            self.logger.exception("Unexpected error running git command %s: %s", " ".join(cmd), e)
+            self.logger.exception("Unexpected error running git command %s", " ".join(cmd))
             raise GitError("Git command execution failed: %s" % e) from e
 
     async def _remove_directory(self, path: str) -> None:

@@ -228,7 +228,9 @@ class Neo4jCodeAnalyzer:
             logger.exception("Unexpected error analyzing %s", file_path)
             return None
 
-    def _extract_class_attributes(self, class_node: ast.ClassDef) -> list[dict[str, Any]]:
+    def _extract_class_attributes(
+        self, class_node: ast.ClassDef
+    ) -> list[dict[str, Any]]:
         """Comprehensively extract all class attributes including:
 
         - Instance attributes from __init__ methods (self.attr = value)
@@ -257,19 +259,28 @@ class Neo4jCodeAnalyzer:
             for item in class_node.body:
                 try:
                     # Type annotated class attributes
-                    if isinstance(item, ast.AnnAssign) and isinstance(item.target, ast.Name):
+                    if (isinstance(item, ast.AnnAssign)
+                            and isinstance(item.target, ast.Name)):
                         if not item.target.id.startswith("_"):
-                            # FIXED: Check for ClassVar annotations before assuming dataclass/attrs semantics
-                            is_class_var = self._is_class_var_annotation(item.annotation)
+                            # Check for ClassVar annotations before
+                            # assuming dataclass/attrs semantics
+                            is_class_var = (
+                                self._is_class_var_annotation(
+                                    item.annotation
+                                )
+                            )
 
-                            # Determine attribute classification based on ClassVar and framework
+                            # Determine classification based on
+                            # ClassVar and framework
                             if is_class_var:
-                                # ClassVar attributes are always class attributes, regardless of framework
+                                # ClassVar always class attribute,
+                                # regardless of framework
                                 is_instance_attr = False
                                 is_class_attr = True
                                 attribute_stats["class_vars"] += 1
                             elif is_dataclass or is_attrs_class:
-                                # In dataclass/attrs, non-ClassVar annotations are instance variables
+                                # In dataclass/attrs, non-ClassVar
+                                # annotations are instance variables
                                 is_instance_attr = True
                                 is_class_attr = False
                                 if is_dataclass:
@@ -277,18 +288,29 @@ class Neo4jCodeAnalyzer:
                                 if is_attrs_class:
                                     attribute_stats["attrs"] += 1
                             else:
-                                # Regular classes: annotations without assignment are typically class-level type hints
+                                # Regular classes: annotations without
+                                # assignment typically class-level
                                 is_instance_attr = False
                                 is_class_attr = True
 
+                            type_hint = (
+                                self._get_name(item.annotation)
+                                if item.annotation
+                                else "Any"
+                            )
+                            default_val = (
+                                self._get_default_value(item.value)
+                                if item.value
+                                else None
+                            )
                             attr_info = {
                                 "name": item.target.id,
-                                "type": self._get_name(item.annotation) if item.annotation else "Any",
+                                "type": type_hint,
                                 "is_instance": is_instance_attr,
                                 "is_class": is_class_attr,
                                 "is_property": False,
                                 "has_type_hint": True,
-                                "default_value": self._get_default_value(item.value) if item.value else None,
+                                "default_value": default_val,
                                 "line_number": item.lineno,
                                 "from_dataclass": is_dataclass,
                                 "from_attrs": is_attrs_class,
@@ -324,14 +346,28 @@ class Neo4jCodeAnalyzer:
                                             attribute_stats["total"] += 1
                                 elif not target.id.startswith("_"):
                                     # Regular class attribute
+                                    inferred_type = (
+                                        self._infer_type_from_value(
+                                            item.value
+                                        )
+                                        if item.value
+                                        else "Any"
+                                    )
+                                    default_val = (
+                                        self._get_default_value(
+                                            item.value
+                                        )
+                                        if item.value
+                                        else None
+                                    )
                                     attributes.append({
                                         "name": target.id,
-                                        "type": self._infer_type_from_value(item.value) if item.value else "Any",
+                                        "type": inferred_type,
                                         "is_instance": False,
                                         "is_class": True,
                                         "is_property": False,
                                         "has_type_hint": False,
-                                        "default_value": self._get_default_value(item.value) if item.value else None,
+                                        "default_value": default_val,
                                         "line_number": item.lineno,
                                         "from_dataclass": False,
                                         "from_attrs": False,
@@ -369,14 +405,22 @@ class Neo4jCodeAnalyzer:
                         attribute_stats["total"] += 1
 
                 except AnalysisError as e:
-                    logger.debug("Failed to extract attribute from class body: %s", e)
+                    logger.debug(
+                        "Failed to extract attribute from class body: %s",
+                        e,
+                    )
                     continue
                 except Exception:
-                    logger.exception("Unexpected error extracting attribute")
+                    logger.exception(
+                        "Unexpected error extracting attribute"
+                    )
                     continue
 
-            # Extract attributes from __init__ method (unless it's a dataclass/attrs class with no __init__)
-            init_attributes = self._extract_init_attributes(class_node)
+            # Extract attributes from __init__ method
+            # (unless dataclass/attrs class with no __init__)
+            init_attributes = self._extract_init_attributes(
+                class_node
+            )
             for init_attr in init_attributes:
                 # Ensure init attributes have framework metadata
                 init_attr.setdefault("from_dataclass", False)

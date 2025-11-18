@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 async def parse_github_repository_wrapper(ctx: Context, repo_url: str) -> str:
-    """Wrapper function to properly extract repo_extractor from context and call the implementation."""
+    """Extract repo_extractor from context and call the implementation."""
     # Get the app context that was stored during lifespan
     app_ctx = get_app_context()
 
@@ -49,10 +49,15 @@ async def parse_github_repository_wrapper(ctx: Context, repo_url: str) -> str:
         or not app_ctx.repo_extractor
     ):
         # Return a proper error message
+        error_msg = (
+            "Repository extractor not available. Neo4j may not be configured "
+            "or the USE_KNOWLEDGE_GRAPH environment variable may be set "
+            "to false."
+        )
         return json.dumps(
             {
                 "success": False,
-                "error": "Repository extractor not available. Neo4j may not be configured or the USE_KNOWLEDGE_GRAPH environment variable may be set to false.",
+                "error": error_msg,
             },
             indent=2,
         )
@@ -393,10 +398,14 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
             # Check if repository extractor is available
             repo_extractor = getattr(app_ctx, "repo_extractor", None)
             if not repo_extractor:
+                msg = (
+                    "Repository extractor not available. Neo4j may not be "
+                    "configured or USE_KNOWLEDGE_GRAPH may be false."
+                )
                 return json.dumps(
                     {
                         "success": False,
-                        "error": "Repository extractor not available. Neo4j may not be configured or USE_KNOWLEDGE_GRAPH may be false.",
+                        "error": msg,
                     },
                     indent=2,
                 )
@@ -407,19 +416,26 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
             # Define allowed directories for repository parsing (configurable)
             allowed_prefixes = [
                 str(Path("~").expanduser()),  # User home directory
-                "/tmp/",                    # Temporary directory
-                "/var/tmp/",               # Var temporary
-                "/workspace/",             # Common workspace directory
+                "/tmp/",                      # Temporary directory
+                "/var/tmp/",                  # Var temporary
+                "/workspace/",                # Common workspace directory
             ]
 
             # Check if path is within allowed directories
-            path_allowed = any(local_path.startswith(str(Path(prefix).resolve())) for prefix in allowed_prefixes)
+            path_allowed = any(
+                local_path.startswith(str(Path(prefix).resolve()))
+                for prefix in allowed_prefixes
+            )
 
             if not path_allowed:
+                msg = (
+                    "Path is not within allowed directories. Repository "
+                    "must be in home directory or temporary directories."
+                )
                 return json.dumps(
                     {
                         "success": False,
-                        "error": "Path is not within allowed directories. Repository must be in home directory or temporary directories.",
+                        "error": msg,
                     },
                     indent=2,
                 )
@@ -446,10 +462,14 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
             # Check if it's a Git repository
             git_dir = Path(local_path) / ".git"
             if not git_dir.exists():
+                msg = (
+                    f"Not a Git repository (no .git directory found): "
+                    f"{local_path}"
+                )
                 return json.dumps(
                     {
                         "success": False,
-                        "error": f"Not a Git repository (no .git directory found): {local_path}",
+                        "error": msg,
                     },
                     indent=2,
                 )
@@ -485,6 +505,18 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
                 stats_result = await session.run(stats_query, repo_name=repo_name)
                 stats = await stats_result.single()
 
+            success_msg = (
+                f"Successfully parsed local repository '{repo_name}' "
+                "into the knowledge graph"
+            )
+            next_step_1 = (
+                "Use 'query_knowledge_graph' tool with 'explore <repo_name>' "
+                "to see detailed statistics"
+            )
+            next_step_2 = (
+                "Use 'check_ai_script_hallucinations' tool to validate "
+                "AI-generated code against this repository"
+            )
             return json.dumps(
                 {
                     "success": True,
@@ -496,11 +528,8 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
                         "methods_created": stats["method_count"] if stats else 0,
                         "functions_created": stats["function_count"] if stats else 0,
                     },
-                    "message": f"Successfully parsed local repository '{repo_name}' into the knowledge graph",
-                    "next_steps": [
-                        "Use 'query_knowledge_graph' tool with 'explore <repo_name>' to see detailed statistics",
-                        "Use 'check_ai_script_hallucinations' tool to validate AI-generated code against this repository",
-                    ],
+                    "message": success_msg,
+                    "next_steps": [next_step_1, next_step_2],
                 },
                 indent=2,
             )
