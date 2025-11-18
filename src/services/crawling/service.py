@@ -163,7 +163,7 @@ async def process_urls_for_mcp(
                     },
                 )
             except DatabaseError as e:
-                logger.error(f"Database error storing {result['url']}: {e}")
+                logger.error("Database error storing %s: %s", result['url'], e)
                 stored_results.append(
                     {
                         "url": result["url"],
@@ -173,7 +173,7 @@ async def process_urls_for_mcp(
                     },
                 )
             except Exception as e:
-                logger.error(f"Failed to store {result['url']}: {e}")
+                logger.error("Failed to store %s: %s", result['url'], e)
                 stored_results.append(
                     {
                         "url": result["url"],
@@ -192,7 +192,7 @@ async def process_urls_for_mcp(
         )
 
     except Exception as e:
-        logger.error(f"Error in process_urls_for_mcp: {e}")
+        logger.error("Error in process_urls_for_mcp: %s", e)
         return json.dumps(
             {
                 "success": False,
@@ -220,7 +220,7 @@ def should_filter_url(url: str, enable_filtering: bool = True) -> bool:
     # Check against all filter patterns
     for pattern in URL_FILTER_PATTERNS:
         if re.search(pattern, url):
-            logger.debug(f"Filtering URL (matched pattern {pattern}): {url}")
+            logger.debug("Filtering URL (matched pattern %s): %s", pattern, url)
             return True
 
     return False
@@ -302,8 +302,10 @@ async def crawl_urls_for_agentic_search(
         run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
 
         logger.info(
-            f"Starting recursive crawl: {len(current_urls)} URLs, "
-            f"max_pages={max_pages}, filtering={'enabled' if enable_url_filtering else 'disabled'}",
+            "Starting recursive crawl: %s URLs, max_pages=%s, filtering=%s",
+            len(current_urls),
+            max_pages,
+            'enabled' if enable_url_filtering else 'disabled',
         )
 
         async with AsyncWebCrawler(config=browser_config) as crawler:
@@ -317,7 +319,7 @@ async def crawl_urls_for_agentic_search(
                     ]
 
                 if not urls_to_crawl:
-                    logger.info(f"No more URLs to crawl at depth {depth}")
+                    logger.info("No more URLs to crawl at depth %s", depth)
                     break
 
                 # Limit to remaining page budget
@@ -325,8 +327,11 @@ async def crawl_urls_for_agentic_search(
                 urls_to_crawl = urls_to_crawl[:remaining_budget]
 
                 logger.info(
-                    f"Depth {depth}: Crawling {len(urls_to_crawl)} URLs "
-                    f"({pages_crawled}/{max_pages} pages so far)",
+                    "Depth %s: Crawling %s URLs (%s/%s pages so far)",
+                    depth,
+                    len(urls_to_crawl),
+                    pages_crawled,
+                    max_pages,
                 )
 
                 # Crawl batch
@@ -351,8 +356,8 @@ async def crawl_urls_for_agentic_search(
                     async with visited_lock:
                         if len(visited) >= MAX_VISITED_URLS_LIMIT:
                             logger.warning(
-                                f"Visited URLs limit reached ({MAX_VISITED_URLS_LIMIT}), "
-                                f"stopping recursive crawl to prevent memory exhaustion",
+                                "Visited URLs limit reached (%s), stopping recursive crawl to prevent memory exhaustion",
+                                MAX_VISITED_URLS_LIMIT,
                             )
                             # Return early with current results
                             return {
@@ -397,12 +402,14 @@ async def crawl_urls_for_agentic_search(
                                 total_urls_stored += 1
                                 total_chunks_stored += len(chunks)
                                 logger.debug(
-                                    f"Stored {len(chunks)} chunks from {result.url}",
+                                    "Stored %s chunks from %s",
+                                    len(chunks),
+                                    result.url,
                                 )
                         except DatabaseError as e:
-                            logger.error(f"Database error storing {result.url}: {e}")
+                            logger.error("Database error storing %s: %s", result.url, e)
                         except Exception as e:
-                            logger.error(f"Failed to store {result.url}: {e}")
+                            logger.error("Failed to store %s: %s", result.url, e)
 
                         # Extract internal links for next level
                         if pages_crawled < max_pages:  # Only if budget remains
@@ -423,9 +430,11 @@ async def crawl_urls_for_agentic_search(
                 current_urls = next_level_urls
 
         logger.info(
-            f"Recursive crawl completed: {pages_crawled} pages crawled, "
-            f"{total_urls_stored} stored, {total_chunks_stored} chunks, "
-            f"{urls_filtered} URLs filtered",
+            "Recursive crawl completed: %s pages crawled, %s stored, %s chunks, %s URLs filtered",
+            pages_crawled,
+            total_urls_stored,
+            total_chunks_stored,
+            urls_filtered,
         )
 
         return {
@@ -437,7 +446,7 @@ async def crawl_urls_for_agentic_search(
         }
 
     except Exception as e:
-        logger.exception(f"Error in crawl_urls_for_agentic_search: {e}")
+        logger.exception("Error in crawl_urls_for_agentic_search: %s", e)
         return {
             "success": False,
             "error": str(e),
