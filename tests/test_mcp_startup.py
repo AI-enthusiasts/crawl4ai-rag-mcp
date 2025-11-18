@@ -4,7 +4,7 @@ import sys
 
 print("Python executable:", sys.executable, file=sys.stderr)
 print("Python version:", sys.version, file=sys.stderr)
-print("Current directory:", os.getcwd(), file=sys.stderr)
+print("Current directory:", Path.cwd(), file=sys.stderr)
 print("VECTOR_DATABASE:", os.getenv("VECTOR_DATABASE"), file=sys.stderr)
 
 try:

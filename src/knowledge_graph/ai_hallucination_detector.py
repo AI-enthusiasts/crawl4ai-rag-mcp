@@ -79,7 +79,7 @@ class AIHallucinationDetector:
         if output_dir is None:
             output_dir = str(Path(script_path).parent)
 
-        os.makedirs(output_dir, exist_ok=True)
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
 
         try:
             # Step 1: Analyze the script using AST

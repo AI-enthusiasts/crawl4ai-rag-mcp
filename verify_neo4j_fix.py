@@ -33,7 +33,7 @@ except ImportError as e:
 
     if kg_path.exists():
         print(f"  {kg_path} exists")
-        print(f"  Contents: {os.listdir(kg_path)}")
+        print(f"  Contents: {[p.name for p in kg_path.iterdir()]}")
     else:
         print(f"  {kg_path} does NOT exist")
 
@@ -41,4 +41,4 @@ except ImportError as e:
         alt_path = src_dir / "knowledge_graph"
         if alt_path.exists():
             print(f"  Alternative path {alt_path} exists")
-            print(f"  Contents: {os.listdir(alt_path)}")
+            print(f"  Contents: {[p.name for p in alt_path.iterdir()]}")

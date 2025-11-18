@@ -75,7 +75,7 @@ async def parse_local_repository(
                 indent=2,
             )
 
-        if not os.path.isdir(local_path):
+        if not Path(local_path).is_dir():
             return json.dumps(
                 {
                     "success": False,
@@ -96,7 +96,7 @@ async def parse_local_repository(
             )
 
         # Extract repository name from path
-        repo_name = os.path.basename(os.path.abspath(local_path))
+        repo_name = Path(local_path).resolve().name
 
         logger.info(f"Parsing local repository: {repo_name} at {local_path}")
 
