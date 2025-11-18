@@ -161,7 +161,7 @@ class GitRepositoryManager:
 
                 except Exception as e:
                     self.logger.warning(
-                        "Could not get exact size, trying alternative method: %s", e
+                        "Could not get exact size, trying alternative method: %s", e,
                     )
 
                     # Method 2: Use GitHub API if it's a GitHub repository
@@ -177,18 +177,22 @@ class GitRepositoryManager:
                 return False, info
 
             if info["file_count"] > max_file_count:
-                info["errors"].append(
-                    f"Too many files: {info['file_count']} exceeds limit of {max_file_count}",
+                error_msg = (
+                    f"Too many files: {info['file_count']} "
+                    f"exceeds limit of {max_file_count}"
                 )
+                info["errors"].append(error_msg)
                 return False, info
 
             # Check if we have enough space for the repository (with 2x safety margin)
             required_space_gb = (info["estimated_size_mb"] * 2) / 1024
             if info["free_space_gb"] < required_space_gb:
-                info["errors"].append(
-                    f"Insufficient space for repository: {required_space_gb:.2f}GB needed, "
-                    f"{info['free_space_gb']:.2f}GB available",
+                error_msg = (
+                    f"Insufficient space for repository: "
+                    f"{required_space_gb:.2f}GB needed, "
+                    f"{info['free_space_gb']:.2f}GB available"
                 )
+                info["errors"].append(error_msg)
                 return False, info
 
             self.logger.info(
@@ -202,7 +206,9 @@ class GitRepositoryManager:
             info["errors"].append(f"Validation error: {e!s}")
             return False, info
 
-    async def _check_github_api_size(self, url: str, info: dict[str, Any]) -> dict[str, Any]:
+    async def _check_github_api_size(
+        self, url: str, info: dict[str, Any],
+    ) -> dict[str, Any]:
         """
         Check repository size using GitHub API.
 
@@ -297,8 +303,11 @@ class GitRepositoryManager:
                 raise RepositoryError(msg)
 
             self.logger.info(
-                "Repository validation passed - Size: %.2fMB, Files: %s, Free space: %.2fGB",
-                info["estimated_size_mb"], info["file_count"], info["free_space_gb"],
+                "Repository validation passed - "
+                "Size: %.2fMB, Files: %s, Free space: %.2fGB",
+                info["estimated_size_mb"],
+                info["file_count"],
+                info["free_space_gb"],
             )
         else:
             self.logger.warning("Skipping size validation (force=True)")
@@ -729,7 +738,8 @@ class GitRepositoryManager:
         except GitError:
             raise
         except Exception as e:
-            self.logger.exception("Unexpected error running git command %s", " ".join(cmd))
+            cmd_str = " ".join(cmd)
+            self.logger.exception("Unexpected error running git command: %s", cmd_str)
             raise GitError("Git command execution failed: %s" % e) from e
 
     async def _remove_directory(self, path: str) -> None:

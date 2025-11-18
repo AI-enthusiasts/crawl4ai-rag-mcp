@@ -735,13 +735,19 @@ class Neo4jCodeAnalyzer:
         try:
             if isinstance(slots_node, ast.List | ast.Tuple):
                 for elt in slots_node.elts:
-                    if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                    if (isinstance(elt, ast.Constant)
+                            and isinstance(elt.value, str)):
                         slots.append(elt.value)
-                    elif isinstance(elt, ast.Str) and isinstance(elt.s, str):  # Python < 3.8 compatibility
+                    elif (isinstance(elt, ast.Str)
+                            and isinstance(elt.s, str)):
+                        # Python < 3.8 compatibility
                         slots.append(elt.s)
-            elif isinstance(slots_node, ast.Constant) and isinstance(slots_node.value, str):
+            elif (isinstance(slots_node, ast.Constant)
+                    and isinstance(slots_node.value, str)):
                 slots.append(slots_node.value)
-            elif isinstance(slots_node, ast.Str) and isinstance(slots_node.s, str):  # Python < 3.8 compatibility
+            elif (isinstance(slots_node, ast.Str)
+                    and isinstance(slots_node.s, str)):
+                # Python < 3.8 compatibility
                 slots.append(slots_node.s)
 
         except AnalysisError as e:
@@ -879,12 +885,16 @@ class Neo4jCodeAnalyzer:
 
         # Fallback: look for common Python project structures
         # Skip common non-package directories
-        skip_dirs = {"src", "lib", "source", "python", "pkg", "packages"}
+        skip_dirs = {
+            "src", "lib", "source", "python", "pkg", "packages"
+        }
 
         # Find the first directory that's not in skip_dirs
         filtered_parts: list[str] = []
         for part in path_parts:
-            if part.lower() not in skip_dirs or filtered_parts:  # Once we start including, include everything
+            # Once included, include everything
+            if (part.lower() not in skip_dirs
+                    or filtered_parts):
                 filtered_parts.append(part)
 
         if filtered_parts:
@@ -893,8 +903,10 @@ class Neo4jCodeAnalyzer:
         # Final fallback: use the default
         return default_module
 
-    def _extract_function_parameters(self, func_node: Any) -> list[dict[str, Any]]:
-        """Comprehensive parameter extraction from function definition"""
+    def _extract_function_parameters(
+        self, func_node: Any
+    ) -> list[dict[str, Any]]:
+        """Comprehensive parameter extraction from function def"""
         params: list[dict[str, Any]] = []
 
         # Regular positional arguments
@@ -902,29 +914,48 @@ class Neo4jCodeAnalyzer:
             if arg.arg == "self":
                 continue
 
+            param_type = (
+                self._get_name(arg.annotation)
+                if arg.annotation
+                else "Any"
+            )
             param_info = {
                 "name": arg.arg,
-                "type": self._get_name(arg.annotation) if arg.annotation else "Any",
+                "type": param_type,
                 "kind": "positional",
                 "optional": False,
                 "default": None,
             }
 
-            # Check if this argument has a default value
-            defaults_start = len(func_node.args.args) - len(func_node.args.defaults)
+            # Check if argument has a default value
+            num_args = len(func_node.args.args)
+            num_defaults = len(func_node.args.defaults)
+            defaults_start = num_args - num_defaults
             if i >= defaults_start:
                 default_idx = i - defaults_start
-                if default_idx < len(func_node.args.defaults):
+                if default_idx < num_defaults:
                     param_info["optional"] = True
-                    param_info["default"] = self._get_default_value(func_node.args.defaults[default_idx])
+                    default_node = (
+                        func_node.args.defaults[default_idx]
+                    )
+                    param_info["default"] = (
+                        self._get_default_value(default_node)
+                    )
 
             params.append(param_info)
 
         # *args parameter
         if func_node.args.vararg:
+            vararg_type = (
+                self._get_name(
+                    func_node.args.vararg.annotation
+                )
+                if func_node.args.vararg.annotation
+                else "Any"
+            )
             params.append({
                 "name": f"*{func_node.args.vararg.arg}",
-                "type": self._get_name(func_node.args.vararg.annotation) if func_node.args.vararg.annotation else "Any",
+                "type": vararg_type,
                 "kind": "var_positional",
                 "optional": True,
                 "default": None,
@@ -932,27 +963,50 @@ class Neo4jCodeAnalyzer:
 
         # Keyword-only arguments (after *)
         for i, arg in enumerate(func_node.args.kwonlyargs):
+            param_type = (
+                self._get_name(arg.annotation)
+                if arg.annotation
+                else "Any"
+            )
             param_info = {
                 "name": arg.arg,
-                "type": self._get_name(arg.annotation) if arg.annotation else "Any",
+                "type": param_type,
                 "kind": "keyword_only",
-                "optional": True,  # All kwonly args are optional unless explicitly required
+                "optional": True,
                 "default": None,
             }
 
             # Check for default value
-            if i < len(func_node.args.kw_defaults) and func_node.args.kw_defaults[i] is not None:
-                param_info["default"] = self._get_default_value(func_node.args.kw_defaults[i])
+            has_default = (
+                i < len(func_node.args.kw_defaults)
+                and func_node.args.kw_defaults[i]
+                is not None
+            )
+            if has_default:
+                default_node = (
+                    func_node.args.kw_defaults[i]
+                )
+                param_info["default"] = (
+                    self._get_default_value(default_node)
+                )
             else:
-                param_info["optional"] = False  # No default = required kwonly arg
+                # No default = required kwonly arg
+                param_info["optional"] = False
 
             params.append(param_info)
 
         # **kwargs parameter
         if func_node.args.kwarg:
+            kwarg_type = (
+                self._get_name(
+                    func_node.args.kwarg.annotation
+                )
+                if func_node.args.kwarg.annotation
+                else "Dict[str, Any]"
+            )
             params.append({
                 "name": f"**{func_node.args.kwarg.arg}",
-                "type": self._get_name(func_node.args.kwarg.annotation) if func_node.args.kwarg.annotation else "Dict[str, Any]",
+                "type": kwarg_type,
                 "kind": "var_keyword",
                 "optional": True,
                 "default": None,

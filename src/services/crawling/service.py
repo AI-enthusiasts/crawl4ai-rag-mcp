@@ -31,6 +31,7 @@ async def process_urls_for_mcp(
     ctx: Context,
     urls: list[str],
     batch_size: int = 20,
+    *,
     return_raw_markdown: bool = False,
 ) -> str:
     """Process URLs for MCP tools with context extraction and database storage.
@@ -75,15 +76,25 @@ async def process_urls_for_mcp(
             return json.dumps(
                 {
                     "success": False,
-                    "error": "Invalid Crawl4AI context: missing required attributes (browser_config, database_client, dispatcher)",
+                    "error": (
+                        "Invalid Crawl4AI context: missing required attributes "
+                        "(browser_config, database_client, dispatcher)"
+                    ),
                 },
             )
 
-        if not crawl4ai_ctx.browser_config or not crawl4ai_ctx.database_client or not crawl4ai_ctx.dispatcher:
+        if not (
+            crawl4ai_ctx.browser_config
+            and crawl4ai_ctx.database_client
+            and crawl4ai_ctx.dispatcher
+        ):
             return json.dumps(
                 {
                     "success": False,
-                    "error": "Invalid Crawl4AI context: browser_config, database_client, or dispatcher is None",
+                    "error": (
+                        "Invalid Crawl4AI context: browser_config, "
+                        "database_client, or dispatcher is None"
+                    ),
                 },
             )
 
