@@ -97,7 +97,7 @@ async def parse_local_repository(
         # Extract repository name from path
         repo_name = Path(local_path).resolve().name
 
-        logger.info(f"Parsing local repository: {repo_name} at {local_path}")
+        logger.info("Parsing local repository: %s at %s", repo_name, local_path)
 
         # Use a custom method to analyze local repository
         await repo_extractor.analyze_local_repository(local_path, repo_name)
@@ -146,7 +146,7 @@ async def parse_local_repository(
         )
 
     except Exception as e:
-        logger.exception(f"Error parsing local repository {local_path}: {e}")
+        logger.exception("Error parsing local repository %s: %s", local_path, e)
         return json.dumps(
             {
                 "success": False,
@@ -229,9 +229,9 @@ async def analyze_code_cross_language(
             else:
                 parsed_languages = languages
 
-        logger.info(f"Performing cross-language code analysis for query: {query}")
+        logger.info("Performing cross-language code analysis for query: %s", query)
         if parsed_languages:
-            logger.info(f"Filtering by languages: {parsed_languages}")
+            logger.info("Filtering by languages: %s", parsed_languages)
 
         # Get all available sources first to understand what repositories we have
         sources_result = await get_available_sources(database_client)
@@ -382,7 +382,7 @@ async def analyze_code_cross_language(
         )
 
     except Exception as e:
-        logger.exception(f"Error in cross-language code analysis: {e}")
+        logger.exception("Error in cross-language code analysis: %s", e)
         return json.dumps(
             {
                 "success": False,
