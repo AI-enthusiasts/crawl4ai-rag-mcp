@@ -341,31 +341,39 @@ class Neo4jCodeAnalyzer:
                                     attribute_stats["total"] += 1
 
                     # Properties with @property decorator
-                    elif isinstance(item, ast.FunctionDef) and not item.name.startswith("_"):
-                        if any(isinstance(dec, ast.Name) and dec.id == "property"
-                               for dec in item.decorator_list):
-                            return_type = self._get_name(item.returns) if item.returns else "Any"
-                            attributes.append({
-                                "name": item.name,
-                                "type": return_type,
-                                "is_instance": False,  # properties are accessed on instances but defined at class level
-                                "is_class": False,
-                                "is_property": True,
-                                "has_type_hint": item.returns is not None,
-                                "default_value": None,
-                                "line_number": item.lineno,
-                                "from_dataclass": False,
-                                "from_attrs": False,
-                                "is_class_var": False,
-                            })
-                            attribute_stats["properties"] += 1
-                            attribute_stats["total"] += 1
+                    elif (isinstance(item, ast.FunctionDef)
+                            and not item.name.startswith("_")
+                            and any(isinstance(dec, ast.Name)
+                                    and dec.id == "property"
+                                    for dec in item.decorator_list)):
+                        return_type = (
+                            self._get_name(item.returns)
+                            if item.returns
+                            else "Any"
+                        )
+                        # Properties accessed on instances but
+                        # defined at class level
+                        attributes.append({
+                            "name": item.name,
+                            "type": return_type,
+                            "is_instance": False,
+                            "is_class": False,
+                            "is_property": True,
+                            "has_type_hint": item.returns is not None,
+                            "default_value": None,
+                            "line_number": item.lineno,
+                            "from_dataclass": False,
+                            "from_attrs": False,
+                            "is_class_var": False,
+                        })
+                        attribute_stats["properties"] += 1
+                        attribute_stats["total"] += 1
 
                 except AnalysisError as e:
                     logger.debug("Failed to extract attribute from class body: %s", e)
                     continue
-                except Exception as e:
-                    logger.exception("Unexpected error extracting attribute: %s", e)
+                except Exception:
+                    logger.exception("Unexpected error extracting attribute")
                     continue
 
             # Extract attributes from __init__ method (unless it's a dataclass/attrs class with no __init__)
@@ -422,11 +430,17 @@ class Neo4jCodeAnalyzer:
 
             return list(unique_attributes.values())
 
-        except AnalysisError as e:
-            logger.error("Failed to extract class attributes from %s: %s", class_node.name, e)
+        except AnalysisError:
+            logger.exception(
+                "Failed to extract class attributes from %s",
+                class_node.name,
+            )
             return []
-        except Exception as e:
-            logger.exception("Unexpected error extracting class attributes from %s: %s", class_node.name, e)
+        except Exception:
+            logger.exception(
+                "Unexpected error extracting class attributes from %s",
+                class_node.name,
+            )
             return []
 
     def _has_dataclass_decorator(self, class_node: ast.ClassDef) -> bool:
@@ -448,8 +462,8 @@ class Neo4jCodeAnalyzer:
                         return True
         except AnalysisError as e:
             logger.debug("Failed to check dataclass decorator: %s", e)
-        except Exception as e:
-            logger.exception("Unexpected error checking dataclass decorator: %s", e)
+        except Exception:
+            logger.exception("Unexpected error checking dataclass decorator")
         return False
 
     def _has_attrs_decorator(self, class_node: ast.ClassDef) -> bool:
@@ -462,22 +476,34 @@ class Neo4jCodeAnalyzer:
                 elif isinstance(decorator, ast.Attribute):
                     # Handle attr.s, attrs.define, etc.
                     attr_name = self._get_name(decorator)
-                    if any(x in attr_name.lower() for x in ["attr.s", "attr.define", "attrs.define", "attrs.frozen"]):
+                    patterns = [
+                        "attr.s",
+                        "attr.define",
+                        "attrs.define",
+                        "attrs.frozen",
+                    ]
+                    if any(x in attr_name.lower() for x in patterns):
                         return True
                 elif isinstance(decorator, ast.Call):
                     # Handle @attr.s() with parameters
                     func_name = self._get_name(decorator.func)
-                    if any(x in func_name.lower() for x in ["attr.s", "attr.define", "attrs.define", "attrs.frozen"]):
+                    patterns = [
+                        "attr.s",
+                        "attr.define",
+                        "attrs.define",
+                        "attrs.frozen",
+                    ]
+                    if any(x in func_name.lower() for x in patterns):
                         return True
         except AnalysisError as e:
             logger.debug("Failed to check attrs decorator: %s", e)
-        except Exception as e:
-            logger.exception("Unexpected error checking attrs decorator: %s", e)
+        except Exception:
+            logger.exception("Unexpected error checking attrs decorator")
         return False
 
     def _is_class_var_annotation(self, annotation_node: Any) -> bool:
-        """
-        Check if an annotation is a ClassVar type.
+        """Check if an annotation is a ClassVar type.
+
         Handles patterns like ClassVar[int], typing.ClassVar[str], etc.
         """
         if annotation_node is None:
@@ -489,8 +515,8 @@ class Neo4jCodeAnalyzer:
         except AnalysisError as e:
             logger.debug("Failed to check ClassVar annotation: %s", e)
             return False
-        except Exception as e:
-            logger.exception("Unexpected error checking ClassVar annotation: %s", e)
+        except Exception:
+            logger.exception("Unexpected error checking ClassVar annotation")
             return False
 
     def _extract_init_attributes(self, class_node: ast.ClassDef) -> list[dict[str, Any]]:
