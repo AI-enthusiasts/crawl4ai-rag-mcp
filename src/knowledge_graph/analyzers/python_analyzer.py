@@ -429,7 +429,7 @@ class Neo4jCodeAnalyzer:
             attributes.extend(init_attributes)
             attribute_stats["total"] += len(init_attributes)
 
-            # IMPROVED: Enhanced deduplication logic that respects dataclass semantics
+            # Enhanced deduplication logic respecting dataclass semantics
             unique_attributes = {}
             for attr in attributes:
                 name = attr["name"]
@@ -439,25 +439,40 @@ class Neo4jCodeAnalyzer:
                     existing = unique_attributes[name]
                     should_replace = False
 
-                    # Priority 1: Dataclass/attrs fields take precedence over regular attributes
-                    if (attr.get("from_dataclass") or attr.get("from_attrs")) and not (existing.get("from_dataclass") or existing.get("from_attrs")):
+                    # Priority 1: Dataclass/attrs fields take precedence
+                    attr_is_framework = (
+                        attr.get("from_dataclass")
+                        or attr.get("from_attrs")
+                    )
+                    existing_is_framework = (
+                        existing.get("from_dataclass")
+                        or existing.get("from_attrs")
+                    )
+                    if attr_is_framework and not existing_is_framework:
                         should_replace = True
-                    # Priority 2: Type-hinted attributes over non-hinted (within same framework)
-                    elif attr["has_type_hint"] and not existing["has_type_hint"] and not should_replace:
-                        # Only if not already prioritizing dataclass/attrs
-                        if not ((existing.get("from_dataclass") or existing.get("from_attrs")) and not (attr.get("from_dataclass") or attr.get("from_attrs"))):
+                    # Priority 2: Type-hinted over non-hinted
+                    # (same framework)
+                    elif (attr["has_type_hint"]
+                            and not existing["has_type_hint"]
+                            and not should_replace):
+                        # Not prioritizing dataclass/attrs
+                        if not (existing_is_framework
+                                and not attr_is_framework):
                             should_replace = True
-                    # Priority 3: Instance attributes over class attributes (within same framework and type hint status)
-                    elif (attr["is_instance"] and not existing["is_instance"] and
-                          attr["has_type_hint"] == existing["has_type_hint"] and
-                          not should_replace):
-                        # Only if not already prioritizing by framework or type hints
-                        existing_is_framework = existing.get("from_dataclass") or existing.get("from_attrs")
-                        attr_is_framework = attr.get("from_dataclass") or attr.get("from_attrs")
+                    # Priority 3: Instance over class attributes
+                    # (same framework and type hint status)
+                    elif (attr["is_instance"]
+                            and not existing["is_instance"]
+                            and (attr["has_type_hint"]
+                                 == existing["has_type_hint"])
+                            and not should_replace):
+                        # Not prioritizing by framework or
+                        # type hints
                         if existing_is_framework == attr_is_framework:
                             should_replace = True
-                    # Priority 4: Properties are always kept (they're unique)
-                    elif attr.get("is_property") and not existing.get("is_property"):
+                    # Priority 4: Properties always kept (unique)
+                    elif (attr.get("is_property")
+                            and not existing.get("is_property")):
                         should_replace = True
 
                     if should_replace:
@@ -466,10 +481,19 @@ class Neo4jCodeAnalyzer:
             # Log attribute extraction statistics
             final_count = len(unique_attributes)
             if attribute_stats["total"] > 0:
-                logger.debug("Extracted %s unique attributes from %s: dataclass=%s, attrs=%s, class_vars=%s, properties=%s, slots=%s, total_processed=%s",
-                           final_count, class_node.name, attribute_stats["dataclass"], attribute_stats["attrs"],
-                           attribute_stats["class_vars"], attribute_stats["properties"],
-                           attribute_stats["slots"], attribute_stats["total"])
+                logger.debug(
+                    "Extracted %s unique attributes from %s: "
+                    "dataclass=%s, attrs=%s, class_vars=%s, "
+                    "properties=%s, slots=%s, total_processed=%s",
+                    final_count,
+                    class_node.name,
+                    attribute_stats["dataclass"],
+                    attribute_stats["attrs"],
+                    attribute_stats["class_vars"],
+                    attribute_stats["properties"],
+                    attribute_stats["slots"],
+                    attribute_stats["total"],
+                )
 
             return list(unique_attributes.values())
 

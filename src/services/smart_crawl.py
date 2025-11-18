@@ -148,9 +148,7 @@ async def _crawl_sitemap(
             response = await client.get(url)
             if response.status_code != HTTP_OK:
                 msg = f"Failed to fetch sitemap: HTTP {response.status_code}"
-                raise MCPToolError(
-                    msg,
-                )
+                raise MCPToolError(msg) from None
             content = response.text
 
         # Parse sitemap URLs
@@ -382,7 +380,7 @@ async def _crawl_recursive(
 
         if not app_ctx or not hasattr(app_ctx, "browser_config"):
             msg = "Browser config not available in application context"
-            raise MCPToolError(msg)
+            raise MCPToolError(msg) from None
 
         # Call crawl_recursive_internal_links with correct parameters
         crawl_results = await crawl_recursive_internal_links(
@@ -414,7 +412,7 @@ async def _crawl_recursive(
         app_ctx = get_app_context()
         if not app_ctx or not app_ctx.database_client:
             msg = "Database client not available in application context"
-            raise MCPToolError(msg)
+            raise MCPToolError(msg) from None
         db_client = app_ctx.database_client
 
         stored_count = 0
