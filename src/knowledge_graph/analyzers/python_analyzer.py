@@ -68,7 +68,7 @@ class Neo4jCodeAnalyzer:
                     methods = []
 
                     for item in node.body:
-                        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        if isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef):
                             if not item.name.startswith("_"):  # Public methods only
                                 # Extract comprehensive parameter info
                                 params = self._extract_function_parameters(item)
@@ -106,7 +106,7 @@ class Neo4jCodeAnalyzer:
                         "attributes": attributes,
                     })
 
-                elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                     # Only top-level functions
                     if not any(node in cls_node.body for cls_node in ast.walk(tree) if isinstance(cls_node, ast.ClassDef)):
                         if not node.name.startswith("_"):
@@ -141,7 +141,7 @@ class Neo4jCodeAnalyzer:
                                 "args": [arg.arg for arg in node.args.args],  # Keep for backwards compatibility
                             })
 
-                elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                elif isinstance(node, ast.Import | ast.ImportFrom):
                     # Track internal imports only
                     if isinstance(node, ast.Import):
                         for alias in node.names:
@@ -521,7 +521,7 @@ class Neo4jCodeAnalyzer:
         slots: list[str] = []
 
         try:
-            if isinstance(slots_node, (ast.List, ast.Tuple)):
+            if isinstance(slots_node, ast.List | ast.Tuple):
                 for elt in slots_node.elts:
                     if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
                         slots.append(elt.value)
@@ -555,11 +555,11 @@ class Neo4jCodeAnalyzer:
                     return "bytes"
                 if value_node.value is None:
                     return "Optional[Any]"
-            elif isinstance(value_node, (ast.List, ast.ListComp)):
+            elif isinstance(value_node, ast.List | ast.ListComp):
                 return "List[Any]"
-            elif isinstance(value_node, (ast.Dict, ast.DictComp)):
+            elif isinstance(value_node, ast.Dict | ast.DictComp):
                 return "Dict[Any, Any]"
-            elif isinstance(value_node, (ast.Set, ast.SetComp)):
+            elif isinstance(value_node, ast.Set | ast.SetComp):
                 return "Set[Any]"
             elif isinstance(value_node, ast.Tuple):
                 return "Tuple[Any, ...]"
@@ -780,7 +780,7 @@ class Neo4jCodeAnalyzer:
                         return f"{base}[{', '.join(elts)}]"
                     if isinstance(node.slice, ast.Constant):
                         return f"{base}[{node.slice.value!r}]"
-                    if isinstance(node.slice, (ast.Attribute, ast.Subscript)):
+                    if isinstance(node.slice, ast.Attribute | ast.Subscript):
                         return f"{base}[{self._get_name(node.slice)}]"
                     # Try to get the name of the slice, fallback to Any if it fails
                     try:

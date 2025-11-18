@@ -111,7 +111,7 @@ class AIScriptAnalyzer:
 
             # First pass: collect imports and build import map
             for node in ast.walk(tree):
-                if isinstance(node, (ast.Import, ast.ImportFrom)):
+                if isinstance(node, ast.Import | ast.ImportFrom):
                     self._extract_imports(node, result)
 
             # Second pass: analyze usage patterns

@@ -93,7 +93,7 @@ class TestAssertions:
                 f"Missing required field '{field}' in result: {result}"
             )
 
-        assert isinstance(result["score"], (int, float)), (
+        assert isinstance(result["score"], int | float), (
             f"Score must be numeric, got {type(result['score'])}"
         )
         assert 0 <= result["score"] <= 1, (
@@ -115,7 +115,7 @@ class TestAssertions:
         assert len(embedding) == expected_dim, (
             f"Embedding dimension mismatch: expected {expected_dim}, got {len(embedding)}"
         )
-        assert all(isinstance(x, (int, float)) for x in embedding), (
+        assert all(isinstance(x, int | float) for x in embedding), (
             "All embedding values must be numeric"
         )
 
