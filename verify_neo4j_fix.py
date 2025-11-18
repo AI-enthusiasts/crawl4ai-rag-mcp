@@ -30,8 +30,8 @@ except ImportError as e:
 
     src_dir = Path(__file__).parent.parent.absolute()
     kg_path = src_dir / "src" / "knowledge_graph"
-    
-    if os.path.exists(kg_path):
+
+    if kg_path.exists():
         print(f"  {kg_path} exists")
         print(f"  Contents: {os.listdir(kg_path)}")
     else:
@@ -39,6 +39,6 @@ except ImportError as e:
 
         # Check alternative path
         alt_path = src_dir / "knowledge_graph"
-        if os.path.exists(alt_path):
+        if alt_path.exists():
             print(f"  Alternative path {alt_path} exists")
             print(f"  Contents: {os.listdir(alt_path)}")

@@ -244,9 +244,9 @@ def main():
         sys.exit(1)
     
     metrics_file = sys.argv[1]
-    
+
     # Check if file exists
-    if not os.path.exists(metrics_file):
+    if not Path(metrics_file).exists():
         print(f"Error: Metrics file '{metrics_file}' not found")
         # Generate a minimal dashboard anyway
         dashboard_html = '''
