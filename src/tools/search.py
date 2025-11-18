@@ -73,15 +73,15 @@ def register_search_tools(mcp: "FastMCP") -> None:
                 batch_size=batch_size,
             )
         except SearchError as e:
-            logger.error(f"Search error: {e}")
+            logger.error("Search error: %s", e)
             msg = f"Search failed: {e!s}"
             raise MCPToolError(msg) from e
         except DatabaseError as e:
-            logger.error(f"Database error during search: {e}")
+            logger.error("Database error during search: %s", e)
             msg = f"Search failed: {e!s}"
             raise MCPToolError(msg) from e
         except Exception as e:
-            logger.exception(f"Unexpected error in search tool: {e}")
+            logger.exception("Unexpected error in search tool: %s", e)
             msg = f"Search failed: {e!s}"
             raise MCPToolError(msg) from e
 
@@ -138,15 +138,15 @@ def register_search_tools(mcp: "FastMCP") -> None:
                 use_search_hints=use_search_hints,
             )
         except SearchError as e:
-            logger.error(f"Search error in agentic search: {e}")
+            logger.error("Search error in agentic search: %s", e)
             msg = f"Agentic search failed: {e!s}"
             raise MCPToolError(msg) from e
         except DatabaseError as e:
-            logger.error(f"Database error in agentic search: {e}")
+            logger.error("Database error in agentic search: %s", e)
             msg = f"Agentic search failed: {e!s}"
             raise MCPToolError(msg) from e
         except Exception as e:
-            logger.exception(f"Unexpected error in agentic_search tool: {e}")
+            logger.exception("Unexpected error in agentic_search tool: %s", e)
             msg = f"Agentic search failed: {e!s}"
             raise MCPToolError(msg) from e
 
@@ -223,9 +223,9 @@ def register_search_tools(mcp: "FastMCP") -> None:
                 else:
                     parsed_languages = languages
 
-            logger.info(f"Performing cross-language code analysis for query: {query}")
+            logger.info("Performing cross-language code analysis for query: %s", query)
             if parsed_languages:
-                logger.info(f"Filtering by languages: {parsed_languages}")
+                logger.info("Filtering by languages: %s", parsed_languages)
 
             # Get all available sources first to understand what repositories we have
             sources_result = await get_available_sources(database_client)
@@ -376,7 +376,7 @@ def register_search_tools(mcp: "FastMCP") -> None:
             )
 
         except DatabaseError as e:
-            logger.error(f"Database error in cross-language code analysis: {e}")
+            logger.error("Database error in cross-language code analysis: %s", e)
             return json.dumps(
                 {
                     "success": False,
@@ -386,7 +386,7 @@ def register_search_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
         except Exception as e:
-            logger.exception(f"Unexpected error in cross-language code analysis: {e}")
+            logger.exception("Unexpected error in cross-language code analysis: %s", e)
             return json.dumps(
                 {
                     "success": False,
