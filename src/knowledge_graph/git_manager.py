@@ -13,7 +13,7 @@ import shutil
 import tempfile
 import urllib.request
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -474,7 +474,9 @@ class GitRepositoryManager:
                             "author_name": parts[1],
                             "author_email": parts[2],
                             "timestamp": int(parts[3]),
-                            "date": datetime.fromtimestamp(int(parts[3])).isoformat(),
+                            "date": datetime.fromtimestamp(
+                                int(parts[3]), tz=UTC,
+                            ).isoformat(),
                             "message": parts[4],
                         },
                     )
@@ -520,7 +522,9 @@ class GitRepositoryManager:
                             "hash": parts[0],
                             "author": parts[1],
                             "timestamp": int(parts[2]),
-                            "date": datetime.fromtimestamp(int(parts[2])).isoformat(),
+                            "date": datetime.fromtimestamp(
+                                int(parts[2]), tz=UTC,
+                            ).isoformat(),
                             "message": parts[3],
                         },
                     )
@@ -744,7 +748,8 @@ class GitRepositoryManager:
         except Exception as e:
             cmd_str = " ".join(cmd)
             self.logger.exception("Unexpected error running git command: %s", cmd_str)
-            raise GitError("Git command execution failed: %s" % e) from e
+            error_msg = f"Git command execution failed: {e}"
+            raise GitError(error_msg) from e
 
     async def _remove_directory(self, path: str) -> None:
         """
@@ -755,7 +760,7 @@ class GitRepositoryManager:
         """
 
         def handle_remove_readonly(
-            func: Callable[[str], None], path: str, exc: Any,
+            func: Callable[[str], None], path: str, _exc: Any,
         ) -> None:
             try:
                 if Path(path).exists():
