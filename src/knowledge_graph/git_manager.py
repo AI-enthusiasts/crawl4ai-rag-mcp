@@ -322,7 +322,9 @@ class GitRepositoryManager:
         )
 
 
-    async def update_repository(self, repo_dir: str, branch: str | None = None) -> dict[str, Any]:
+    async def update_repository(
+        self, repo_dir: str, branch: str | None = None,
+    ) -> dict[str, Any]:
         """
         Update an existing repository (pull latest changes).
 
@@ -750,7 +752,9 @@ class GitRepositoryManager:
             path: Directory path to remove
         """
 
-        def handle_remove_readonly(func: Callable[[str], None], path: str, exc: Any) -> None:
+        def handle_remove_readonly(
+            func: Callable[[str], None], path: str, exc: Any,
+        ) -> None:
             try:
                 if Path(path).exists():
                     Path(path).chmod(0o777)

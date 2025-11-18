@@ -1018,9 +1018,9 @@ async def extract_repository_code(
             }
 
     except QueryError as e:
-        logger.error(
-            "Neo4j query failed extracting code from repository %s: %s",
-            repo_name, e
+        logger.exception(
+            "Neo4j query failed extracting code from repository %s",
+            repo_name
         )
         return {
             "success": False,

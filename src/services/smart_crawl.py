@@ -71,7 +71,7 @@ async def smart_crawl_url(
     url: str,
     max_depth: int = 3,
     chunk_size: int = 5000,
-    return_raw_markdown: bool = False,
+    return_raw_markdown: bool = False,  # noqa: FBT001, FBT002
     query: list[str] | None = None,
 ) -> str:
     """
@@ -138,7 +138,7 @@ async def _crawl_sitemap(
     ctx: Context,
     url: str,
     _chunk_size: int,
-    return_raw_markdown: bool,
+    return_raw_markdown: bool,  # noqa: FBT001
     query: list[str] | None,
 ) -> str:
     """Crawl a sitemap URL."""
@@ -148,7 +148,7 @@ async def _crawl_sitemap(
             response = await client.get(url)
             if response.status_code != HTTP_OK:
                 msg = f"Failed to fetch sitemap: HTTP {response.status_code}"
-                raise MCPToolError(msg) from None
+                raise MCPToolError(msg) from None  # noqa: TRY301
             content = response.text
 
         # Parse sitemap URLs
@@ -236,7 +236,7 @@ async def _crawl_text_file(
     _ctx: Context,
     url: str,
     chunk_size: int,
-    return_raw_markdown: bool,
+    return_raw_markdown: bool,  # noqa: FBT001
 ) -> str:
     """Crawl a text file directly."""
     try:
@@ -370,7 +370,7 @@ async def _crawl_recursive(
     url: str,
     max_depth: int,
     chunk_size: int,
-    return_raw_markdown: bool,
+    return_raw_markdown: bool,  # noqa: FBT001
     query: list[str] | None,
 ) -> str:
     """Crawl a regular URL recursively."""
