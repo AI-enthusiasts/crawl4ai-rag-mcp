@@ -295,10 +295,10 @@ class Neo4jCodeAnalyzer:
                             attribute_stats["total"] += 1
 
                 except AnalysisError as e:
-                    logger.debug(f"Failed to extract attribute from class body: {e}")
+                    logger.debug("Failed to extract attribute from class body: %s", e)
                     continue
                 except Exception as e:
-                    logger.exception(f"Unexpected error extracting attribute: {e}")
+                    logger.exception("Unexpected error extracting attribute: %s", e)
                     continue
 
             # Extract attributes from __init__ method (unless it's a dataclass/attrs class with no __init__)
@@ -348,18 +348,18 @@ class Neo4jCodeAnalyzer:
             # Log attribute extraction statistics
             final_count = len(unique_attributes)
             if attribute_stats["total"] > 0:
-                logger.debug(f"Extracted {final_count} unique attributes from {class_node.name}: "
-                           f"dataclass={attribute_stats['dataclass']}, attrs={attribute_stats['attrs']}, "
-                           f"class_vars={attribute_stats['class_vars']}, properties={attribute_stats['properties']}, "
-                           f"slots={attribute_stats['slots']}, total_processed={attribute_stats['total']}")
+                logger.debug("Extracted %s unique attributes from %s: dataclass=%s, attrs=%s, class_vars=%s, properties=%s, slots=%s, total_processed=%s",
+                           final_count, class_node.name, attribute_stats['dataclass'], attribute_stats['attrs'],
+                           attribute_stats['class_vars'], attribute_stats['properties'],
+                           attribute_stats['slots'], attribute_stats['total'])
 
             return list(unique_attributes.values())
 
         except AnalysisError as e:
-            logger.error(f"Failed to extract class attributes from {class_node.name}: {e}")
+            logger.error("Failed to extract class attributes from %s: %s", class_node.name, e)
             return []
         except Exception as e:
-            logger.exception(f"Unexpected error extracting class attributes from {class_node.name}: {e}")
+            logger.exception("Unexpected error extracting class attributes from %s: %s", class_node.name, e)
             return []
 
     def _has_dataclass_decorator(self, class_node: ast.ClassDef) -> bool:
@@ -380,9 +380,9 @@ class Neo4jCodeAnalyzer:
                     if "dataclass" in func_name.lower():
                         return True
         except AnalysisError as e:
-            logger.debug(f"Failed to check dataclass decorator: {e}")
+            logger.debug("Failed to check dataclass decorator: %s", e)
         except Exception as e:
-            logger.exception(f"Unexpected error checking dataclass decorator: {e}")
+            logger.exception("Unexpected error checking dataclass decorator: %s", e)
         return False
 
     def _has_attrs_decorator(self, class_node: ast.ClassDef) -> bool:
@@ -403,9 +403,9 @@ class Neo4jCodeAnalyzer:
                     if any(x in func_name.lower() for x in ["attr.s", "attr.define", "attrs.define", "attrs.frozen"]):
                         return True
         except AnalysisError as e:
-            logger.debug(f"Failed to check attrs decorator: {e}")
+            logger.debug("Failed to check attrs decorator: %s", e)
         except Exception as e:
-            logger.exception(f"Unexpected error checking attrs decorator: {e}")
+            logger.exception("Unexpected error checking attrs decorator: %s", e)
         return False
 
     def _is_class_var_annotation(self, annotation_node: Any) -> bool:
@@ -420,10 +420,10 @@ class Neo4jCodeAnalyzer:
             annotation_str = self._get_name(annotation_node)
             return "ClassVar" in annotation_str
         except AnalysisError as e:
-            logger.debug(f"Failed to check ClassVar annotation: {e}")
+            logger.debug("Failed to check ClassVar annotation: %s", e)
             return False
         except Exception as e:
-            logger.exception(f"Unexpected error checking ClassVar annotation: {e}")
+            logger.exception("Unexpected error checking ClassVar annotation: %s", e)
             return False
 
     def _extract_init_attributes(self, class_node: ast.ClassDef) -> list[dict[str, Any]]:
@@ -503,16 +503,16 @@ class Neo4jCodeAnalyzer:
                                         })
 
                 except AnalysisError as e:
-                    logger.debug(f"Failed to extract __init__ attribute: {e}")
+                    logger.debug("Failed to extract __init__ attribute: %s", e)
                     continue
                 except Exception as e:
-                    logger.exception(f"Unexpected error extracting __init__ attribute: {e}")
+                    logger.exception("Unexpected error extracting __init__ attribute: %s", e)
                     continue
 
         except AnalysisError as e:
-            logger.debug(f"Failed to walk __init__ method: {e}")
+            logger.debug("Failed to walk __init__ method: %s", e)
         except Exception as e:
-            logger.exception(f"Unexpected error walking __init__ method: {e}")
+            logger.exception("Unexpected error walking __init__ method: %s", e)
 
         return attributes
 
@@ -533,9 +533,9 @@ class Neo4jCodeAnalyzer:
                 slots.append(slots_node.s)
 
         except AnalysisError as e:
-            logger.debug(f"Failed to extract slots: {e}")
+            logger.debug("Failed to extract slots: %s", e)
         except Exception as e:
-            logger.exception(f"Unexpected error extracting slots: {e}")
+            logger.exception("Unexpected error extracting slots: %s", e)
 
         return slots
 
@@ -601,9 +601,9 @@ class Neo4jCodeAnalyzer:
                 # Handle binary operations - try to infer from operands
                 return "Any"  # Could be various types depending on operation
         except AnalysisError as e:
-            logger.debug(f"Failed to infer type: {e}")
+            logger.debug("Failed to infer type: %s", e)
         except Exception as e:
-            logger.exception(f"Unexpected error in type inference: {e}")
+            logger.exception("Unexpected error in type inference: %s", e)
 
         return "Any"
 
@@ -754,7 +754,7 @@ class Neo4jCodeAnalyzer:
         except AnalysisError:
             return "..."
         except Exception as e:
-            logger.exception(f"Unexpected error extracting default value: {e}")
+            logger.exception("Unexpected error extracting default value: %s", e)
             return "..."
 
     def _get_name(self, node: Any) -> str:
@@ -804,5 +804,5 @@ class Neo4jCodeAnalyzer:
         except AnalysisError:
             return "Any"
         except Exception as e:
-            logger.exception(f"Unexpected error extracting name from AST node: {e}")
+            logger.exception("Unexpected error extracting name from AST node: %s", e)
             return "Any"
