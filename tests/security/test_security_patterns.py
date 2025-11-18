@@ -447,7 +447,7 @@ class TestCredentialManagement:
         ]
 
         for file_path in src_files:
-            if os.path.exists(file_path):
+            if Path(file_path).exists():
                 with Path(file_path).open() as f:
                     content = f.read()
 
@@ -474,7 +474,7 @@ class TestContainerSecurity:
         """Test that containers don't run as root"""
         # Read docker-compose.dev.yml to check user settings
         compose_file = "docker-compose.dev.yml"
-        if not os.path.exists(compose_file):
+        if not Path(compose_file).exists():
             compose_file = "docker-compose.yml"
 
         with Path(compose_file).open() as f:
@@ -504,7 +504,7 @@ class TestContainerSecurity:
     def test_container_capabilities(self):
         """Test that containers have minimal capabilities"""
         compose_file = "docker-compose.dev.yml"
-        if not os.path.exists(compose_file):
+        if not Path(compose_file).exists():
             compose_file = "docker-compose.yml"
 
         with Path(compose_file).open() as f:
@@ -530,7 +530,7 @@ class TestContainerSecurity:
     def test_container_network_isolation(self):
         """Test that internal services aren't exposed unnecessarily"""
         compose_file = "docker-compose.dev.yml"
-        if not os.path.exists(compose_file):
+        if not Path(compose_file).exists():
             compose_file = "docker-compose.yml"
 
         with Path(compose_file).open() as f:

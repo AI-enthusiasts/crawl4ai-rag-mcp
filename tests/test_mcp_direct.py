@@ -110,7 +110,7 @@ def test_container_access():
     # Check if we're in container or host
     import os
 
-    in_container = os.path.exists("/app/src")
+    in_container = Path("/app/src").exists()
 
     if in_container:
         print("✅ Running inside container")
@@ -121,7 +121,7 @@ def test_container_access():
         ]
 
         for path in paths_to_check:
-            exists = os.path.exists(path)
+            exists = Path(path).exists()
             status = "✅" if exists else "❌"
             print(f"  {status} {path}")
             results.append((path, exists))

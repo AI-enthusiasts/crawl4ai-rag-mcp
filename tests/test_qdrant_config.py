@@ -23,7 +23,7 @@ class QdrantTestConfig:
     def _detect_environment(self) -> str:
         """Detect if we're running in Docker or localhost environment"""
         # Check for Docker environment indicators
-        if os.path.exists("/.dockerenv"):
+        if Path("/.dockerenv").exists():
             return "docker"
 
         # Check environment variable
