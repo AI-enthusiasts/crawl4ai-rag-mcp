@@ -26,8 +26,11 @@ async def track_memory(operation_name: str) -> AsyncIterator[dict[str, Any]]:
     """
     start_memory_percent, start_available_gb, total_gb = get_memory_stats()
     logger.info(
-        f"[{operation_name}] Memory before: {start_memory_percent:.1f}% used, "
-        f"{start_available_gb:.2f}/{total_gb:.2f} GB available",
+        "[%s] Memory before: %.1f%% used, %.2f/%.2f GB available",
+        operation_name,
+        start_memory_percent,
+        start_available_gb,
+        total_gb,
     )
 
     # Yield a dict to collect results
@@ -40,8 +43,11 @@ async def track_memory(operation_name: str) -> AsyncIterator[dict[str, Any]]:
         memory_delta = end_memory_percent - start_memory_percent
 
         logger.info(
-            f"[{operation_name}] Memory after: {end_memory_percent:.1f}% used "
-            f"(Δ {memory_delta:+.1f}%), {end_available_gb:.2f} GB available",
+            "[%s] Memory after: %.1f%% used (Δ %+.1f%%), %.2f GB available",
+            operation_name,
+            end_memory_percent,
+            memory_delta,
+            end_available_gb,
         )
 
         # Log dispatch stats if results are available
@@ -63,6 +69,8 @@ async def track_memory(operation_name: str) -> AsyncIterator[dict[str, Any]]:
                 )
                 peak_memory = max(s["peak_memory"] for s in dispatch_stats)
                 logger.info(
-                    f"[{operation_name}] Dispatch stats: "
-                    f"avg {avg_memory:.1f} MB, peak {peak_memory:.1f} MB",
+                    "[%s] Dispatch stats: avg %.1f MB, peak %.1f MB",
+                    operation_name,
+                    avg_memory,
+                    peak_memory,
                 )
