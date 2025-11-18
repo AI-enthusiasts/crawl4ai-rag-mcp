@@ -131,7 +131,7 @@ async def query_knowledge_graph(command: str) -> str:
             )
 
     except QueryError as e:
-        logger.error(f"Neo4j query failed: {e}")
+        logger.error("Neo4j query failed: %s", e)
         return json.dumps(
             {
                 "success": False,
@@ -140,7 +140,7 @@ async def query_knowledge_graph(command: str) -> str:
             indent=2,
         )
     except Exception as e:
-        logger.exception(f"Unexpected error in query_knowledge_graph: {e}")
+        logger.exception("Unexpected error in query_knowledge_graph: %s", e)
         return json.dumps(
             {
                 "success": False,
