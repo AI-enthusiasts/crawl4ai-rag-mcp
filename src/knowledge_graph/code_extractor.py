@@ -673,7 +673,10 @@ class Neo4jCodeExtractor:
             params_list = record["params_list"]
             return_type = record["return_type"]
 
-            full_name = f"{module_name}.{function_name}" if module_name else function_name
+            if module_name:
+                full_name = f"{module_name}.{function_name}"
+            else:
+                full_name = function_name
 
             function_example: CodeExample | UniversalCodeExample
             if self.use_universal:
@@ -856,7 +859,9 @@ class Neo4jCodeExtractor:
             language_specific=language_specific,
         )
 
-    def _generate_class_code(self, class_name: str, methods: list[dict[str, Any]]) -> str:
+    def _generate_class_code(
+        self, class_name: str, methods: list[dict[str, Any]]
+    ) -> str:
         """Generate a code representation for a class (legacy method)."""
         code = f"class {class_name}:\n"
         code += '    """Class with the following public methods:"""\n'
@@ -944,7 +949,9 @@ async def extract_repository_code(
                     })
                 else:
                     # Legacy format for CodeExample
-                    assert isinstance(example, CodeExample), "Expected CodeExample in legacy format"
+                    assert isinstance(example, CodeExample), (
+                        "Expected CodeExample in legacy format"
+                    )
                     examples_data.append({
                         "repository_name": example.repository_name,
                         "file_path": example.file_path,
@@ -959,22 +966,46 @@ async def extract_repository_code(
 
             # Generate summary statistics
             if use_universal:
+                class_count = len([e for e in code_examples
+                                   if e.code_type == "class"])
+                method_count = len([e for e in code_examples
+                                    if e.code_type == "method"])
+                function_count = len([e for e in code_examples
+                                      if e.code_type == "function"])
+                interface_count = len([e for e in code_examples
+                                       if e.code_type == "interface"])
+                struct_count = len([e for e in code_examples
+                                    if e.code_type == "struct"])
+                type_count = len([e for e in code_examples
+                                  if e.code_type == "type"])
+                variable_count = len([e for e in code_examples
+                                      if e.code_type == "variable"])
+                constant_count = len([e for e in code_examples
+                                      if e.code_type == "constant"])
+                languages = list({e.language for e in code_examples
+                                  if hasattr(e, "language")})
                 summary = {
-                    "classes": len([e for e in code_examples if e.code_type == "class"]),
-                    "methods": len([e for e in code_examples if e.code_type == "method"]),
-                    "functions": len([e for e in code_examples if e.code_type == "function"]),
-                    "interfaces": len([e for e in code_examples if e.code_type == "interface"]),
-                    "structs": len([e for e in code_examples if e.code_type == "struct"]),
-                    "types": len([e for e in code_examples if e.code_type == "type"]),
-                    "variables": len([e for e in code_examples if e.code_type == "variable"]),
-                    "constants": len([e for e in code_examples if e.code_type == "constant"]),
-                    "languages": list({e.language for e in code_examples if hasattr(e, "language")}),
+                    "classes": class_count,
+                    "methods": method_count,
+                    "functions": function_count,
+                    "interfaces": interface_count,
+                    "structs": struct_count,
+                    "types": type_count,
+                    "variables": variable_count,
+                    "constants": constant_count,
+                    "languages": languages,
                 }
             else:
+                class_count = len([e for e in code_examples
+                                   if e.code_type == "class"])
+                method_count = len([e for e in code_examples
+                                    if e.code_type == "method"])
+                function_count = len([e for e in code_examples
+                                      if e.code_type == "function"])
                 summary = {
-                    "classes": len([e for e in code_examples if e.code_type == "class"]),
-                    "methods": len([e for e in code_examples if e.code_type == "method"]),
-                    "functions": len([e for e in code_examples if e.code_type == "function"]),
+                    "classes": class_count,
+                    "methods": method_count,
+                    "functions": function_count,
                 }
 
             return {
@@ -987,7 +1018,10 @@ async def extract_repository_code(
             }
 
     except QueryError as e:
-        logger.error("Neo4j query failed extracting code from repository %s: %s", repo_name, e)
+        logger.error(
+            "Neo4j query failed extracting code from repository %s: %s",
+            repo_name, e
+        )
         return {
             "success": False,
             "repository_name": repo_name,
@@ -995,7 +1029,9 @@ async def extract_repository_code(
             "error": str(e),
         }
     except Exception as e:
-        logger.exception("Unexpected error extracting code from repository %s: %s", repo_name, e)
+        logger.exception(
+            "Unexpected error extracting code from repository %s", repo_name
+        )
         return {
             "success": False,
             "repository_name": repo_name,
