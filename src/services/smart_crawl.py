@@ -33,7 +33,6 @@ async def _perform_rag_query_with_context(
 
     And call perform_rag_query.
     """
-
     from src.database.rag_queries import perform_rag_query
 
     # Get the app context that was stored during lifespan
@@ -119,13 +118,13 @@ async def smart_crawl_url(
         )
 
     except (CrawlError, FetchError, DatabaseError) as e:
-        logger.error("Smart crawl operation failed: %s", e)
+        logger.exception("Smart crawl operation failed")
         msg = f"Smart crawl failed: {e!s}"
-        raise MCPToolError(msg)
+        raise MCPToolError(msg) from e
     except Exception as e:
-        logger.exception("Unexpected error in smart_crawl_url: %s", e)
+        logger.exception("Unexpected error in smart_crawl_url")
         msg = f"Smart crawl failed: {e!s}"
-        raise MCPToolError(msg)
+        raise MCPToolError(msg) from e
 
 
 async def _crawl_sitemap(
