@@ -8,6 +8,7 @@ import asyncio
 import json
 import sys
 import time
+from pathlib import Path
 
 # Add src to path
 sys.path.append(str(Path(__file__).parent / "src"))
