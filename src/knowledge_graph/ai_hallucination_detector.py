@@ -64,7 +64,7 @@ class AIHallucinationDetector:
         Returns:
             Complete validation report as dictionary
         """
-        logger.info(f"Starting hallucination detection for: {script_path}")
+        logger.info("Starting hallucination detection for: %s", script_path)
 
         # Validate input
         if not Path(script_path).exists():
@@ -87,19 +87,20 @@ class AIHallucinationDetector:
             analysis_result = self.analyzer.analyze_script(script_path)
 
             if analysis_result.errors:
-                logger.warning(f"Analysis warnings: {analysis_result.errors}")
+                logger.warning("Analysis warnings: %s", analysis_result.errors)
 
-            logger.info(f"Found: {len(analysis_result.imports)} imports, "
-                       f"{len(analysis_result.class_instantiations)} class instantiations, "
-                       f"{len(analysis_result.method_calls)} method calls, "
-                       f"{len(analysis_result.function_calls)} function calls, "
-                       f"{len(analysis_result.attribute_accesses)} attribute accesses")
+            logger.info("Found: %s imports, %s class instantiations, %s method calls, %s function calls, %s attribute accesses",
+                       len(analysis_result.imports),
+                       len(analysis_result.class_instantiations),
+                       len(analysis_result.method_calls),
+                       len(analysis_result.function_calls),
+                       len(analysis_result.attribute_accesses))
 
             # Step 2: Validate against knowledge graph
             logger.info("Step 2: Validating against knowledge graph...")
             validation_result = await self.validator.validate_script(analysis_result)
 
-            logger.info(f"Validation complete. Overall confidence: {validation_result.overall_confidence:.1%}")
+            logger.info("Validation complete. Overall confidence: %.1f%%", validation_result.overall_confidence * 100)
 
             # Step 3: Generate comprehensive report
             logger.info("Step 3: Generating reports...")
@@ -124,10 +125,10 @@ class AIHallucinationDetector:
             return report
 
         except (ParsingError, AnalysisError, QueryError) as e:
-            logger.error(f"Analysis/Query error during hallucination detection: {e!s}")
+            logger.error("Analysis/Query error during hallucination detection: %s", e)
             raise
         except Exception as e:
-            logger.exception(f"Unexpected error during hallucination detection: {e!s}")
+            logger.exception("Unexpected error during hallucination detection: %s", e)
             raise
 
     async def batch_detect(self, script_paths: list[str],
@@ -142,11 +143,11 @@ class AIHallucinationDetector:
         Returns:
             List of validation reports
         """
-        logger.info(f"Starting batch detection for {len(script_paths)} scripts")
+        logger.info("Starting batch detection for %s scripts", len(script_paths))
 
         results = []
         for i, script_path in enumerate(script_paths, 1):
-            logger.info(f"Processing script {i}/{len(script_paths)}: {script_path}")
+            logger.info("Processing script %s/%s: %s", i, len(script_paths), script_path)
 
             try:
                 result = await self.detect_hallucinations(
@@ -157,11 +158,11 @@ class AIHallucinationDetector:
                 results.append(result)
 
             except (ParsingError, AnalysisError, QueryError) as e:
-                logger.error(f"Analysis/Query error processing {script_path}: {e!s}")
+                logger.error("Analysis/Query error processing %s: %s", script_path, e)
                 # Continue with other scripts
                 continue
             except Exception as e:
-                logger.exception(f"Unexpected error processing {script_path}: {e!s}")
+                logger.exception("Unexpected error processing %s: %s", script_path, e)
                 # Continue with other scripts
                 continue
 
@@ -334,11 +335,11 @@ Examples:
         sys.exit(1)
 
     except (ParsingError, AnalysisError, QueryError) as e:
-        logger.error(f"Analysis/Query error - detection failed: {e!s}")
+        logger.error("Analysis/Query error - detection failed: %s", e)
         sys.exit(1)
 
     except Exception as e:
-        logger.exception(f"Unexpected error - detection failed: {e!s}")
+        logger.exception("Unexpected error - detection failed: %s", e)
         sys.exit(1)
 
     finally:
