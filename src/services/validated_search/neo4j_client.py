@@ -84,10 +84,10 @@ class Neo4jValidationClient:
             record = await result.single()
             return record["exists"] if record else False
         except QueryError as e:
-            logger.warning(f"Query error checking repository existence: {e}")
+            logger.warning("Query error checking repository existence: %s", e)
             return False
         except Exception as e:
-            logger.warning(f"Unexpected error checking repository existence: {e}")
+            logger.warning("Unexpected error checking repository existence: %s", e)
             return False
 
     async def check_class_exists(
@@ -118,10 +118,10 @@ class Neo4jValidationClient:
             record = await result.single()
             return record["exists"] if record else False
         except QueryError as e:
-            logger.warning(f"Query error checking class existence: {e}")
+            logger.warning("Query error checking class existence: %s", e)
             return False
         except Exception as e:
-            logger.warning(f"Unexpected error checking class existence: {e}")
+            logger.warning("Unexpected error checking class existence: %s", e)
             return False
 
     async def check_method_exists(
@@ -172,10 +172,10 @@ class Neo4jValidationClient:
             record = await result.single()
             return record["exists"] if record else False
         except QueryError as e:
-            logger.warning(f"Query error checking method existence: {e}")
+            logger.warning("Query error checking method existence: %s", e)
             return False
         except Exception as e:
-            logger.warning(f"Unexpected error checking method existence: {e}")
+            logger.warning("Unexpected error checking method existence: %s", e)
             return False
 
     async def check_function_exists(
@@ -206,10 +206,10 @@ class Neo4jValidationClient:
             record = await result.single()
             return record["exists"] if record else False
         except QueryError as e:
-            logger.warning(f"Query error checking function existence: {e}")
+            logger.warning("Query error checking function existence: %s", e)
             return False
         except Exception as e:
-            logger.warning(f"Unexpected error checking function existence: {e}")
+            logger.warning("Unexpected error checking function existence: %s", e)
             return False
 
     async def validate_class_structure(
@@ -235,7 +235,7 @@ class Neo4jValidationClient:
             # Could check method counts, attribute presence, etc.
             return True
         except Exception as e:
-            logger.warning(f"Unexpected error validating class structure: {e}")
+            logger.warning("Unexpected error validating class structure: %s", e)
             return False
 
     async def validate_method_signature(
@@ -263,5 +263,5 @@ class Neo4jValidationClient:
             # Could check parameter counts, types, return types, etc.
             return True
         except Exception as e:
-            logger.warning(f"Unexpected error validating method signature: {e}")
+            logger.warning("Unexpected error validating method signature: %s", e)
             return False
