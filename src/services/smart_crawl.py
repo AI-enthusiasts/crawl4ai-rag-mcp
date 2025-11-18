@@ -23,15 +23,18 @@ logger = logging.getLogger(__name__)
 
 
 async def _perform_rag_query_with_context(
-    ctx: Context,
+    _ctx: Context,
     query: str,
     source: str | None = None,
     match_count: int = 5,
 ) -> str:
     """
-    Helper function to properly extract database_client from context and call perform_rag_query.
+    Helper function to properly extract database_client from context.
+
+    And call perform_rag_query.
     """
-    import json
+
+    from src.database.rag_queries import perform_rag_query
 
     # Get the app context that was stored during lifespan
     app_ctx = get_app_context()
@@ -48,8 +51,6 @@ async def _perform_rag_query_with_context(
             },
             indent=2,
         )
-
-    from src.database.rag_queries import perform_rag_query
 
     return await perform_rag_query(
         app_ctx.database_client,
