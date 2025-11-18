@@ -2,6 +2,7 @@
 """Verify Neo4j dependencies can be imported correctly."""
 
 import sys
+from pathlib import Path
 
 print("Python path:")
 for p in sys.path:

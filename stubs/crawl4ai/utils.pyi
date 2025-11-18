@@ -6,4 +6,3 @@ def get_memory_stats() -> tuple[float, float, float]:
     Returns:
         tuple: (memory_percent, available_gb, total_gb)
     """
-    ...

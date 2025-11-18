@@ -59,7 +59,11 @@ async def test_mcp_scrape_urls():
         from crawl4ai import AsyncWebCrawler
         from fastmcp import Context
 
-        from src.core.context import Crawl4AIContext, get_app_context, set_app_context  # noqa: F401
+        from src.core.context import (  # noqa: F401
+            Crawl4AIContext,
+            get_app_context,
+            set_app_context,
+        )
         from src.services.crawling import process_urls_for_mcp
 
         # Create a mock context for testing

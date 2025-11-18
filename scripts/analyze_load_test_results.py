@@ -14,7 +14,6 @@ import json
 import statistics
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from rich.console import Console
 from rich.panel import Panel
@@ -33,7 +32,7 @@ class LoadTestAnalyzer:
         self.results_dir = results_dir
         self.console = Console()
 
-    def print(self, message: str, style: Optional[str] = None):
+    def print(self, message: str, style: str | None = None):
         """Print message with optional styling."""
         self.console.print(message, style=style)
 
@@ -64,7 +63,7 @@ class LoadTestAnalyzer:
 
         return results
 
-    def get_latest_result(self, results: list[dict]) -> Optional[dict]:
+    def get_latest_result(self, results: list[dict]) -> dict | None:
         """Get the most recent test result.
 
         Args:
@@ -162,7 +161,7 @@ class LoadTestAnalyzer:
 
         success_rates = [
             (p / t * 100) if t > 0 else 0
-            for p, t in zip(passed_tests, total_tests)
+            for p, t in zip(passed_tests, total_tests, strict=False)
         ]
         avg_success_rate = statistics.mean(success_rates) if success_rates else 0
 

@@ -42,7 +42,7 @@ def get_chrome_process_count() -> int:
     try:
         result = subprocess.run(
             ["ps", "aux"],
-            capture_output=True,
+            check=False, capture_output=True,
             text=True,
             timeout=5,
         )

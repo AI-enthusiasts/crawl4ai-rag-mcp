@@ -154,8 +154,7 @@ class BranchProtectionManager:
         except GithubException as e:
             if e.status == 404:
                 return {"protected": False, "error": "Branch not found or not protected"}
-            else:
-                return {"protected": False, "error": str(e)}
+            return {"protected": False, "error": str(e)}
 
     def apply_protection(self, branch_name: str, config: BranchProtectionConfig, dry_run: bool = False) -> bool:
         """Apply protection rules to a branch"""
@@ -205,7 +204,7 @@ class BranchProtectionManager:
         report = ["# Branch Protection Status Report\n"]
         report.append(f"Repository: {self.repo.full_name}\n")
 
-        for branch_name in BRANCH_PROTECTION_RULES.keys():
+        for branch_name in BRANCH_PROTECTION_RULES:
             report.append(f"\n## Branch: {branch_name}")
 
             status = self.check_protection(branch_name)
@@ -262,7 +261,7 @@ def main():
         print(manager.generate_report())
 
     elif args.check:
-        for branch_name in BRANCH_PROTECTION_RULES.keys():
+        for branch_name in BRANCH_PROTECTION_RULES:
             print(f"\n🔍 Checking branch: {branch_name}")
             status = manager.check_protection(branch_name)
             print(json.dumps(status, indent=2))

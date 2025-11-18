@@ -118,7 +118,7 @@ async def main():
         # Test 4: Simulate batch processing
         await simulate_batch_processing()
 
-        logger.info("\n=== All tests passed\! ===")
+        logger.info("\n=== All tests passed\\! ===")
         logger.info("\nBatching implementation summary:")
         logger.info("  1. Configurable batch size via NEO4J_BATCH_SIZE (default: 50)")
         logger.info("  2. Configurable timeout via NEO4J_BATCH_TIMEOUT (default: 120 seconds)")

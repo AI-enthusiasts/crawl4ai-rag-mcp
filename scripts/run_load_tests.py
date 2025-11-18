@@ -12,7 +12,6 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 try:
     from rich.console import Console
@@ -40,7 +39,7 @@ class LoadTestRunner:
         self.results_dir = self.project_root / "tests" / "results" / "load_tests"
         self.results_dir.mkdir(parents=True, exist_ok=True)
 
-    def print(self, message: str, style: Optional[str] = None):
+    def print(self, message: str, style: str | None = None):
         """Print message with optional styling.
 
         Args:
@@ -52,7 +51,7 @@ class LoadTestRunner:
         else:
             print(message)
 
-    def check_docker_container(self, pattern: str) -> Optional[str]:
+    def check_docker_container(self, pattern: str) -> str | None:
         """Check if Docker container matching pattern is running.
 
         Args:
@@ -79,7 +78,7 @@ class LoadTestRunner:
         except FileNotFoundError:
             return None
 
-    def check_process(self, name: str) -> Optional[int]:
+    def check_process(self, name: str) -> int | None:
         """Check if process is running.
 
         Args:
@@ -261,7 +260,7 @@ class LoadTestRunner:
         print()
 
         # Run tests
-        result = subprocess.run(cmd, cwd=self.project_root)
+        result = subprocess.run(cmd, check=False, cwd=self.project_root)
 
         return result.returncode
 
