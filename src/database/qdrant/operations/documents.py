@@ -4,6 +4,7 @@ CRUD operations for documents in Qdrant vector database.
 """
 
 import logging
+import time
 from typing import Any
 
 from qdrant_client import AsyncQdrantClient
@@ -97,13 +98,14 @@ async def add_documents(
                 if source_id and source_id.startswith("www."):
                     source_id = source_id[4:]
 
-            # Prepare payload - always include source_id
+            # Prepare payload - always include source_id and crawled_at
             payload = {
                 "url": url,
                 "chunk_number": chunk_num,
                 "content": content,
                 "metadata": metadata or {},
                 "source_id": source_id,  # Always include source_id
+                "crawled_at": time.time(),  # Unix timestamp for recency decay
             }
 
             point = PointStruct(

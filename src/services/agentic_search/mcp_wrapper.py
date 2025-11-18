@@ -27,6 +27,7 @@ async def agentic_search_impl(
     max_urls_per_iteration: int | None = None,
     url_score_threshold: float | None = None,
     use_search_hints: bool | None = None,
+    deep_research: bool = True,
 ) -> str:
     """Execute agentic search and return JSON result.
 
@@ -40,6 +41,7 @@ async def agentic_search_impl(
         max_urls_per_iteration: Override default max URLs per iteration (1-20)
         url_score_threshold: Override default URL score threshold (0-1)
         use_search_hints: Override default search hints setting
+        deep_research: Use deep research mode with topic decomposition (default: True)
 
     Returns:
         JSON string with complete search results
@@ -54,15 +56,31 @@ async def agentic_search_impl(
     try:
         # Get singleton service instance (connection pooling optimization)
         service = get_agentic_search_service()
-        result = await service.execute_search(
-            ctx=ctx,
-            query=query,
-            completeness_threshold=completeness_threshold,
-            max_iterations=max_iterations,
-            max_urls_per_iteration=max_urls_per_iteration,
-            url_score_threshold=url_score_threshold,
-            use_search_hints=use_search_hints,
-        )
+
+        # Choose search mode
+        if deep_research:
+            logger.info("Using deep research mode with topic decomposition")
+            result = await service.execute_deep_search(
+                ctx=ctx,
+                query=query,
+                completeness_threshold=completeness_threshold,
+                max_iterations=max_iterations,
+                max_urls_per_iteration=max_urls_per_iteration,
+                url_score_threshold=url_score_threshold,
+                use_search_hints=use_search_hints,
+            )
+        else:
+            logger.info("Using standard search mode")
+            result = await service.execute_search(
+                ctx=ctx,
+                query=query,
+                completeness_threshold=completeness_threshold,
+                max_iterations=max_iterations,
+                max_urls_per_iteration=max_urls_per_iteration,
+                url_score_threshold=url_score_threshold,
+                use_search_hints=use_search_hints,
+            )
+
         return result.model_dump_json()
 
     except Exception as e:

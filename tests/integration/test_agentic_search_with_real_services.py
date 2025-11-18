@@ -60,7 +60,7 @@ async def qdrant_with_incomplete_data():
     test_url = "https://test-incomplete-fastmcp.example.com"
 
     # Get embeddings
-    embeddings = create_embeddings_batch(test_chunks)
+    embeddings = await create_embeddings_batch(test_chunks)
 
     # Store in Qdrant
     await adapter.add_documents(

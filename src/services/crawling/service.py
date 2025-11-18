@@ -11,6 +11,8 @@ import re
 from typing import Any
 
 from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
+from crawl4ai.content_filter_strategy import PruningContentFilter
+from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 from fastmcp import Context
 
 from src.core.constants import MAX_VISITED_URLS_LIMIT, URL_FILTER_PATTERNS
@@ -126,7 +128,7 @@ async def process_urls_for_mcp(
         for result in crawl_results:
             try:
                 # Chunk the markdown content
-                chunks = smart_chunk_markdown(result["markdown"], chunk_size=2000)
+                chunks = smart_chunk_markdown(result["markdown"], chunk_size=4000)
 
                 if not chunks:
                     stored_results.append(
@@ -239,13 +241,14 @@ def should_filter_url(url: str, enable_filtering: bool = True) -> bool:
 async def crawl_urls_for_agentic_search(
     ctx: Context,
     urls: list[str],
-    max_pages: int = 50,
+    max_pages: int = 15,
+    max_depth: int = 2,
     enable_url_filtering: bool = True,
 ) -> dict[str, Any]:
     """Crawl URLs recursively for agentic search with smart limits and filtering.
 
     This function is specifically designed for agentic search and provides:
-    1. Recursive crawling of internal links (no depth limit)
+    1. Recursive crawling of internal links (limited by max_depth)
     2. Smart URL filtering to avoid GitHub commits, pagination, etc.
     3. Page limit per iteration (prevents excessive crawling)
     4. Visited URL tracking (prevents re-crawling same pages)
@@ -254,7 +257,8 @@ async def crawl_urls_for_agentic_search(
     Args:
         ctx: FastMCP context containing Crawl4AIContext
         urls: Starting URLs to crawl (typically 5 from agentic search)
-        max_pages: Maximum pages to crawl across all URLs (default: 50)
+        max_pages: Maximum pages to crawl across all URLs (default: 15)
+        max_depth: Maximum crawl depth (1=only starting URLs, 2=+1 level, default: 2)
         enable_url_filtering: Enable smart URL filtering (default: True)
 
     Returns:
@@ -309,12 +313,24 @@ async def crawl_urls_for_agentic_search(
         # Normalize starting URLs
         current_urls = {normalize_url(u) for u in urls}
 
-        run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
+        run_config = CrawlerRunConfig(
+            cache_mode=CacheMode.BYPASS,
+            stream=False,
+            excluded_tags=["nav", "footer", "header", "aside", "script", "style"],
+            markdown_generator=DefaultMarkdownGenerator(
+                content_filter=PruningContentFilter(
+                    threshold=0.4,
+                    threshold_type="fixed",
+                    min_word_threshold=20,
+                ),
+            ),
+        )
 
         logger.info(
-            "Starting recursive crawl: %s URLs, max_pages=%s, filtering=%s",
+            "Starting recursive crawl: %s URLs, max_pages=%s, max_depth=%s, filtering=%s",
             len(current_urls),
             max_pages,
+            max_depth,
             "enabled" if enable_url_filtering else "disabled",
         )
 
@@ -325,7 +341,7 @@ async def crawl_urls_for_agentic_search(
 
         async with AsyncWebCrawler(**crawler_kwargs) as crawler:
             depth = 0
-            while current_urls and pages_crawled < max_pages:
+            while current_urls and pages_crawled < max_pages and depth < max_depth:
                 depth += 1
                 # Filter out already visited URLs (protected by lock per asyncio docs)
                 async with visited_lock:
@@ -392,11 +408,18 @@ async def crawl_urls_for_agentic_search(
                     pages_crawled += 1
 
                     if result.success and result.markdown:
+                        # Use fit_markdown (filtered) if available, fallback to raw
+                        content = (
+                            result.markdown.fit_markdown
+                            if result.markdown.fit_markdown
+                            else result.markdown.raw_markdown
+                        )
+                        if not content:
+                            continue
+
                         # Store in Qdrant
                         try:
-                            chunks = smart_chunk_markdown(
-                                result.markdown, chunk_size=2000
-                            )
+                            chunks = smart_chunk_markdown(content, chunk_size=4000)
                             if chunks:
                                 source_id = extract_domain_from_url(result.url)
                                 urls_list = [result.url] * len(chunks)
@@ -405,7 +428,7 @@ async def crawl_urls_for_agentic_search(
                                     {"url": result.url, "chunk": i}
                                     for i in range(len(chunks))
                                 ]
-                                url_to_full_document = {result.url: result.markdown}
+                                url_to_full_document = {result.url: content}
                                 source_ids = (
                                     [source_id] * len(chunks) if source_id else None
                                 )

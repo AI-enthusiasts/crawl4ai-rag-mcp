@@ -1,15 +1,22 @@
 """Agentic search orchestrator - main pipeline orchestration.
 
 This module handles the core orchestration of the agentic search pipeline,
-coordinating the four stages of search:
+coordinating the stages of search:
+
+**Standard Flow (execute_search):**
 1. Local Knowledge Check (evaluates existing knowledge completeness)
 2. Web Search (searches the web and ranks promising URLs)
 3. Selective Crawling (crawls and indexes selected URLs)
 4. Query Refinement (refines search queries for subsequent iterations)
 
-The orchestrator manages the iterative refinement loop, making decisions
-about when to terminate early, when to refine queries, and when to skip
-optimization steps based on score improvements.
+**Deep Research Flow (execute_deep_search):**
+1. Topic Decomposition (breaks query into essential topics)
+2. Multi-Query Generation (creates query variations per topic)
+3. Topic-Based Evaluation (evaluates coverage per topic)
+4. Gap-Driven Iteration (searches only for uncovered topics)
+
+Per Anthropic research: "Search strategy should mirror expert human research:
+explore the landscape before drilling into specifics."
 """
 
 import logging
@@ -35,7 +42,10 @@ from src.services.agentic_models import (
     RAGResult,
     SearchIteration,
     SearchStatus,
+    TopicDecomposition,
 )
+
+from .query_enhancer import QueryEnhancer
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -137,7 +147,9 @@ class AgenticSearchService:
         max_iter = max_iterations or self.max_iterations
         max_urls = max_urls_per_iteration or self.max_urls_per_iteration
         url_threshold = url_score_threshold or self.url_score_threshold
-        use_hints = use_search_hints if use_search_hints is not None else self.use_search_hints
+        use_hints = (
+            use_search_hints if use_search_hints is not None else self.use_search_hints
+        )
 
         search_history: list[SearchIteration] = []
         current_query = query
@@ -157,11 +169,16 @@ class AgenticSearchService:
 
             while iteration < max_iter:
                 iteration += 1
-                logger.info("Iteration %d/%d: Query='%s'", iteration, max_iter, current_query)
+                logger.info(
+                    "Iteration %d/%d: Query='%s'", iteration, max_iter, current_query
+                )
 
                 # STAGE 1: Local Knowledge Check
                 evaluation, rag_results = await self.evaluator.evaluate_local_knowledge(
-                    ctx, current_query, iteration, search_history,
+                    ctx,
+                    current_query,
+                    iteration,
+                    search_history,
                 )
 
                 final_completeness = evaluation.score
@@ -202,11 +219,15 @@ class AgenticSearchService:
                 )
 
                 if not promising_urls:
-                    logger.warning("No promising URLs found, attempting query refinement")
+                    logger.warning(
+                        "No promising URLs found, attempting query refinement"
+                    )
                     # STAGE 4: Query Refinement (when no good URLs)
                     if iteration < max_iter:
                         refined = await self._stage4_query_refinement(
-                            query, current_query, evaluation.gaps,
+                            query,
+                            current_query,
+                            evaluation.gaps,
                         )
                         current_query = refined.refined_queries[0]
                         logger.info("Refined query: %s", current_query)
@@ -228,9 +249,18 @@ class AgenticSearchService:
                 # OPTIMIZATION 1: Skip re-check if no content was stored
                 # Saves 1 LLM call per failed crawl
                 if urls_stored > 0:
-                    logger.info("Re-checking completeness after storing %d URLs", urls_stored)
-                    evaluation, rag_results = await self.evaluator.evaluate_local_knowledge(
-                        ctx, current_query, iteration, search_history, is_recheck=True,
+                    logger.info(
+                        "Re-checking completeness after storing %d URLs", urls_stored
+                    )
+                    (
+                        evaluation,
+                        rag_results,
+                    ) = await self.evaluator.evaluate_local_knowledge(
+                        ctx,
+                        current_query,
+                        iteration,
+                        search_history,
+                        is_recheck=True,
                     )
 
                     final_completeness = evaluation.score
@@ -268,7 +298,9 @@ class AgenticSearchService:
                         )
                     else:
                         refined = await self._stage4_query_refinement(
-                            query, current_query, evaluation.gaps,
+                            query,
+                            current_query,
+                            evaluation.gaps,
                         )
                         current_query = refined.refined_queries[0]
 
@@ -298,7 +330,10 @@ class AgenticSearchService:
             )
 
     async def _stage4_query_refinement(
-        self, original_query: str, current_query: str, gaps: list[str],
+        self,
+        original_query: str,
+        current_query: str,
+        gaps: list[str],
     ) -> QueryRefinement:
         """STAGE 4: Generate refined queries using LLM with Pydantic structured output.
 
@@ -373,3 +408,273 @@ Provide:
         except Exception as e:
             logger.exception("Unexpected error in query refinement: %s", e)
             raise LLMError("Query refinement failed") from e
+
+    async def execute_deep_search(
+        self,
+        ctx: Context,
+        query: str,
+        completeness_threshold: float | None = None,
+        max_iterations: int | None = None,
+        max_urls_per_iteration: int | None = None,
+        url_score_threshold: float | None = None,
+        use_search_hints: bool | None = None,
+    ) -> AgenticSearchResult:
+        """Execute deep research with topic decomposition and gap-driven iteration.
+
+        Per Anthropic research: "Search strategy should mirror expert human research:
+        explore the landscape before drilling into specifics."
+
+        This method implements the enhanced flow:
+        1. Topic Decomposition - break query into essential topics
+        2. Multi-Query Generation - create query variations per topic
+        3. Topic-Based Evaluation - evaluate coverage per topic
+        4. Gap-Driven Iteration - search only for uncovered topics
+
+        Args:
+            ctx: FastMCP context
+            query: User's search query
+            completeness_threshold: Override default completeness threshold
+            max_iterations: Override default max iterations
+            max_urls_per_iteration: Override default max URLs per iteration
+            url_score_threshold: Override default URL score threshold
+            use_search_hints: Override default search hints setting
+
+        Returns:
+            Complete search result with all iterations tracked
+        """
+        # Use overrides or defaults
+        threshold = completeness_threshold or self.completeness_threshold
+        max_iter = max_iterations or self.max_iterations
+        max_urls = max_urls_per_iteration or self.max_urls_per_iteration
+        url_threshold = url_score_threshold or self.url_score_threshold
+        use_hints = (
+            use_search_hints if use_search_hints is not None else self.use_search_hints
+        )
+
+        search_history: list[SearchIteration] = []
+        iteration = 0
+        final_completeness = 0.0
+        final_results: list[RAGResult] = []
+
+        try:
+            logger.info("Starting DEEP RESEARCH for query: %s", query)
+            logger.info(
+                "Parameters: threshold=%s, max_iter=%s, max_urls=%s",
+                threshold,
+                max_iter,
+                max_urls,
+            )
+
+            # Create query enhancer for this search
+            # Import config here to avoid circular import
+            from .config import AgenticSearchConfig
+
+            config = AgenticSearchConfig()
+            query_enhancer = QueryEnhancer(config)
+
+            # PHASE 1: Topic Decomposition + Multi-Query Generation
+            logger.info("PHASE 1: Topic decomposition and multi-query generation")
+            decomposition, all_queries = await query_enhancer.enhance_query(
+                query,
+                decompose=True,
+                expand=True,
+            )
+
+            if not decomposition:
+                logger.warning(
+                    "Topic decomposition failed, falling back to standard search"
+                )
+                return await self.execute_search(
+                    ctx,
+                    query,
+                    completeness_threshold,
+                    max_iterations,
+                    max_urls_per_iteration,
+                    url_score_threshold,
+                    use_search_hints,
+                )
+
+            logger.info(
+                "Decomposed into %d topics, generated %d queries",
+                len(decomposition.topics),
+                len(all_queries),
+            )
+
+            # PHASE 2: Initial Topic-Based Evaluation
+            logger.info("PHASE 2: Initial topic-based evaluation")
+            iteration = 1
+
+            evaluation, rag_results = await self.evaluator.evaluate_with_topics(
+                ctx,
+                query,
+                decomposition,
+                all_queries,
+                iteration,
+                search_history,
+            )
+
+            final_completeness = evaluation.overall_score
+            final_results = rag_results
+
+            # Check if we have sufficient answer
+            if evaluation.overall_score >= threshold:
+                logger.info(
+                    "Completeness threshold met on first check: %.2f >= %.2f",
+                    evaluation.overall_score,
+                    threshold,
+                )
+                return AgenticSearchResult(
+                    success=True,
+                    query=query,
+                    iterations=iteration,
+                    completeness=evaluation.overall_score,
+                    results=rag_results,
+                    search_history=search_history,
+                    status=SearchStatus.COMPLETE,
+                )
+
+            logger.info(
+                "Initial completeness: %.2f < %.2f, uncovered topics: %s",
+                evaluation.overall_score,
+                threshold,
+                evaluation.uncovered_topics,
+            )
+
+            # PHASE 3: Gap-Driven Iteration
+            while iteration < max_iter:
+                iteration += 1
+                logger.info(
+                    "PHASE 3: Gap-driven iteration %d/%d",
+                    iteration,
+                    max_iter,
+                )
+
+                # Generate queries for uncovered topics
+                if evaluation.uncovered_topics:
+                    gap_queries = await query_enhancer.generate_gap_queries(
+                        evaluation.uncovered_topics,
+                        query,
+                    )
+                    # Also use LLM-suggested gap queries
+                    gap_queries.extend(evaluation.gap_queries)
+                else:
+                    # Use LLM-suggested gap queries if no uncovered topics
+                    gap_queries = evaluation.gap_queries
+
+                if not gap_queries:
+                    logger.warning("No gap queries generated, using original gaps")
+                    gap_queries = [
+                        f"{query} {gap}" for gap in evaluation.uncovered_topics[:3]
+                    ]
+
+                logger.info("Gap queries: %s", gap_queries[:5])
+
+                # Web search for gaps
+                promising_urls = await self.ranker.search_and_rank_urls(
+                    gap_queries[0] if gap_queries else query,
+                    evaluation.uncovered_topics,
+                    max_urls,
+                    url_threshold,
+                    iteration,
+                    search_history,
+                )
+
+                if not promising_urls:
+                    logger.warning("No promising URLs found for gaps")
+                    # Try with different gap query
+                    if len(gap_queries) > 1:
+                        promising_urls = await self.ranker.search_and_rank_urls(
+                            gap_queries[1],
+                            evaluation.uncovered_topics,
+                            max_urls,
+                            url_threshold,
+                            iteration,
+                            search_history,
+                        )
+
+                if promising_urls:
+                    # Crawl and store
+                    urls_stored = await self.crawler.crawl_and_store(
+                        ctx,
+                        promising_urls,
+                        query,
+                        use_hints,
+                        iteration,
+                        search_history,
+                    )
+
+                    if urls_stored > 0:
+                        logger.info("Stored %d URLs, re-evaluating topics", urls_stored)
+
+                        # Re-evaluate with all queries (including gap queries)
+                        combined_queries = list(set(all_queries + gap_queries))
+                        (
+                            evaluation,
+                            rag_results,
+                        ) = await self.evaluator.evaluate_with_topics(
+                            ctx,
+                            query,
+                            decomposition,
+                            combined_queries,
+                            iteration,
+                            search_history,
+                            is_recheck=True,
+                        )
+
+                        final_completeness = evaluation.overall_score
+                        final_results = rag_results
+
+                        if evaluation.overall_score >= threshold:
+                            logger.info(
+                                "Completeness threshold met: %.2f >= %.2f",
+                                evaluation.overall_score,
+                                threshold,
+                            )
+                            return AgenticSearchResult(
+                                success=True,
+                                query=query,
+                                iterations=iteration,
+                                completeness=evaluation.overall_score,
+                                results=rag_results,
+                                search_history=search_history,
+                                status=SearchStatus.COMPLETE,
+                            )
+
+                        logger.info(
+                            "After iteration %d: completeness=%.2f, uncovered=%s",
+                            iteration,
+                            evaluation.overall_score,
+                            evaluation.uncovered_topics,
+                        )
+                else:
+                    logger.warning("No URLs to crawl in iteration %d", iteration)
+
+            # Max iterations reached
+            logger.info(
+                "Max iterations reached: %d/%d, final completeness: %.2f",
+                iteration,
+                max_iter,
+                final_completeness,
+            )
+            return AgenticSearchResult(
+                success=True,
+                query=query,
+                iterations=iteration,
+                completeness=final_completeness,
+                results=final_results,
+                search_history=search_history,
+                status=SearchStatus.MAX_ITERATIONS_REACHED,
+            )
+
+        except Exception as e:
+            logger.exception("Deep research failed: %s", e)
+            return AgenticSearchResult(
+                success=False,
+                query=query,
+                iterations=iteration,
+                completeness=final_completeness,
+                results=final_results,
+                search_history=search_history,
+                status=SearchStatus.ERROR,
+                error=str(e),
+            )

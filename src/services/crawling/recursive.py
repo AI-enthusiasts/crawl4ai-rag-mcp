@@ -15,6 +15,8 @@ from crawl4ai import (
     MemoryAdaptiveDispatcher,
 )
 from crawl4ai.async_logger import AsyncLoggerBase
+from crawl4ai.content_filter_strategy import PruningContentFilter
+from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 
 from src.utils.url_helpers import normalize_url
 
@@ -41,7 +43,18 @@ async def crawl_recursive_internal_links(
     Returns:
         List of dictionaries with URL and markdown content
     """
-    run_config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS, stream=False)
+    run_config = CrawlerRunConfig(
+        cache_mode=CacheMode.BYPASS,
+        stream=False,
+        excluded_tags=["nav", "footer", "header", "aside", "script", "style"],
+        markdown_generator=DefaultMarkdownGenerator(
+            content_filter=PruningContentFilter(
+                threshold=0.4,
+                threshold_type="fixed",
+                min_word_threshold=20,
+            ),
+        ),
+    )
     # Use shared dispatcher from context for global concurrency control
 
     visited = set()
@@ -81,7 +94,13 @@ async def crawl_recursive_internal_links(
                 visited.add(norm_url)
 
                 if result.success and result.markdown:
-                    results_all.append({"url": result.url, "markdown": result.markdown})
+                    content = (
+                        result.markdown.fit_markdown
+                        if result.markdown.fit_markdown
+                        else result.markdown.raw_markdown
+                    )
+                    if content:
+                        results_all.append({"url": result.url, "markdown": content})
                     for link in result.links.get("internal", []):
                         next_url = normalize_url(link["href"])
                         if next_url not in visited:

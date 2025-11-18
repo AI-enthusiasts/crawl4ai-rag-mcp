@@ -100,19 +100,23 @@ def register_search_tools(mcp: "FastMCP") -> None:
         max_urls_per_iteration: int | None = None,
         url_score_threshold: float | None = None,
         use_search_hints: bool | None = None,
+        deep_research: bool = True,
     ) -> str:
         """
         Intelligent search finding comprehensive answers from local or web.
 
-        Operates in SMART MODE:
+        Operates in DEEP RESEARCH MODE (default):
+        1. Decomposes query into essential topics (Definition, Examples, etc.)
+        2. Generates multiple query variations per topic for better recall
+        3. Evaluates completeness per topic, not just overall score
+        4. Gap-driven iteration: searches only for uncovered topics
+        5. Uses Reciprocal Rank Fusion to combine multi-query results
+
+        Standard mode (deep_research=False):
         1. Checks Qdrant vector database for existing knowledge
         2. LLM evaluates answer completeness (0.0-1.0)
         3. If complete, returns from local storage immediately
-        4. If incomplete, searches web (SearXNG), intelligently selects URLs,
-           indexes new content, and performs iterative cycles
-
-        Minimizes latency when knowledge exists locally while ensuring
-        comprehensive answers through automated web research.
+        4. If incomplete, searches web and performs iterative cycles
 
         Args:
             ctx: The MCP context for execution
@@ -122,6 +126,7 @@ def register_search_tools(mcp: "FastMCP") -> None:
             max_urls_per_iteration: Max URLs per cycle, default 3 (1-20)
             url_score_threshold: Min URL relevance 0.0-1.0, default 0.7
             use_search_hints: Enable smart query refinement (default: false)
+            deep_research: Use deep research with topic decomposition (default: true)
 
         Returns:
             JSON with results, completeness, iterations, search history.
@@ -138,6 +143,7 @@ def register_search_tools(mcp: "FastMCP") -> None:
                 max_urls_per_iteration=max_urls_per_iteration,
                 url_score_threshold=url_score_threshold,
                 use_search_hints=use_search_hints,
+                deep_research=deep_research,
             )
         except SearchError as e:
             logger.exception("Search error in agentic search")

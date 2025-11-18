@@ -23,6 +23,8 @@ from crawl4ai import (
     MemoryAdaptiveDispatcher,
 )
 from crawl4ai.async_logger import AsyncLoggerBase
+from crawl4ai.content_filter_strategy import PruningContentFilter
+from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 
 from src.core.constants import URL_FILTER_PATTERNS
 from src.core.exceptions import CrawlError
@@ -136,8 +138,15 @@ async def crawl_batch(
     crawl_config = CrawlerRunConfig(
         cache_mode=CacheMode.BYPASS,
         stream=False,
-        page_timeout=45000,  # 45 seconds in milliseconds
-        # session_id=None - explicitly no session for automatic page cleanup
+        page_timeout=45000,
+        excluded_tags=["nav", "footer", "header", "aside", "script", "style"],
+        markdown_generator=DefaultMarkdownGenerator(
+            content_filter=PruningContentFilter(
+                threshold=0.4,
+                threshold_type="fixed",
+                min_word_threshold=20,
+            ),
+        ),
     )
 
     # Use shared dispatcher from context for global concurrency control
@@ -178,11 +187,23 @@ async def crawl_batch(
             # Crawler automatically closed here - all pages cleaned up
 
         # Log crawling results summary
-        successful_results = [
-            {"url": r.url, "markdown": r.markdown, "links": r.links}
-            for r in results
-            if r.success and r.markdown
-        ]
+        successful_results = []
+        for r in results:
+            if not r.success or not r.markdown:
+                continue
+            content = (
+                r.markdown.fit_markdown
+                if r.markdown.fit_markdown
+                else r.markdown.raw_markdown
+            )
+            if content:
+                successful_results.append(
+                    {
+                        "url": r.url,
+                        "markdown": content,
+                        "links": r.links,
+                    }
+                )
 
         failed_results = [r for r in results if not r.success or not r.markdown]
 

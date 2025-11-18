@@ -100,6 +100,7 @@ class SelectiveCrawler:
             ctx=ctx,
             urls=urls_to_crawl,  # Use filtered URLs (duplicates removed)
             max_pages=self.config.max_pages_per_iteration,
+            max_depth=self.config.max_crawl_depth,
             enable_url_filtering=self.config.enable_url_filtering,
         )
 

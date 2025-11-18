@@ -193,12 +193,19 @@ class Settings(BaseSettings):
     )
 
     agentic_search_max_pages_per_iteration: int = Field(
-        default=50,
+        default=15,
         ge=1,
         le=200,
         description=(
             "Maximum total pages to crawl recursively across all URLs in iteration"
         ),
+    )
+
+    agentic_search_max_crawl_depth: int = Field(
+        default=2,
+        ge=1,
+        le=5,
+        description=("Maximum crawl depth (1=only starting URLs, 2=+1 level of links)"),
     )
 
     agentic_search_url_score_threshold: float = Field(
@@ -246,6 +253,35 @@ class Settings(BaseSettings):
     model_choice: str = Field(
         default="gpt-4o-mini",
         description="LLM model for evaluations and completeness checks",
+    )
+
+    # ========================================
+    # Recency Decay Settings
+    # ========================================
+    recency_decay_enabled: bool = Field(
+        default=True,
+        description="Enable recency-based score decay for search results",
+    )
+
+    recency_decay_half_life_days: float = Field(
+        default=14.0,
+        ge=1.0,
+        le=365.0,
+        description="Half-life in days for exponential decay (after this time, score is halved)",
+    )
+
+    recency_decay_weight: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Weight of recency in final score (0=ignore recency, 1=only recency)",
+    )
+
+    recency_decay_min_score: float = Field(
+        default=0.1,
+        ge=0.0,
+        le=1.0,
+        description="Minimum decay factor (prevents very old docs from being completely ignored)",
     )
 
     # ========================================

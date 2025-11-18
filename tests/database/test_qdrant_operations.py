@@ -259,7 +259,7 @@ class TestUrlExists:
         assert mock_client.count.called
         call_args = mock_client.count.call_args
         assert call_args.kwargs["collection_name"] == operations.CRAWLED_PAGES
-        assert call_args.kwargs["exact"] is False
+        assert call_args.kwargs["exact"] is True  # Fixed: exact=True for accurate count
 
     @pytest.mark.asyncio
     async def test_url_exists_false(self, mock_client):

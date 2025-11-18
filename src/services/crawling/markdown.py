@@ -35,6 +35,8 @@ async def crawl_markdown_file(
     async with AsyncWebCrawler(**crawler_kwargs) as crawler:
         result = await crawler.arun(url=url, config=crawl_config)
         if result.success and result.markdown:
-            return [{"url": url, "markdown": result.markdown}]
+            content = result.markdown.raw_markdown or ""
+            if content:
+                return [{"url": url, "markdown": content}]
         logger.error("Failed to crawl %s: %s", url, result.error_message)
         return []

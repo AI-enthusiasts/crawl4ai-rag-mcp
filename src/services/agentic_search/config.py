@@ -74,6 +74,7 @@ class AgenticSearchConfig:
         self.max_iterations = settings.agentic_search_max_iterations
         self.max_urls_per_iteration = settings.agentic_search_max_urls_per_iteration
         self.max_pages_per_iteration = settings.agentic_search_max_pages_per_iteration
+        self.max_crawl_depth = settings.agentic_search_max_crawl_depth
         self.url_score_threshold = settings.agentic_search_url_score_threshold
         self.use_search_hints = settings.agentic_search_use_search_hints
         self.enable_url_filtering = settings.agentic_search_enable_url_filtering
