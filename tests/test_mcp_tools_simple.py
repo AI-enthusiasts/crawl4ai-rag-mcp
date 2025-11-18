@@ -13,7 +13,7 @@ def test_imports():
     print("Testing imports...")
 
     try:
-        from src.tools import register_tools
+        from src.tools import register_tools  # noqa: F401
 
         print("✅ src.tools.register_tools imported successfully")
     except ImportError as e:
@@ -21,7 +21,7 @@ def test_imports():
         return False
 
     try:
-        from src.main import create_mcp_server
+        from src.main import create_mcp_server  # noqa: F401
 
         print("✅ src.main.create_mcp_server imported successfully")
     except ImportError as e:
@@ -88,7 +88,7 @@ def test_smart_crawl_import():
     print("\nTesting smart_crawl_url import fix...")
 
     try:
-        from services.smart_crawl import smart_crawl_url
+        from services.smart_crawl import smart_crawl_url  # noqa: F401
 
         print("✅ services.smart_crawl.smart_crawl_url imported successfully")
         return True

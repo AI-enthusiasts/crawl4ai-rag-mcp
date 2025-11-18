@@ -108,7 +108,7 @@ async def test_knowledge_graph_tools():
 
         # Try to import knowledge graph components
         try:
-            from knowledge_graph_tools import (
+            from knowledge_graph_tools import (  # noqa: F401
                 execute_cypher_query,
                 validate_cypher_query,
             )
