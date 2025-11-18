@@ -585,6 +585,32 @@ docker exec crawl4aimcp-mcp-1 curl http://searxng:8080
 docker exec crawl4aimcp-mcp-1 curl http://qdrant:6333/collections
 ```
 
+### Port Conflicts with docker-compose.test.yml
+
+`docker-compose.test.yml` uses standard ports that may conflict with other services:
+- **6379** (Valkey/Redis) - often used by `joern-redis` or other Redis instances
+- **6333** (Qdrant) - may conflict with standalone Qdrant
+- **8080** (SearXNG) - common port for web services
+
+**Solution**: Stop conflicting services or use alternative ports:
+
+```bash
+# Check what's using the port
+sudo lsof -i :6379
+docker ps --format "{{.Names}}\t{{.Ports}}" | grep 6379
+
+# Option 1: Stop conflicting container
+docker stop joern-redis
+
+# Option 2: Start only needed services (skip valkey if Redis already running)
+docker compose -f docker-compose.test.yml up -d qdrant-test searxng-test
+
+# Option 3: Use existing Redis (tests don't require Valkey specifically)
+# Just ensure Qdrant and SearXNG are running
+```
+
+**Note**: Use `docker compose` (v2), not `docker-compose` (v1) - v1 may not be installed.
+
 ## File Management Rules
 
 **IMPORTANT**:

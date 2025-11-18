@@ -139,6 +139,10 @@ async def crawl_batch(
         cache_mode=CacheMode.BYPASS,
         stream=False,
         page_timeout=45000,
+        # Performance optimizations
+        wait_until="domcontentloaded",  # Don't wait for all resources
+        exclude_all_images=True,  # Skip image loading entirely
+        process_iframes=False,  # Skip iframe processing
         excluded_tags=["nav", "footer", "header", "aside", "script", "style"],
         markdown_generator=DefaultMarkdownGenerator(
             content_filter=PruningContentFilter(

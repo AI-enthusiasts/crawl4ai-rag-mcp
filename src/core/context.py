@@ -188,9 +188,13 @@ async def initialize_global_context() -> "Crawl4AIContext":
         )
 
         dispatcher = MemoryAdaptiveDispatcher(
-            memory_threshold_percent=70.0,
+            memory_threshold_percent=90.0,
+            critical_threshold_percent=95.0,
+            recovery_threshold_percent=85.0,
             check_interval=1.0,
             max_session_permit=settings.max_concurrent_sessions,
+            fairness_timeout=600.0,
+            memory_wait_timeout=300.0,
             rate_limiter=rate_limiter,
         )
         dispatcher_msg = (

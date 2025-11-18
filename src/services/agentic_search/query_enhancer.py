@@ -11,9 +11,10 @@ Per RAG best practices: Generate 3-4 query variations BEFORE search
 to improve recall through different phrasings and perspectives.
 """
 
+import asyncio
 import logging
+import time
 
-from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from pydantic_ai.exceptions import UnexpectedModelBehavior
 
@@ -21,7 +22,6 @@ from src.core.constants import MAX_RETRIES_DEFAULT
 from src.core.exceptions import LLMError
 from src.services.agentic_models import (
     MultiQueryExpansion,
-    QueryComplexity,
     TopicDecomposition,
 )
 
@@ -226,24 +226,43 @@ Return structured output with:
         Raises:
             LLMError: If enhancement fails
         """
+        start_time = time.perf_counter()
         decomposition = None
         all_queries: list[str] = []
 
         # Step 1: Topic decomposition
         if decompose:
             decomposition = await self.decompose_query(query)
+            decompose_time = time.perf_counter() - start_time
+            logger.info("PERF: decompose_query took %.1fs", decompose_time)
 
-            # Generate queries for each topic
+            # Generate queries for each topic - PARALLEL execution
             if expand:
-                for topic, topic_query in decomposition.topic_queries.items():
-                    # Expand each topic query
-                    expansion = await self.expand_query(topic_query, topic)
+                expand_start = time.perf_counter()
+                topics_items = list(decomposition.topic_queries.items())
 
-                    # Collect all variations
+                # Run all expansions in parallel using asyncio.gather
+                expansion_tasks = [
+                    self.expand_query(topic_query, topic)
+                    for topic, topic_query in topics_items
+                ]
+                expansions = await asyncio.gather(*expansion_tasks)
+
+                # Collect results from all expansions
+                for (topic, topic_query), expansion in zip(
+                    topics_items, expansions, strict=True
+                ):
                     all_queries.append(topic_query)  # Original topic query
                     all_queries.extend(expansion.variations)
                     all_queries.append(expansion.broad_query)
                     all_queries.append(expansion.specific_query)
+
+                expand_time = time.perf_counter() - expand_start
+                logger.info(
+                    "PERF: expand_query x%d (parallel) took %.1fs",
+                    len(topics_items),
+                    expand_time,
+                )
             else:
                 # Just use topic queries without expansion
                 all_queries.extend(decomposition.topic_queries.values())
@@ -267,8 +286,10 @@ Return structured output with:
                 seen.add(q_lower)
                 unique_queries.append(q)
 
+        total_time = time.perf_counter() - start_time
         logger.info(
-            "Query enhancement complete: %d unique queries from %d total",
+            "PERF: enhance_query complete in %.1fs: %d unique queries from %d total",
+            total_time,
             len(unique_queries),
             len(all_queries),
         )

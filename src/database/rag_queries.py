@@ -5,6 +5,7 @@ Handles vector search, hybrid search, code example retrieval,
 multi-query fusion for improved recall, and recency-based decay.
 """
 
+import asyncio
 import json
 import logging
 import math
@@ -186,6 +187,9 @@ async def perform_multi_query_search(
     Per RAG best practices: Multi-query search improves recall by
     searching with different phrasings and combining results.
 
+    OPTIMIZED: Uses batch embeddings and parallel Qdrant searches
+    instead of sequential calls for significant performance improvement.
+
     Args:
         database_client: The database client instance
         queries: List of query variations to search
@@ -200,31 +204,63 @@ async def perform_multi_query_search(
     if not queries:
         return []
 
+    start_time = time.perf_counter()
     logger.info("Performing multi-query search with %d queries", len(queries))
 
-    # Collect results from all queries
-    all_result_lists: list[list[dict[str, Any]]] = []
+    # Import here to avoid circular imports
+    from src.database.qdrant.search import search_documents
+    from src.utils.embeddings.basic import create_embeddings_batch
 
-    for query in queries:
+    # Step 1: Create all embeddings in a single batch API call
+    embed_start = time.perf_counter()
+    try:
+        embeddings = await create_embeddings_batch(queries)
+    except Exception as e:
+        logger.error("Batch embedding failed: %s", e)
+        return []
+    embed_time = time.perf_counter() - embed_start
+    logger.info(
+        "PERF: batch embeddings for %d queries took %.1fs", len(queries), embed_time
+    )
+
+    if len(embeddings) != len(queries):
+        logger.error(
+            "Embedding count mismatch: got %d embeddings for %d queries",
+            len(embeddings),
+            len(queries),
+        )
+        return []
+
+    # Step 2: Perform all Qdrant searches in parallel
+    search_start = time.perf_counter()
+
+    # Build filter for source if provided
+    source_filter = source.strip() if source and source.strip() else None
+
+    async def search_with_embedding(embedding: list[float]) -> list[dict[str, Any]]:
+        """Execute single search with pre-computed embedding."""
         try:
-            # Use existing perform_rag_query and parse JSON response
-            # Note: perform_rag_query already applies recency decay internally
-            response = await perform_rag_query(
-                database_client,
-                query=query,
-                source=source,
+            return await search_documents(
+                client=database_client.client,
+                query_embedding=embedding,
                 match_count=match_count,
+                source_filter=source_filter,
             )
-            data = json.loads(response)
-
-            if data.get("success") and data.get("results"):
-                all_result_lists.append(data["results"])
-            else:
-                logger.debug("No results for query: %s", query)
-
         except Exception as e:
-            logger.warning("Query failed: %s - %s", query, e)
-            continue
+            logger.warning("Search failed: %s", e)
+            return []
+
+    # Execute all searches in parallel
+    search_results = await asyncio.gather(
+        *[search_with_embedding(emb) for emb in embeddings]
+    )
+    search_time = time.perf_counter() - search_start
+    logger.info("PERF: parallel Qdrant searches took %.1fs", search_time)
+
+    # Collect non-empty results
+    all_result_lists: list[list[dict[str, Any]]] = [
+        results for results in search_results if results
+    ]
 
     if not all_result_lists:
         logger.warning("No results from any query")
@@ -240,8 +276,6 @@ async def perform_multi_query_search(
         return []
 
     # Apply additional recency decay after RRF if enabled
-    # Note: Individual queries already have decay applied, but RRF resets scores
-    # So we apply decay again to the fused results
     if apply_recency and combined:
         settings = get_settings()
         if settings.recency_decay_enabled:
@@ -251,10 +285,14 @@ async def perform_multi_query_search(
                 half_life_days=settings.recency_decay_half_life_days,
                 min_decay=settings.recency_decay_min_score,
             )
-            logger.info(
-                "Applied recency decay to %d multi-query results",
-                len(combined),
-            )
+
+    total_time = time.perf_counter() - start_time
+    logger.info(
+        "PERF: multi-query search complete in %.1fs: %d results from %d queries",
+        total_time,
+        len(combined),
+        len(queries),
+    )
 
     return combined
 

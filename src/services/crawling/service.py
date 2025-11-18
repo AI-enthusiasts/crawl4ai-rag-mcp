@@ -316,6 +316,10 @@ async def crawl_urls_for_agentic_search(
         run_config = CrawlerRunConfig(
             cache_mode=CacheMode.BYPASS,
             stream=False,
+            # Performance optimizations for agentic search
+            wait_until="domcontentloaded",  # Don't wait for all resources
+            exclude_all_images=True,  # Skip image loading entirely
+            process_iframes=False,  # Skip iframe processing
             excluded_tags=["nav", "footer", "header", "aside", "script", "style"],
             markdown_generator=DefaultMarkdownGenerator(
                 content_filter=PruningContentFilter(
