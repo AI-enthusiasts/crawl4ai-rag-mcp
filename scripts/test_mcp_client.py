@@ -7,8 +7,7 @@ Uses FastMCP client to connect to the server and test tools.
 
 import asyncio
 import json
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+
 import httpx
 
 
@@ -34,9 +33,9 @@ async def test_http_mcp():
                 "capabilities": {},
                 "clientInfo": {
                     "name": "test-client",
-                    "version": "1.0.0"
-                }
-            }
+                    "version": "1.0.0",
+                },
+            },
         }
 
         response = await client.post(url, headers=headers, json=init_request, timeout=30.0)
@@ -56,7 +55,7 @@ async def test_http_mcp():
         headers["mcp-session-id"] = session_id
 
         # Parse SSE response
-        lines = response.text.strip().split('\n')
+        lines = response.text.strip().split("\n")
         for line in lines:
             if line.startswith("data:"):
                 data = json.loads(line[6:])  # Skip "data: "
@@ -67,7 +66,7 @@ async def test_http_mcp():
         notif_request = {
             "jsonrpc": "2.0",
             "method": "notifications/initialized",
-            "params": {}
+            "params": {},
         }
 
         response = await client.post(url, headers=headers, json=notif_request, timeout=30.0)
@@ -79,14 +78,14 @@ async def test_http_mcp():
             "jsonrpc": "2.0",
             "id": 2,
             "method": "tools/list",
-            "params": {}
+            "params": {},
         }
 
         response = await client.post(url, headers=headers, json=tools_request, timeout=30.0)
         print(f"Status: {response.status_code}")
 
         # Parse SSE response
-        lines = response.text.strip().split('\n')
+        lines = response.text.strip().split("\n")
         for line in lines:
             if line.startswith("data:"):
                 data = json.loads(line[6:])
@@ -112,16 +111,16 @@ async def test_http_mcp():
                 "arguments": {
                     "query": "What is LLM reasoning?",
                     "max_iterations": 1,
-                    "completeness_threshold": 0.8
-                }
-            }
+                    "completeness_threshold": 0.8,
+                },
+            },
         }
 
         response = await client.post(url, headers=headers, json=search_request, timeout=120.0)
         print(f"Status: {response.status_code}")
 
         # Parse SSE response
-        lines = response.text.strip().split('\n')
+        lines = response.text.strip().split("\n")
         for line in lines:
             if line.startswith("data:"):
                 data = json.loads(line[6:])
@@ -158,11 +157,11 @@ async def test_http_mcp():
                     else:
                         result_data = result_content
 
-                    print(f"✓ Agentic search result:")
+                    print("✓ Agentic search result:")
                     print(f"  Success: {result_data.get('success')}")
                     print(f"  Status: {result_data.get('status')}")
                     print(f"  Completeness: {result_data.get('completeness', 0):.2f}")
-                    if not result_data.get('success'):
+                    if not result_data.get("success"):
                         print(f"  Error: {result_data.get('error')}")
                 elif "error" in data:
                     print(f"ERROR: {data['error']}")

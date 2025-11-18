@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Simple test script to verify MCP tools fixes."""
 
-import os
 import sys
 from pathlib import Path
 

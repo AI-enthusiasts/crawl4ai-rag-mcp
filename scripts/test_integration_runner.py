@@ -18,29 +18,28 @@ os.environ["QDRANT_URL"] = "http://localhost:6333"
 async def run_simple_test():
     """Run a simple integration test"""
     print("Running simple Qdrant integration test...")
-    
+
     try:
         from database.factory import create_database_client
         from utils import (
-            create_embeddings_batch,
             add_documents_to_database,
-            search_documents
+            search_documents,
         )
-        
+
         # Create database client
         print("Creating Qdrant client...")
         db = create_database_client()
         await db.initialize()
         print("✓ Database initialized")
-        
+
         # Test data
         test_doc = {
             "url": "https://test.com/doc1",
             "content": "This is a test document about Python programming and async operations.",
             "chunk_number": 0,
-            "metadata": {"title": "Test Doc", "type": "integration_test"}
+            "metadata": {"title": "Test Doc", "type": "integration_test"},
         }
-        
+
         # Add document
         print("Adding test document...")
         await add_documents_to_database(
@@ -49,32 +48,32 @@ async def run_simple_test():
             chunk_numbers=[test_doc["chunk_number"]],
             contents=[test_doc["content"]],
             metadatas=[test_doc["metadata"]],
-            url_to_full_document={test_doc["url"]: test_doc["content"]}
+            url_to_full_document={test_doc["url"]: test_doc["content"]},
         )
         print("✓ Document added")
-        
+
         # Search for document
         print("Searching for document...")
         results = await search_documents(
             database=db,
             query="Python async programming",
-            match_count=5
+            match_count=5,
         )
-        
+
         if results:
             print(f"✓ Found {len(results)} results")
             print(f"  First result URL: {results[0].get('url', 'N/A')}")
         else:
             print("✗ No results found")
-        
+
         # Test cleanup (optional)
         print("Cleaning up...")
         await db.delete_documents_by_url(test_doc["url"])
         print("✓ Cleanup complete")
-        
+
         print("\n✅ Integration test passed!")
         return True
-        
+
     except Exception as e:
         print(f"\n❌ Integration test failed: {e}")
         import traceback
@@ -94,7 +93,7 @@ if __name__ == "__main__":
         print("❌ Qdrant is not running. Please start it with:")
         print("   docker compose -f docker-compose.test.yml up -d qdrant")
         sys.exit(1)
-    
+
     # Run the test
     success = asyncio.run(run_simple_test())
     sys.exit(0 if success else 1)

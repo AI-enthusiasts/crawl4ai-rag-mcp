@@ -12,12 +12,13 @@ Tests cover:
 """
 
 import ast
-import pytest
 from pathlib import Path
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import mock_open, patch
 
+import pytest
+
+from src.core.exceptions import ParsingError
 from src.knowledge_graph.analyzers.python_analyzer import Neo4jCodeAnalyzer
-from src.core.exceptions import ParsingError, AnalysisError
 
 
 class TestNeo4jCodeAnalyzer:
@@ -59,7 +60,7 @@ class SimpleClass:
 
         with patch("builtins.open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules
+                file_path, self.repo_root, self.project_modules,
             )
 
         assert result is not None
@@ -94,7 +95,7 @@ async def async_function(data: dict) -> None:
 
         with patch("builtins.open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules
+                file_path, self.repo_root, self.project_modules,
             )
 
         assert result is not None
@@ -129,7 +130,7 @@ from .relative import RelativeImport
 
         with patch("builtins.open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules
+                file_path, self.repo_root, self.project_modules,
             )
 
         assert result is not None
@@ -163,7 +164,7 @@ class DataModel:
 
         with patch("builtins.open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules
+                file_path, self.repo_root, self.project_modules,
             )
 
         assert result is not None
@@ -198,7 +199,7 @@ class User:
 
         with patch("builtins.open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules
+                file_path, self.repo_root, self.project_modules,
             )
 
         assert result is not None
@@ -238,7 +239,7 @@ class PropertyClass:
 
         with patch("builtins.open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules
+                file_path, self.repo_root, self.project_modules,
             )
 
         assert result is not None
@@ -267,7 +268,7 @@ def complex_function(
 
         with patch("builtins.open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules
+                file_path, self.repo_root, self.project_modules,
             )
 
         assert result is not None
@@ -312,7 +313,7 @@ def broken_function(
         with patch("builtins.open", mock_open(read_data=invalid_python)):
             with pytest.raises(ParsingError) as exc_info:
                 self.analyzer.analyze_python_file(
-                    file_path, self.repo_root, self.project_modules
+                    file_path, self.repo_root, self.project_modules,
                 )
 
         assert "Python parsing failed" in str(exc_info.value)
@@ -327,7 +328,7 @@ def broken_function(
             with patch("ast.parse", side_effect=ValueError("Parse error")):
                 with pytest.raises(ParsingError):
                     self.analyzer.analyze_python_file(
-                        file_path, self.repo_root, self.project_modules
+                        file_path, self.repo_root, self.project_modules,
                     )
 
     def test_analyze_python_file_file_not_found(self):
@@ -336,7 +337,7 @@ def broken_function(
 
         with patch("builtins.open", side_effect=FileNotFoundError("File not found")):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules
+                file_path, self.repo_root, self.project_modules,
             )
 
         # Should return None for unexpected errors
@@ -373,7 +374,7 @@ def broken_function(
         relative_path = "module.py"
 
         module_name = self.analyzer._get_importable_module_name(
-            file_path, self.repo_root, relative_path
+            file_path, self.repo_root, relative_path,
         )
 
         assert module_name == "module"
@@ -386,7 +387,7 @@ def broken_function(
         # Mock __init__.py existence
         with patch.object(Path, "exists", return_value=True):
             module_name = self.analyzer._get_importable_module_name(
-                file_path, self.repo_root, relative_path
+                file_path, self.repo_root, relative_path,
             )
 
         # Should skip "src" and start from first package with __init__.py
@@ -430,7 +431,7 @@ def broken_function(
         list_call = ast.Call(
             func=ast.Name(id="list", ctx=ast.Load()),
             args=[],
-            keywords=[]
+            keywords=[],
         )
         assert self.analyzer._infer_type_from_value(list_call) == "list"
 
@@ -438,7 +439,7 @@ def broken_function(
         path_call = ast.Call(
             func=ast.Name(id="Path", ctx=ast.Load()),
             args=[],
-            keywords=[]
+            keywords=[],
         )
         assert self.analyzer._infer_type_from_value(path_call) == "pathlib.Path"
 
@@ -450,7 +451,7 @@ def broken_function(
             bases=[],
             keywords=[],
             body=[],
-            decorator_list=[ast.Name(id="dataclass", ctx=ast.Load())]
+            decorator_list=[ast.Name(id="dataclass", ctx=ast.Load())],
         )
         assert self.analyzer._has_dataclass_decorator(cls_node) is True
 
@@ -460,7 +461,7 @@ def broken_function(
             bases=[],
             keywords=[],
             body=[],
-            decorator_list=[]
+            decorator_list=[],
         )
         assert self.analyzer._has_dataclass_decorator(cls_node_no_dec) is False
 
@@ -472,7 +473,7 @@ def broken_function(
             bases=[],
             keywords=[],
             body=[],
-            decorator_list=[ast.Name(id="attrs", ctx=ast.Load())]
+            decorator_list=[ast.Name(id="attrs", ctx=ast.Load())],
         )
         assert self.analyzer._has_attrs_decorator(cls_node) is True
 
@@ -483,9 +484,9 @@ def broken_function(
             elts=[
                 ast.Constant(value="name"),
                 ast.Constant(value="age"),
-                ast.Constant(value="email")
+                ast.Constant(value="email"),
             ],
-            ctx=ast.Load()
+            ctx=ast.Load(),
         )
         slots = self.analyzer._extract_slots(slots_list)
         assert len(slots) == 3
@@ -514,7 +515,7 @@ def broken_function(
         attr_node = ast.Attribute(
             value=ast.Name(id="module", ctx=ast.Load()),
             attr="Class",
-            ctx=ast.Load()
+            ctx=ast.Load(),
         )
         assert self.analyzer._get_name(attr_node) == "module.Class"
 
@@ -524,7 +525,7 @@ def broken_function(
         subscript_node = ast.Subscript(
             value=ast.Name(id="List", ctx=ast.Load()),
             slice=ast.Name(id="str", ctx=ast.Load()),
-            ctx=ast.Load()
+            ctx=ast.Load(),
         )
         assert self.analyzer._get_name(subscript_node) == "List[str]"
 
@@ -588,7 +589,7 @@ class ComplexModel:
 
         with patch("builtins.open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules
+                file_path, self.repo_root, self.project_modules,
             )
 
         assert result is not None
@@ -617,7 +618,7 @@ class ComplexModel:
 
         with patch("builtins.open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules
+                file_path, self.repo_root, self.project_modules,
             )
 
         assert result is not None
@@ -642,7 +643,7 @@ that spans multiple lines.
 
         with patch("builtins.open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules
+                file_path, self.repo_root, self.project_modules,
             )
 
         assert result is not None

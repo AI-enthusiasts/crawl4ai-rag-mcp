@@ -73,7 +73,7 @@ async def test_batch_scraping_http():
                 print(
                     json.dumps(result, indent=2)[:1000] + "..."
                     if len(json.dumps(result, indent=2)) > 1000
-                    else json.dumps(result, indent=2)
+                    else json.dumps(result, indent=2),
                 )
 
                 # Parse and validate the response
@@ -92,7 +92,7 @@ async def test_batch_scraping_http():
                                 content[:100] + "..." if len(content) > 100 else content
                             )
                             print(
-                                f"  - {url}: {len(content)} chars - '{content_preview}'"
+                                f"  - {url}: {len(content)} chars - '{content_preview}'",
                             )
 
                             if content == "No content retrieved":
@@ -101,7 +101,7 @@ async def test_batch_scraping_http():
                                 print(f"    ✅ Content retrieved for {url}")
                     else:
                         print(
-                            f"❌ Scraping failed: {scrape_result.get('error', 'unknown error')}"
+                            f"❌ Scraping failed: {scrape_result.get('error', 'unknown error')}",
                         )
                 else:
                     print("❌ Unexpected response format")
@@ -151,12 +151,12 @@ async def test_single_url_for_comparison():
                     if "result" in result:
                         scrape_result = json.loads(result["result"])
                         print(
-                            f"Single URL result: Success={scrape_result.get('success')}"
+                            f"Single URL result: Success={scrape_result.get('success')}",
                         )
                         if scrape_result.get("success"):
                             if "content_length" in scrape_result:
                                 print(
-                                    f"Content length: {scrape_result['content_length']} chars"
+                                    f"Content length: {scrape_result['content_length']} chars",
                                 )
                         else:
                             print(f"Error: {scrape_result.get('error')}")

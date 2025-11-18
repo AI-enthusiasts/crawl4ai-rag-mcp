@@ -58,7 +58,7 @@ async def test_mcp_scrape_urls():
         print("Testing with valid URLs...")
         try:
             async with session.post(
-                mcp_url, json=valid_urls_payload, headers=headers
+                mcp_url, json=valid_urls_payload, headers=headers,
             ) as resp:
                 result = await resp.json()
                 print("Valid URLs test result:")
@@ -69,7 +69,7 @@ async def test_mcp_scrape_urls():
                         print(f"Total URLs: {content.get('total_urls', 'unknown')}")
                     else:
                         print(
-                            f"❌ Processing failed: {content.get('error', 'unknown error')}"
+                            f"❌ Processing failed: {content.get('error', 'unknown error')}",
                         )
                 else:
                     print(f"❌ Unexpected response format: {result}")
@@ -82,7 +82,7 @@ async def test_mcp_scrape_urls():
 
         try:
             async with session.post(
-                mcp_url, json=invalid_urls_payload, headers=headers
+                mcp_url, json=invalid_urls_payload, headers=headers,
             ) as resp:
                 result = await resp.json()
                 print("Invalid URLs test result:")
@@ -96,7 +96,7 @@ async def test_mcp_scrape_urls():
                         print(f"Error: {content.get('error', 'unknown error')}")
                     else:
                         print(
-                            "❌ Invalid URLs were NOT rejected - this indicates a problem!"
+                            "❌ Invalid URLs were NOT rejected - this indicates a problem!",
                         )
                 else:
                     print(f"❌ Unexpected response format: {result}")

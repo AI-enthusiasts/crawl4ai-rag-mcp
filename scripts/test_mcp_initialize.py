@@ -2,12 +2,13 @@
 """
 Test MCP initialization handshake.
 """
-import subprocess
 import json
+import os
+import subprocess
 import time
 from pathlib import Path
+
 from dotenv import load_dotenv
-import os
 
 # Load .env.test
 env_test_path = Path(__file__).parent.parent / ".env.test"
@@ -29,7 +30,7 @@ process = subprocess.Popen(
     stdout=subprocess.PIPE,
     stderr=subprocess.PIPE,
     text=True,
-    env=env
+    env=env,
 )
 
 # Give it time to start
@@ -44,14 +45,14 @@ init_request = {
     "params": {
         "protocolVersion": "0.1.0",
         "capabilities": {
-            "roots": {}
+            "roots": {},
         },
         "clientInfo": {
             "name": "test-client",
-            "version": "0.1.0"
-        }
+            "version": "0.1.0",
+        },
     },
-    "id": 1
+    "id": 1,
 }
 
 print(f"Sending: {json.dumps(init_request)}")
@@ -64,19 +65,19 @@ try:
     response = process.stdout.readline()
     if response:
         print(f"Response: {response}")
-        
+
         # Now try tools/list
         print("\nTrying tools/list request...")
         tools_request = {
             "jsonrpc": "2.0",
             "method": "tools/list",
-            "id": 2
+            "id": 2,
         }
-        
+
         print(f"Sending: {json.dumps(tools_request)}")
         process.stdin.write(json.dumps(tools_request) + "\n")
         process.stdin.flush()
-        
+
         response = process.stdout.readline()
         if response:
             print(f"Response: {response[:200]}...")
@@ -87,19 +88,19 @@ try:
             print("❌ No tools/list response")
     else:
         print("❌ No initialize response")
-        
+
 except Exception as e:
     print(f"❌ Error: {e}")
-    
+
 finally:
     # Check stderr
     stderr = process.stderr.read()
     if stderr:
         print("\nServer stderr (last 20 lines):")
-        lines = stderr.strip().split('\n')
+        lines = stderr.strip().split("\n")
         for line in lines[-20:]:
             print(f"  {line}")
-    
+
     print("\nTerminating server...")
     process.terminate()
     process.wait()

@@ -73,7 +73,7 @@ class SimpleAPI:
         if code_blocks_small:
             for i, block in enumerate(code_blocks_small):
                 print(
-                    f"   Block {i + 1}: {len(block['code'])} chars, language: {block.get('language', 'unknown')}"
+                    f"   Block {i + 1}: {len(block['code'])} chars, language: {block.get('language', 'unknown')}",
                 )
 
                 # Test summary generation
@@ -96,7 +96,7 @@ class SimpleAPI:
         # Check that our fixes are in place
         fixes_found = content.count("extract_code_blocks(md, min_length=100)")
         print(
-            f"   Found {fixes_found} occurrences of 'extract_code_blocks(md, min_length=100)'"
+            f"   Found {fixes_found} occurrences of 'extract_code_blocks(md, min_length=100)'",
         )
 
         if (
@@ -140,6 +140,6 @@ class SimpleAPI:
 if __name__ == "__main__":
     success = test_fix_verification()
     print(
-        f"\n{'✅ SUCCESS' if success else '❌ FAILED'}: Code extraction implementation {'complete' if success else 'incomplete'}"
+        f"\n{'✅ SUCCESS' if success else '❌ FAILED'}: Code extraction implementation {'complete' if success else 'incomplete'}",
     )
     sys.exit(0 if success else 1)

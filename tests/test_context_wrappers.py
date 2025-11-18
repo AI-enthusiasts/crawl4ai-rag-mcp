@@ -79,7 +79,7 @@ class TestMCPToolWrappers:
 
     @pytest.mark.asyncio
     async def test_perform_rag_query_wrapper_with_source_filter(
-        self, mock_database_factory
+        self, mock_database_factory,
     ):
         """Test RAG query wrapper with source filtering."""
         mock_database_factory.search_crawled_pages.return_value = []
@@ -100,12 +100,12 @@ class TestMCPToolWrappers:
 
     @pytest.mark.asyncio
     async def test_perform_rag_query_wrapper_error_handling(
-        self, mock_database_factory
+        self, mock_database_factory,
     ):
         """Test RAG query wrapper error handling."""
         # Mock database error
         mock_database_factory.search_crawled_pages.side_effect = Exception(
-            "Database connection failed"
+            "Database connection failed",
         )
 
         result = await perform_rag_query_wrapper(
@@ -153,7 +153,7 @@ class TestMCPToolWrappers:
 
     @pytest.mark.asyncio
     async def test_search_code_examples_wrapper_with_validated_search(
-        self, mock_validated_search_service, mock_database_factory
+        self, mock_validated_search_service, mock_database_factory,
     ):
         """Test code examples wrapper with Neo4j validation enabled."""
         # Mock Neo4j environment variables
@@ -221,7 +221,7 @@ class TestMCPToolWrappers:
 
     @pytest.mark.asyncio
     async def test_search_code_examples_wrapper_neo4j_unavailable(
-        self, mock_database_factory
+        self, mock_database_factory,
     ):
         """Test code examples wrapper fallback when Neo4j is unavailable."""
         # Mock no Neo4j environment
@@ -251,7 +251,7 @@ class TestMCPToolWrappers:
 
     @pytest.mark.asyncio
     async def test_search_code_examples_wrapper_validation_error(
-        self, mock_validated_search_service
+        self, mock_validated_search_service,
     ):
         """Test code examples wrapper handling validation service errors."""
         with patch.dict(

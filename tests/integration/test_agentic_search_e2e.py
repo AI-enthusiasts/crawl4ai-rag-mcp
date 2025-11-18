@@ -132,7 +132,7 @@ async def test_agentic_search_with_real_qdrant_data(qdrant_with_test_data):
 
             # Check if SearXNG can return search results
             search_response = await client.get(
-                f"{settings.searxng_url}/search?q=test&format=json&limit=1"
+                f"{settings.searxng_url}/search?q=test&format=json&limit=1",
             )
             if search_response.status_code == 200:
                 search_data = search_response.json()
@@ -145,7 +145,7 @@ async def test_agentic_search_with_real_qdrant_data(qdrant_with_test_data):
                     pytest.skip(
                         f"SearXNG cannot return search results. "
                         f"All {len(unresponsive)} engines unresponsive (likely DNS/firewall issue). "
-                        f"Test requires working search engines."
+                        f"Test requires working search engines.",
                     )
 
                 searxng_working = True
@@ -183,7 +183,7 @@ async def test_agentic_search_with_real_qdrant_data(qdrant_with_test_data):
         pytest.fail(
             f"Agentic search failed when all services are available. "
             f"Error: {error}\n"
-            f"This indicates a real bug, not a service availability issue."
+            f"This indicates a real bug, not a service availability issue.",
         )
 
     # Success case - verify complete E2E flow
@@ -225,7 +225,7 @@ async def test_agentic_search_with_real_qdrant_data(qdrant_with_test_data):
     print(
         f"✓ E2E test passed: completeness={result['completeness']:.2f}, "
         f"iterations={result['iterations']}, results={len(result['results'])}, "
-        f"actions={actions}"
+        f"actions={actions}",
     )
 
 

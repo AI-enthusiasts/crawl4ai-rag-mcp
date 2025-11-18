@@ -9,12 +9,10 @@ import json
 
 import httpx
 import pytest
-from fastmcp import Context
 
 from src.config import get_settings
 from src.core.context import initialize_global_context
 from src.services.search import _search_searxng, search_and_process
-
 
 # ========================================
 # Fixtures
@@ -89,7 +87,7 @@ async def test_search_searxng_obscure_query(searxng_available):
     """Test search with obscure query that may return no results."""
     # Use a very specific nonsense query unlikely to have results
     results = await _search_searxng(
-        "xyzabc123nonexistentquery456def", num_results=3
+        "xyzabc123nonexistentquery456def", num_results=3,
     )
 
     assert isinstance(results, list)
@@ -173,7 +171,7 @@ async def test_search_and_process_integration(searxng_available, simple_context)
 @pytest.mark.asyncio
 @pytest.mark.integration
 async def test_search_and_process_with_markdown(
-    searxng_available, simple_context
+    searxng_available, simple_context,
 ):
     """Test search_and_process with raw markdown return."""
     try:

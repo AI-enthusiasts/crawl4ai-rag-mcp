@@ -10,10 +10,8 @@ Tests cover:
 - Multi-language support (Python, JavaScript, TypeScript, Go)
 """
 
-import os
 import sys
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -30,7 +28,6 @@ from src.knowledge_graph.code_extractor import (
     UniversalCodeExample,
     extract_repository_code,
 )
-
 
 # ============================================================================
 # FIXTURES
@@ -778,7 +775,7 @@ class TestNeo4jCodeExtractor:
                         "args": [],
                     },
                 ],
-            }
+            },
         ]
 
         async def async_iter_classes():
@@ -926,9 +923,9 @@ class TestNeo4jCodeExtractor:
                         "params_detailed": [],
                         "return_type": "None",
                         "args": [],
-                    }
+                    },
                 ],
-            }
+            },
         ]
 
         async def async_iter_classes():
@@ -1128,7 +1125,7 @@ class TestExtractRepositoryCodeFunction:
                 "module_name": "test",
                 "method_count": 1,
                 "methods": [{"name": "method", "params_list": [], "params_detailed": [], "return_type": None, "args": []}],
-            }
+            },
         ]
 
         async def async_iter_classes():
@@ -1148,7 +1145,7 @@ class TestExtractRepositoryCodeFunction:
                 "args": [],
                 "file_path": "/src/test.py",
                 "module_name": "test",
-            }
+            },
         ]
 
         async def async_iter_functions():

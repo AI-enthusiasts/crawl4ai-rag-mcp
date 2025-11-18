@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Test OpenAI API key directly"""
 import os
-from dotenv import load_dotenv
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 # Load .env.test with override=True to override shell environment
 env_test_path = Path(__file__).parent.parent / ".env.test"
@@ -16,14 +17,14 @@ print(f"API Key length: {len(api_key)}")
 try:
     from openai import OpenAI
     client = OpenAI(api_key=api_key)
-    
+
     # Simple test
     response = client.embeddings.create(
         model="text-embedding-ada-002",
-        input="test"
+        input="test",
     )
     print("✅ API key is valid! Embedding created successfully.")
     print(f"Embedding dimension: {len(response.data[0].embedding)}")
-    
+
 except Exception as e:
     print(f"❌ API key test failed: {e}")

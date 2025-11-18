@@ -6,13 +6,10 @@ Covers success paths, error handling, and edge cases.
 """
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from qdrant_client.models import (
-    FieldCondition,
-    Filter,
-    MatchValue,
     PointIdsList,
     PointStruct,
 )
@@ -750,7 +747,7 @@ class TestGetSources:
             side_effect=[
                 ([point1], "offset1"),  # First call returns offset
                 ([point2], None),  # Second call returns None
-            ]
+            ],
         )
 
         result = await operations.get_sources(mock_client)

@@ -7,7 +7,7 @@ Tests the following tools:
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastmcp import Context
@@ -48,9 +48,9 @@ class TestScrapeUrlsTool:
                                 "url": "https://example.com",
                                 "success": True,
                                 "chunks_stored": 10,
-                            }
+                            },
                         ],
-                    }
+                    },
                 )
 
                 # Register and get function
@@ -95,7 +95,7 @@ class TestScrapeUrlsTool:
                             {"url": "https://example1.com", "success": True},
                             {"url": "https://example2.com", "success": True},
                         ],
-                    }
+                    },
                 )
 
                 # Register and get function
@@ -133,7 +133,7 @@ class TestScrapeUrlsTool:
             with patch("src.utils.url_helpers.clean_url") as mock_clean:
                 mock_clean.side_effect = lambda x: x
                 mock_process.return_value = json.dumps(
-                    {"success": True, "results": []}
+                    {"success": True, "results": []},
                 )
 
                 # Register and get function
@@ -227,7 +227,7 @@ class TestScrapeUrlsTool:
                 )
 
             assert "Input too large" in str(exc_info.value) or "Scraping failed" in str(
-                exc_info.value
+                exc_info.value,
             )
 
     @pytest.mark.asyncio
@@ -307,7 +307,7 @@ class TestSmartCrawlUrlTool:
     async def test_smart_crawl_url_success(self, mock_mcp, mock_context):
         """Test smart_crawl_url tool with successful crawl."""
         with patch(
-            "src.tools.crawl.smart_crawl_url_service_impl"
+            "src.tools.crawl.smart_crawl_url_service_impl",
         ) as mock_smart_crawl:
             mock_smart_crawl.return_value = json.dumps(
                 {
@@ -315,7 +315,7 @@ class TestSmartCrawlUrlTool:
                     "url": "https://example.com",
                     "pages_crawled": 10,
                     "chunks_stored": 50,
-                }
+                },
             )
 
             # Register and get function
@@ -351,14 +351,14 @@ class TestSmartCrawlUrlTool:
     async def test_smart_crawl_url_with_query_list(self, mock_mcp, mock_context):
         """Test smart_crawl_url tool with query parameter as list."""
         with patch(
-            "src.tools.crawl.smart_crawl_url_service_impl"
+            "src.tools.crawl.smart_crawl_url_service_impl",
         ) as mock_smart_crawl:
             mock_smart_crawl.return_value = json.dumps(
                 {
                     "success": True,
                     "url": "https://example.com",
                     "rag_results": [{"query": "test1"}, {"query": "test2"}],
-                }
+                },
             )
 
             # Register and get function
@@ -392,11 +392,11 @@ class TestSmartCrawlUrlTool:
 
     @pytest.mark.asyncio
     async def test_smart_crawl_url_with_query_json_string(
-        self, mock_mcp, mock_context
+        self, mock_mcp, mock_context,
     ):
         """Test smart_crawl_url tool with query parameter as JSON string."""
         with patch(
-            "src.tools.crawl.smart_crawl_url_service_impl"
+            "src.tools.crawl.smart_crawl_url_service_impl",
         ) as mock_smart_crawl:
             mock_smart_crawl.return_value = json.dumps({"success": True})
 
@@ -433,13 +433,13 @@ class TestSmartCrawlUrlTool:
     async def test_smart_crawl_url_with_raw_markdown(self, mock_mcp, mock_context):
         """Test smart_crawl_url tool with raw markdown return."""
         with patch(
-            "src.tools.crawl.smart_crawl_url_service_impl"
+            "src.tools.crawl.smart_crawl_url_service_impl",
         ) as mock_smart_crawl:
             mock_smart_crawl.return_value = json.dumps(
                 {
                     "success": True,
                     "raw_markdown": "# Page Title\n\nContent here",
-                }
+                },
             )
 
             # Register and get function
@@ -474,7 +474,7 @@ class TestSmartCrawlUrlTool:
     async def test_smart_crawl_url_all_parameters(self, mock_mcp, mock_context):
         """Test smart_crawl_url tool with all optional parameters."""
         with patch(
-            "src.tools.crawl.smart_crawl_url_service_impl"
+            "src.tools.crawl.smart_crawl_url_service_impl",
         ) as mock_smart_crawl:
             mock_smart_crawl.return_value = json.dumps({"success": True})
 
@@ -518,7 +518,7 @@ class TestSmartCrawlUrlTool:
     async def test_smart_crawl_url_error_handling(self, mock_mcp, mock_context):
         """Test smart_crawl_url tool error handling."""
         with patch(
-            "src.tools.crawl.smart_crawl_url_service_impl"
+            "src.tools.crawl.smart_crawl_url_service_impl",
         ) as mock_smart_crawl:
             mock_smart_crawl.side_effect = Exception("Crawl failed")
 
@@ -552,7 +552,7 @@ class TestSmartCrawlUrlTool:
     async def test_smart_crawl_url_sitemap_detection(self, mock_mcp, mock_context):
         """Test smart_crawl_url tool with sitemap URL."""
         with patch(
-            "src.tools.crawl.smart_crawl_url_service_impl"
+            "src.tools.crawl.smart_crawl_url_service_impl",
         ) as mock_smart_crawl:
             mock_smart_crawl.return_value = json.dumps(
                 {
@@ -560,7 +560,7 @@ class TestSmartCrawlUrlTool:
                     "url_type": "sitemap",
                     "urls_extracted": 50,
                     "pages_crawled": 50,
-                }
+                },
             )
 
             # Register and get function

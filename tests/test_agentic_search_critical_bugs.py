@@ -57,9 +57,9 @@ class TestAgenticSearchServiceInitialization:
         assert service.ranker is ranker
         assert service.crawler is crawler
         # Config parameters are stored as individual attributes
-        assert hasattr(service, 'model_name')
-        assert hasattr(service, 'completeness_threshold')
-        assert hasattr(service, 'max_iterations')
+        assert hasattr(service, "model_name")
+        assert hasattr(service, "completeness_threshold")
+        assert hasattr(service, "max_iterations")
 
     def test_singleton_factory_creates_service(self):
         """Verify get_agentic_search_service() singleton works."""
@@ -77,13 +77,13 @@ class TestAgenticSearchServiceInitialization:
 
         # Verify all components initialized
         assert service is not None
-        assert hasattr(service, 'evaluator') and service.evaluator is not None
-        assert hasattr(service, 'ranker') and service.ranker is not None
-        assert hasattr(service, 'crawler') and service.crawler is not None
+        assert hasattr(service, "evaluator") and service.evaluator is not None
+        assert hasattr(service, "ranker") and service.ranker is not None
+        assert hasattr(service, "crawler") and service.crawler is not None
         # Config parameters are stored as individual attributes
-        assert hasattr(service, 'model_name') and service.model_name is not None
-        assert hasattr(service, 'completeness_threshold')
-        assert hasattr(service, 'max_iterations')
+        assert hasattr(service, "model_name") and service.model_name is not None
+        assert hasattr(service, "completeness_threshold")
+        assert hasattr(service, "max_iterations")
 
         # Verify singleton pattern - same instance returned
         service2 = get_agentic_search_service()

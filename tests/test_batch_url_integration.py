@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Integration test for batch URL processing fix."""
 
-import os
 import sys
 
 # Add the src directory to the path

@@ -147,7 +147,7 @@ def main():
     if original_fixed and comprehensive_passed:
         print("\n🎉 SUCCESS: URL validation is working correctly!")
         print(
-            "The crawl4ai error 'URL must start with http://, https://, file://, or raw:' is prevented."
+            "The crawl4ai error 'URL must start with http://, https://, file://, or raw:' is prevented.",
         )
     else:
         print("\n⚠️  ATTENTION: Some tests failed. Review the results above.")

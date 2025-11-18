@@ -4,7 +4,6 @@ Test script to debug the smart_crawl_url tool error.
 """
 
 import asyncio
-import os
 import sys
 
 # Add src to path

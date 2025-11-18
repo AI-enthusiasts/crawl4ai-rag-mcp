@@ -75,7 +75,7 @@ async def list_mcp_tools():
                 for tool in tools:
                     print(f"\n📋 Tool: {tool['name']}")
                     print(
-                        f"   Description: {tool.get('description', 'No description')}"
+                        f"   Description: {tool.get('description', 'No description')}",
                     )
 
                     if "inputSchema" in tool:
@@ -89,11 +89,11 @@ async def list_mcp_tools():
                                 prop_type = prop_info.get("type", "unknown")
                                 required = prop_name in schema.get("required", [])
                                 description = prop_info.get(
-                                    "description", "No description"
+                                    "description", "No description",
                                 )
 
                                 print(
-                                    f"       - {prop_name} ({prop_type}): {description}"
+                                    f"       - {prop_name} ({prop_type}): {description}",
                                 )
                                 if required:
                                     print("         [REQUIRED]")
@@ -101,13 +101,13 @@ async def list_mcp_tools():
                                 # Show enum values if present
                                 if "enum" in prop_info:
                                     print(
-                                        f"         Allowed values: {prop_info['enum']}"
+                                        f"         Allowed values: {prop_info['enum']}",
                                     )
 
                                 # Show array item types if present
                                 if prop_type == "array" and "items" in prop_info:
                                     items_type = prop_info["items"].get(
-                                        "type", "unknown"
+                                        "type", "unknown",
                                     )
                                     print(f"         Array items: {items_type}")
 

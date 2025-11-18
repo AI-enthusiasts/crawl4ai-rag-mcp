@@ -105,7 +105,7 @@ async def test_mcp_scrape_urls():
                 result_data = json.loads(result)
                 if result_data.get("success"):
                     print(
-                        f"✓ Success - Crawled {len(result_data.get('results', []))} URLs"
+                        f"✓ Success - Crawled {len(result_data.get('results', []))} URLs",
                     )
                 else:
                     print(f"✗ Failed - Error: {result_data.get('error')}")

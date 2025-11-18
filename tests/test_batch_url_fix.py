@@ -2,7 +2,6 @@
 """Test the batch URL processing fix."""
 
 import json
-import os
 import sys
 
 # Add the src directory to the path so we can import modules
@@ -77,7 +76,7 @@ def test_url_parsing_logic():
 
         print(f"\nTest {i}: {test_case['description']}")
         print(
-            f"Input: {test_case['input']} (type: {type(test_case['input']).__name__})"
+            f"Input: {test_case['input']} (type: {type(test_case['input']).__name__})",
         )
         print(f"Expected: {test_case['expected']}")
         print(f"Got: {result}")
@@ -85,7 +84,7 @@ def test_url_parsing_logic():
 
     print("\n" + "=" * 60)
     print(
-        f"Overall result: {'✓ ALL TESTS PASSED' if all_passed else '✗ SOME TESTS FAILED'}"
+        f"Overall result: {'✓ ALL TESTS PASSED' if all_passed else '✗ SOME TESTS FAILED'}",
     )
 
     return all_passed

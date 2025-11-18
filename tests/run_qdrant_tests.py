@@ -5,7 +5,6 @@ Runs comprehensive Qdrant tests with environment detection and proper setup.
 """
 
 import argparse
-import os
 import subprocess
 import sys
 import time

@@ -13,12 +13,11 @@ Tests cover:
 - Edge cases and invalid syntax
 """
 
+from unittest.mock import patch
+
 import pytest
-from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock
 
 from src.knowledge_graph.analyzers.go import GoAnalyzer
-from src.core.exceptions import ParsingError, AnalysisError
 
 
 class TestGoAnalyzer:
@@ -77,7 +76,7 @@ type User struct {
 """
         with patch.object(self.analyzer, "read_file_content", return_value=go_content):
             result = await self.analyzer.analyze_file(
-                "/test/user.go", self.repo_path
+                "/test/user.go", self.repo_path,
             )
 
         assert result is not None
@@ -122,7 +121,7 @@ func (c *Calculator) Reset() {
 """
         with patch.object(self.analyzer, "read_file_content", return_value=go_content):
             result = await self.analyzer.analyze_file(
-                "/test/calculator.go", self.repo_path
+                "/test/calculator.go", self.repo_path,
             )
 
         assert result is not None
@@ -162,7 +161,7 @@ func processData(data []string) []string {
 """
         with patch.object(self.analyzer, "read_file_content", return_value=go_content):
             result = await self.analyzer.analyze_file(
-                "/test/utils.go", self.repo_path
+                "/test/utils.go", self.repo_path,
             )
 
         assert result is not None
@@ -207,7 +206,7 @@ type Closer interface {
 """
         with patch.object(self.analyzer, "read_file_content", return_value=go_content):
             result = await self.analyzer.analyze_file(
-                "/test/interfaces.go", self.repo_path
+                "/test/interfaces.go", self.repo_path,
             )
 
         assert result is not None
@@ -246,7 +245,7 @@ import "strings"
 """
         with patch.object(self.analyzer, "read_file_content", return_value=go_content):
             result = await self.analyzer.analyze_file(
-                "/test/main.go", self.repo_path
+                "/test/main.go", self.repo_path,
             )
 
         assert result is not None
@@ -282,7 +281,7 @@ const TimeoutSeconds = 30
 """
         with patch.object(self.analyzer, "read_file_content", return_value=go_content):
             result = await self.analyzer.analyze_file(
-                "/test/config.go", self.repo_path
+                "/test/config.go", self.repo_path,
             )
 
         assert result is not None
@@ -316,7 +315,7 @@ var DefaultConfig Config
 """
         with patch.object(self.analyzer, "read_file_content", return_value=go_content):
             result = await self.analyzer.analyze_file(
-                "/test/vars.go", self.repo_path
+                "/test/vars.go", self.repo_path,
             )
 
         assert result is not None
@@ -343,7 +342,7 @@ type Handler func(int) error
 """
         with patch.object(self.analyzer, "read_file_content", return_value=go_content):
             result = await self.analyzer.analyze_file(
-                "/test/types.go", self.repo_path
+                "/test/types.go", self.repo_path,
             )
 
         assert result is not None
@@ -384,7 +383,7 @@ type userId int
 """
         with patch.object(self.analyzer, "read_file_content", return_value=go_content):
             result = await self.analyzer.analyze_file(
-                "/test/api.go", self.repo_path
+                "/test/api.go", self.repo_path,
             )
 
         assert result is not None
@@ -418,7 +417,7 @@ import (
 """
         with patch.object(self.analyzer, "read_file_content", return_value=go_content):
             result = await self.analyzer.analyze_file(
-                "/test/main.go", self.repo_path
+                "/test/main.go", self.repo_path,
             )
 
         assert result is not None
@@ -449,7 +448,7 @@ type User struct {
 """
         with patch.object(self.analyzer, "read_file_content", return_value=go_content):
             result = await self.analyzer.analyze_file(
-                "/test/models.go", self.repo_path
+                "/test/models.go", self.repo_path,
             )
 
         assert result is not None
@@ -479,7 +478,7 @@ type User struct {
 """
         with patch.object(self.analyzer, "read_file_content", return_value=go_content):
             result = await self.analyzer.analyze_file(
-                "/test/nested.go", self.repo_path
+                "/test/nested.go", self.repo_path,
             )
 
         assert result is not None
@@ -517,7 +516,7 @@ func (s *Stack[T]) Pop() T {
 """
         with patch.object(self.analyzer, "read_file_content", return_value=go_content):
             result = await self.analyzer.analyze_file(
-                "/test/generics.go", self.repo_path
+                "/test/generics.go", self.repo_path,
             )
 
         assert result is not None
@@ -530,7 +529,7 @@ func (s *Stack[T]) Pop() T {
         """Test handling of file read failures."""
         with patch.object(self.analyzer, "read_file_content", return_value=None):
             result = await self.analyzer.analyze_file(
-                "/test/nonexistent.go", self.repo_path
+                "/test/nonexistent.go", self.repo_path,
             )
 
         # Should return empty result
@@ -551,7 +550,7 @@ func incomplete(
 """
         with patch.object(self.analyzer, "read_file_content", return_value=invalid_go):
             result = await self.analyzer.analyze_file(
-                "/test/broken.go", self.repo_path
+                "/test/broken.go", self.repo_path,
             )
 
         # Should not raise exception, returns whatever it can parse
@@ -568,7 +567,7 @@ func Hello() string {
 }
 """
         result = await self.analyzer.analyze_file(
-            "/test/hello.go", self.repo_path, content=go_content
+            "/test/hello.go", self.repo_path, content=go_content,
         )
 
         assert result is not None
@@ -639,7 +638,7 @@ import "fmt"
 
         with patch.object(self.analyzer, "read_file_content", return_value=go_content):
             result = await self.analyzer.analyze_file(
-                "/test/empty.go", self.repo_path
+                "/test/empty.go", self.repo_path,
             )
 
         assert result is not None
@@ -658,7 +657,7 @@ import "fmt"
 """
         with patch.object(self.analyzer, "read_file_content", return_value=go_content):
             result = await self.analyzer.analyze_file(
-                "/test/comments.go", self.repo_path
+                "/test/comments.go", self.repo_path,
             )
 
         assert result is not None
@@ -727,7 +726,7 @@ type HandlerFunc func(http.ResponseWriter, *http.Request)
 """
         with patch.object(self.analyzer, "read_file_content", return_value=go_content):
             result = await self.analyzer.analyze_file(
-                "/test/server.go", self.repo_path
+                "/test/server.go", self.repo_path,
             )
 
         assert result is not None
@@ -769,7 +768,7 @@ func (c Counter) GetCount() int {
 """
         with patch.object(self.analyzer, "read_file_content", return_value=go_content):
             result = await self.analyzer.analyze_file(
-                "/test/counter.go", self.repo_path
+                "/test/counter.go", self.repo_path,
             )
 
         assert result is not None
@@ -810,7 +809,7 @@ var privateVar = "private"
 """
         with patch.object(self.analyzer, "read_file_content", return_value=go_content):
             result = await self.analyzer.analyze_file(
-                "/test/internal.go", self.repo_path
+                "/test/internal.go", self.repo_path,
             )
 
         assert result is not None

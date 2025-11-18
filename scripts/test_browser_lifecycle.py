@@ -15,7 +15,6 @@ Measures:
 
 import asyncio
 import gc
-import os
 import subprocess
 import time
 from typing import Any

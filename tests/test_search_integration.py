@@ -96,7 +96,7 @@ def test_qdrant_collections():
         found_collections = [col for col in expected_collections if col in collections]
 
         print(
-            f"   ✅ Found {len(found_collections)}/{len(expected_collections)} expected collections"
+            f"   ✅ Found {len(found_collections)}/{len(expected_collections)} expected collections",
         )
         for col in found_collections:
             print(f"   - {col}: ✅")
@@ -191,7 +191,7 @@ def test_function_interfaces():
                     found_params.append(param)
 
             print(
-                f"   ✅ Found {len(found_params)}/{len(expected_params)} expected parameters"
+                f"   ✅ Found {len(found_params)}/{len(expected_params)} expected parameters",
             )
 
             return len(found_params) >= 4

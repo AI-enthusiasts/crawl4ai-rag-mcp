@@ -14,13 +14,13 @@ from dotenv import load_dotenv
 
 import docker
 from src.database.factory import create_database_client
-from src.utils.embeddings.documents import (
-    add_documents_to_database,
-    search_documents,
-)
 from src.utils.embeddings.code_examples import (
     add_code_examples_to_database,
     search_code_examples,
+)
+from src.utils.embeddings.documents import (
+    add_documents_to_database,
+    search_documents,
 )
 
 # Load environment variables

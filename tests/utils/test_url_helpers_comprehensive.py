@@ -20,20 +20,20 @@ Testing Approach:
 - Security testing for sanitization
 """
 
-import pytest
 from unittest.mock import Mock, patch
-from xml.etree import ElementTree as ET
+
+import pytest
 
 from src.core.exceptions import NetworkError
 from src.utils.url_helpers import (
-    is_sitemap,
-    is_txt,
-    parse_sitemap_content,
-    parse_sitemap,
-    normalize_url,
-    sanitize_url_for_logging,
     clean_url,
     extract_domain_from_url,
+    is_sitemap,
+    is_txt,
+    normalize_url,
+    parse_sitemap,
+    parse_sitemap_content,
+    sanitize_url_for_logging,
 )
 
 

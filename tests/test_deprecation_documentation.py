@@ -195,7 +195,7 @@ def main():
 
     # Generate report
     is_complete = generate_report(
-        found_warnings, undocumented_warnings, missing_from_tests
+        found_warnings, undocumented_warnings, missing_from_tests,
     )
 
     return is_complete

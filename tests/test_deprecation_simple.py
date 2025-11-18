@@ -50,10 +50,10 @@ def test_simple_deprecation_capture():
 
         print("\n📊 Results:")
         print(
-            f"✅ Pydantic deprecation warning: {'Found' if found_pydantic else 'Not found'}"
+            f"✅ Pydantic deprecation warning: {'Found' if found_pydantic else 'Not found'}",
         )
         print(
-            f"✅ fake_http_header warning: {'Found' if found_fake_http else 'Not found'}"
+            f"✅ fake_http_header warning: {'Found' if found_fake_http else 'Not found'}",
         )
 
         # Show relevant output lines
@@ -114,7 +114,7 @@ def main():
         print("- Pydantic V2 (class-based config)")
         print("- fake_http_header (read_text method)")
         print(
-            "\nNo action required - warnings are tracked in docs/DEPRECATION_WARNINGS.md"
+            "\nNo action required - warnings are tracked in docs/DEPRECATION_WARNINGS.md",
         )
         return True
     print("❌ FAIL: Issue with deprecation documentation")

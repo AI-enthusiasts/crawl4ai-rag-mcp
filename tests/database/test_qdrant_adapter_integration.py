@@ -92,7 +92,7 @@ class TestQdrantAdapterIntegrationEdgeCases:
                     id=str(uuid.uuid4()),
                     vector=[0.1] * VECTOR_SIZE,
                     payload={"content": "test content", "url": "https://test.com"},
-                )
+                ),
             ],
         )
 
@@ -123,7 +123,7 @@ class TestQdrantAdapterIntegrationEdgeCases:
                     id=str(uuid.uuid4()),
                     vector=[0.2] * VECTOR_SIZE,
                     payload={"content": "test", "url": "https://test.com"},
-                )
+                ),
             ],
         )
 
@@ -155,7 +155,7 @@ class TestQdrantAdapterIntegrationEdgeCases:
                         "content": f"test content {i}",
                         "url": f"https://test{i}.com",
                     },
-                )
+                ),
             )
 
         await test_adapter.client.upsert(
@@ -262,7 +262,7 @@ class TestQdrantAdapterIntegrationEdgeCases:
                     id=str(uuid.uuid4()),
                     vector=[0.6] * VECTOR_SIZE,
                     payload={"content": "test", "url": "https://test.com"},
-                )
+                ),
             ],
         )
 

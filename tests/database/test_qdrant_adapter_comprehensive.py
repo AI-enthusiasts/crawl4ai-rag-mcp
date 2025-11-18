@@ -5,17 +5,16 @@ Tests all methods, error handling, edge cases, and delegation patterns.
 Mocks Qdrant client and embedded operations to achieve >80% coverage.
 """
 
-import pytest
 import sys
-from unittest.mock import AsyncMock, MagicMock, Mock, patch, Mock as MockClass
-from typing import Any
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 
 # Mock problematic imports before they're loaded
-sys.modules['src.core.context'] = MagicMock()
+sys.modules["src.core.context"] = MagicMock()
 
+from src.core.exceptions import ConnectionError, DatabaseError, VectorStoreError
 from src.database.qdrant_adapter import QdrantAdapter
-from src.core.exceptions import ConnectionError, VectorStoreError, DatabaseError
 
 
 class TestQdrantAdapterInitialization:
@@ -39,7 +38,7 @@ class TestQdrantAdapterInitialization:
             # Client should be created
             mock_client_class.assert_called_once_with(
                 url="http://localhost:6333",
-                api_key=None
+                api_key=None,
             )
 
     def test_init_with_custom_params(self):
@@ -47,7 +46,7 @@ class TestQdrantAdapterInitialization:
         with patch("src.database.qdrant_adapter.AsyncQdrantClient") as mock_client_class:
             adapter = QdrantAdapter(
                 url="http://custom:9999",
-                api_key="test-key-123"
+                api_key="test-key-123",
             )
 
             assert adapter.url == "http://custom:9999"
@@ -55,7 +54,7 @@ class TestQdrantAdapterInitialization:
 
             mock_client_class.assert_called_once_with(
                 url="http://custom:9999",
-                api_key="test-key-123"
+                api_key="test-key-123",
             )
 
     def test_init_with_env_vars(self):
@@ -63,7 +62,7 @@ class TestQdrantAdapterInitialization:
         with patch("src.database.qdrant_adapter.AsyncQdrantClient"), \
              patch.dict("os.environ", {
                  "QDRANT_URL": "http://env-url:6333",
-                 "QDRANT_API_KEY": "env-key"
+                 "QDRANT_API_KEY": "env-key",
              }):
             adapter = QdrantAdapter()
 
@@ -179,7 +178,7 @@ class TestQdrantAdapterDocumentOperations:
                 contents=["Test content"],
                 metadatas=[{"lang": "en"}],
                 embeddings=[[0.1] * 1536],
-                source_ids=["test.com"]
+                source_ids=["test.com"],
             )
 
             mock_add.assert_called_once_with(
@@ -189,7 +188,7 @@ class TestQdrantAdapterDocumentOperations:
                 ["Test content"],
                 [{"lang": "en"}],
                 [[0.1] * 1536],
-                ["test.com"]
+                ["test.com"],
             )
 
     @pytest.mark.asyncio
@@ -203,7 +202,7 @@ class TestQdrantAdapterDocumentOperations:
             assert result is True
             mock_exists.assert_called_once_with(
                 mock_adapter.client,
-                "https://test.com"
+                "https://test.com",
             )
 
     @pytest.mark.asyncio
@@ -211,7 +210,7 @@ class TestQdrantAdapterDocumentOperations:
         """Test getting documents by URL"""
         with patch("src.database.qdrant_adapter.qdrant.get_documents_by_url") as mock_get:
             mock_get.return_value = [
-                {"url": "https://test.com", "content": "Test"}
+                {"url": "https://test.com", "content": "Test"},
             ]
 
             result = await mock_adapter.get_documents_by_url("https://test.com")
@@ -220,7 +219,7 @@ class TestQdrantAdapterDocumentOperations:
             assert result[0]["url"] == "https://test.com"
             mock_get.assert_called_once_with(
                 mock_adapter.client,
-                "https://test.com"
+                "https://test.com",
             )
 
     @pytest.mark.asyncio
@@ -233,7 +232,7 @@ class TestQdrantAdapterDocumentOperations:
 
             mock_delete.assert_called_once_with(
                 mock_adapter.client,
-                ["https://test1.com", "https://test2.com"]
+                ["https://test1.com", "https://test2.com"],
             )
 
 
@@ -265,7 +264,7 @@ class TestQdrantAdapterCodeExamples:
                 summaries=["Hello function"],
                 metadatas=[{"language": "python"}],
                 embeddings=[[0.3] * 1536],
-                source_ids=["github.com"]
+                source_ids=["github.com"],
             )
 
             mock_add.assert_called_once()
@@ -275,13 +274,13 @@ class TestQdrantAdapterCodeExamples:
         """Test searching code examples with query string"""
         with patch("src.database.qdrant_adapter.qdrant.code_examples.search_code_examples") as mock_search:
             mock_search.return_value = [
-                {"code": "def test(): pass", "summary": "Test function"}
+                {"code": "def test(): pass", "summary": "Test function"},
             ]
 
             result = await mock_adapter.search_code_examples(
                 query="test function",
                 match_count=5,
-                filter_metadata={"language": "python"}
+                filter_metadata={"language": "python"},
             )
 
             assert len(result) == 1
@@ -291,7 +290,7 @@ class TestQdrantAdapterCodeExamples:
                 5,
                 {"language": "python"},
                 None,
-                None
+                None,
             )
 
     @pytest.mark.asyncio
@@ -304,7 +303,7 @@ class TestQdrantAdapterCodeExamples:
             await mock_adapter.search_code_examples(
                 query=None,
                 query_embedding=embedding,
-                match_count=10
+                match_count=10,
             )
 
             mock_search.assert_called_once_with(
@@ -313,7 +312,7 @@ class TestQdrantAdapterCodeExamples:
                 10,
                 None,
                 None,
-                embedding
+                embedding,
             )
 
     @pytest.mark.asyncio
@@ -326,7 +325,7 @@ class TestQdrantAdapterCodeExamples:
 
             mock_delete.assert_called_once_with(
                 mock_adapter.client,
-                ["https://github.com/test/repo"]
+                ["https://github.com/test/repo"],
             )
 
     @pytest.mark.asyncio
@@ -338,7 +337,7 @@ class TestQdrantAdapterCodeExamples:
             result = await mock_adapter.search_code_examples_by_keyword(
                 keyword="async",
                 match_count=10,
-                source_filter="github.com"
+                source_filter="github.com",
             )
 
             assert len(result) == 1
@@ -346,7 +345,7 @@ class TestQdrantAdapterCodeExamples:
                 mock_adapter.client,
                 "async",
                 10,
-                "github.com"
+                "github.com",
             )
 
     @pytest.mark.asyncio
@@ -354,13 +353,13 @@ class TestQdrantAdapterCodeExamples:
         """Test getting repository code examples"""
         with patch("src.database.qdrant_adapter.qdrant.code_examples.get_repository_code_examples") as mock_get:
             mock_get.return_value = [
-                {"code": "def test(): pass", "repo": "test/repo"}
+                {"code": "def test(): pass", "repo": "test/repo"},
             ]
 
             result = await mock_adapter.get_repository_code_examples(
                 repo_name="test/repo",
                 code_type="function",
-                match_count=50
+                match_count=50,
             )
 
             assert len(result) == 1
@@ -368,7 +367,7 @@ class TestQdrantAdapterCodeExamples:
                 mock_adapter.client,
                 "test/repo",
                 "function",
-                50
+                50,
             )
 
     @pytest.mark.asyncio
@@ -381,7 +380,7 @@ class TestQdrantAdapterCodeExamples:
 
             mock_delete.assert_called_once_with(
                 mock_adapter.client,
-                "test/repo"
+                "test/repo",
             )
 
     @pytest.mark.asyncio
@@ -389,14 +388,14 @@ class TestQdrantAdapterCodeExamples:
         """Test searching code by method/class signature"""
         with patch("src.database.qdrant_adapter.qdrant.code_examples.search_code_by_signature") as mock_search:
             mock_search.return_value = [
-                {"code": "def fetch_data():", "method": "fetch_data"}
+                {"code": "def fetch_data():", "method": "fetch_data"},
             ]
 
             result = await mock_adapter.search_code_by_signature(
                 method_name="fetch_data",
                 class_name="DataLoader",
                 repo_filter="test/repo",
-                match_count=5
+                match_count=5,
             )
 
             assert len(result) == 1
@@ -405,7 +404,7 @@ class TestQdrantAdapterCodeExamples:
                 "fetch_data",
                 "DataLoader",
                 "test/repo",
-                5
+                5,
             )
 
 
@@ -432,7 +431,7 @@ class TestQdrantAdapterSourceOperations:
                 title="Test Site",
                 description="A test website",
                 metadata={"type": "docs"},
-                embedding=[0.5] * 1536
+                embedding=[0.5] * 1536,
             )
 
             mock_add.assert_called_once_with(
@@ -442,7 +441,7 @@ class TestQdrantAdapterSourceOperations:
                 "Test Site",
                 "A test website",
                 {"type": "docs"},
-                [0.5] * 1536
+                [0.5] * 1536,
             )
 
     @pytest.mark.asyncio
@@ -450,19 +449,19 @@ class TestQdrantAdapterSourceOperations:
         """Test searching sources"""
         with patch("src.database.qdrant_adapter.qdrant.search_sources") as mock_search:
             mock_search.return_value = [
-                {"source_id": "test.com", "title": "Test Site"}
+                {"source_id": "test.com", "title": "Test Site"},
             ]
 
             result = await mock_adapter.search_sources(
                 query_embedding=[0.5] * 1536,
-                match_count=5
+                match_count=5,
             )
 
             assert len(result) == 1
             mock_search.assert_called_once_with(
                 mock_adapter.client,
                 [0.5] * 1536,
-                5
+                5,
             )
 
     @pytest.mark.asyncio
@@ -473,13 +472,13 @@ class TestQdrantAdapterSourceOperations:
 
             await mock_adapter.update_source(
                 source_id="test.com",
-                updates={"title": "Updated Title", "verified": True}
+                updates={"title": "Updated Title", "verified": True},
             )
 
             mock_update.assert_called_once_with(
                 mock_adapter.client,
                 "test.com",
-                {"title": "Updated Title", "verified": True}
+                {"title": "Updated Title", "verified": True},
             )
 
     @pytest.mark.asyncio
@@ -488,7 +487,7 @@ class TestQdrantAdapterSourceOperations:
         with patch("src.database.qdrant_adapter.qdrant.get_sources") as mock_get:
             mock_get.return_value = [
                 {"source_id": "test1.com", "title": "Test 1"},
-                {"source_id": "test2.com", "title": "Test 2"}
+                {"source_id": "test2.com", "title": "Test 2"},
             ]
 
             result = await mock_adapter.get_sources()
@@ -505,14 +504,14 @@ class TestQdrantAdapterSourceOperations:
             await mock_adapter.update_source_info(
                 source_id="test.com",
                 summary="Test website summary",
-                word_count=5000
+                word_count=5000,
             )
 
             mock_update.assert_called_once_with(
                 mock_adapter.client,
                 "test.com",
                 "Test website summary",
-                5000
+                5000,
             )
 
 
@@ -539,7 +538,7 @@ class TestQdrantAdapterErrorHandling:
                     chunk_numbers=[0],
                     contents=["Test"],
                     metadatas=[{}],
-                    embeddings=[[0.1] * 1536]
+                    embeddings=[[0.1] * 1536],
                 )
 
             assert "Storage failure" in str(exc_info.value)
@@ -568,7 +567,7 @@ class TestQdrantAdapterErrorHandling:
                     code_examples=["def test(): pass"],
                     summaries=["Test"],
                     metadatas=[{}],
-                    embeddings=[[0.1] * 1536]
+                    embeddings=[[0.1] * 1536],
                 )
 
             assert "Code storage failed" in str(exc_info.value)
@@ -586,7 +585,7 @@ class TestQdrantAdapterErrorHandling:
                     title="Test",
                     description="Test site",
                     metadata={},
-                    embedding=[0.1] * 1536
+                    embedding=[0.1] * 1536,
                 )
 
             assert "Source creation failed" in str(exc_info.value)
@@ -628,7 +627,7 @@ class TestQdrantAdapterEdgeCases:
                 chunk_numbers=[0],
                 contents=["Test"],
                 metadatas=[{}],
-                embeddings=[large_embedding]
+                embeddings=[large_embedding],
             )
 
             # Should still delegate properly
@@ -649,7 +648,7 @@ class TestQdrantAdapterEdgeCases:
                 chunk_numbers=[0],
                 contents=["Test"],
                 metadatas=[{}],
-                embeddings=[[0.1] * 1536]
+                embeddings=[[0.1] * 1536],
             )
 
             # Should handle special characters properly
@@ -669,7 +668,7 @@ class TestQdrantAdapterEdgeCases:
                 chunk_numbers=[0],
                 contents=[unicode_content],
                 metadatas=[{}],
-                embeddings=[[0.1] * 1536]
+                embeddings=[[0.1] * 1536],
             )
 
             # Should preserve unicode
@@ -708,7 +707,7 @@ class TestQdrantAdapterBatchProcessing:
                 chunk_numbers=list(range(num_docs)),
                 contents=[f"Content {i}" for i in range(num_docs)],
                 metadatas=[{"idx": i} for i in range(num_docs)],
-                embeddings=[[i / 1000.0] * 1536 for i in range(num_docs)]
+                embeddings=[[i / 1000.0] * 1536 for i in range(num_docs)],
             )
 
             # Delegation module handles batching internally
@@ -746,7 +745,7 @@ class TestQdrantAdapterClientConfiguration:
             urls = [
                 "http://localhost:6333",
                 "https://qdrant.example.com:6333",
-                "http://192.168.1.100:9999"
+                "http://192.168.1.100:9999",
             ]
 
             for url in urls:

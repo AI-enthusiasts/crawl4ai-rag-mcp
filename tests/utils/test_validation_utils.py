@@ -22,21 +22,20 @@ Testing Approach:
 - Parametrized tests for various scenarios
 """
 
-import os
 import socket
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 
 import pytest
 
 from src.utils.validation import (
-    is_safe_hostname,
-    validate_neo4j_connection,
-    get_accessible_script_path,
-    validate_script_path,
     detect_and_fix_truncated_url,
+    get_accessible_script_path,
+    is_safe_hostname,
     validate_crawl_url,
-    validate_urls_for_crawling,
     validate_github_url,
+    validate_neo4j_connection,
+    validate_script_path,
+    validate_urls_for_crawling,
 )
 
 

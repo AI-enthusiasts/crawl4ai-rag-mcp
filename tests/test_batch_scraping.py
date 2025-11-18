@@ -4,7 +4,6 @@ Test script to debug batch URL scraping issues.
 """
 
 import asyncio
-import os
 import sys
 
 # Add the src directory to the path

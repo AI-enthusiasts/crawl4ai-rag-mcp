@@ -92,7 +92,7 @@ def main():
                     "input": repr(input_data),
                     "output": f"{len(result)} URLs parsed",
                     "urls": result,
-                }
+                },
             )
             status = "✅ WORKS"
         else:
@@ -101,7 +101,7 @@ def main():
                     "name": name,
                     "input": repr(input_data),
                     "error": result,
-                }
+                },
             )
             status = "❌ FAILS"
 
@@ -156,7 +156,7 @@ def main():
     print("  1. Single URL string: 'https://example.com'")
     print("  2. List of URLs: ['https://example.com', 'https://httpbin.org/html']")
     print(
-        '  3. JSON array string: \'["https://example.com", "https://httpbin.org/html"]\''
+        '  3. JSON array string: \'["https://example.com", "https://httpbin.org/html"]\'',
     )
     print("  4. JSON with empty strings (filters them out)")
     print("  5. Single URL in JSON array")

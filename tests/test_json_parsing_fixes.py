@@ -2,7 +2,6 @@
 """Test the JSON string parsing fixes for both scrape_urls and smart_crawl_url tools."""
 
 import json
-import os
 import sys
 
 # Add the src directory to the path so we can import modules
@@ -152,7 +151,7 @@ def main():
     print("=" * 80)
     overall_result = url_tests_passed and query_tests_passed
     print(
-        f"Overall result: {'✓ ALL TESTS PASSED' if overall_result else '✗ SOME TESTS FAILED'}"
+        f"Overall result: {'✓ ALL TESTS PASSED' if overall_result else '✗ SOME TESTS FAILED'}",
     )
 
     return overall_result

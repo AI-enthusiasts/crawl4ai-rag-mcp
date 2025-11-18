@@ -53,9 +53,10 @@ async def test_neo4j_qdrant_bridge():
 
     try:
         # Import components
-        from src.database.factory import create_database_client
-        from knowledge_graph.code_extractor import extract_repository_code
         from knowledge_graphs.parse_repo_into_neo4j import RepositoryExtractor
+
+        from knowledge_graph.code_extractor import extract_repository_code
+        from src.database.factory import create_database_client
         from utils import create_embeddings_batch
 
         print("✅ Successfully imported all required modules")
@@ -76,7 +77,7 @@ async def test_neo4j_qdrant_bridge():
         print("\n3. 📚 Checking for repositories in Neo4j...")
         async with repo_extractor.driver.session() as session:
             result = await session.run(
-                "MATCH (r:Repository) RETURN r.name as name LIMIT 5"
+                "MATCH (r:Repository) RETURN r.name as name LIMIT 5",
             )
             repos = []
             async for record in result:
@@ -84,10 +85,10 @@ async def test_neo4j_qdrant_bridge():
 
         if not repos:
             print(
-                "⚠️ No repositories found in Neo4j. You need to parse a repository first."
+                "⚠️ No repositories found in Neo4j. You need to parse a repository first.",
             )
             print(
-                "   Example: Parse a repository using the MCP tool or the parse_repo_into_neo4j.py script"
+                "   Example: Parse a repository using the MCP tool or the parse_repo_into_neo4j.py script",
             )
             return False
 
@@ -112,7 +113,7 @@ async def test_neo4j_qdrant_bridge():
 
         if not code_examples:
             print(
-                "⚠️ No code examples extracted. Repository may be empty or have no public classes/methods."
+                "⚠️ No code examples extracted. Repository may be empty or have no public classes/methods.",
             )
             return False
 
@@ -120,14 +121,14 @@ async def test_neo4j_qdrant_bridge():
         test_examples = code_examples[:5]
 
         print(
-            f"\n5. 🧠 Generating embeddings for {len(test_examples)} code examples..."
+            f"\n5. 🧠 Generating embeddings for {len(test_examples)} code examples...",
         )
         embedding_texts = [example["embedding_text"] for example in test_examples]
         embeddings = create_embeddings_batch(embedding_texts)
 
         if len(embeddings) != len(test_examples):
             print(
-                f"❌ Embedding count mismatch: got {len(embeddings)}, expected {len(test_examples)}"
+                f"❌ Embedding count mismatch: got {len(embeddings)}, expected {len(test_examples)}",
             )
             return False
 
@@ -203,7 +204,7 @@ async def test_neo4j_qdrant_bridge():
             print(
                 f"   {i + 1}. {result.get('metadata', {}).get('code_type', 'unknown')}: "
                 f"{result.get('metadata', {}).get('name', 'unknown')} "
-                f"(similarity: {result.get('similarity', 0):.3f})"
+                f"(similarity: {result.get('similarity', 0):.3f})",
             )
 
         # Test repository-specific queries
@@ -220,7 +221,7 @@ async def test_neo4j_qdrant_bridge():
         # Test search by signature
         if test_examples:
             first_method = next(
-                (ex for ex in test_examples if ex["code_type"] == "method"), None
+                (ex for ex in test_examples if ex["code_type"] == "method"), None,
             )
             if first_method:
                 print("\n10. 🎯 Testing signature-based search...")
@@ -229,7 +230,7 @@ async def test_neo4j_qdrant_bridge():
                     repo_filter=test_repo,
                 )
                 print(
-                    f"✅ Found {len(signature_results)} results for method '{first_method['name']}'"
+                    f"✅ Found {len(signature_results)} results for method '{first_method['name']}'",
                 )
 
         # Update source information
@@ -287,7 +288,7 @@ async def main():
         success = await test_neo4j_qdrant_bridge()
         if success:
             print(
-                "\n🎉 All tests passed! The Neo4j-Qdrant bridge is working correctly."
+                "\n🎉 All tests passed! The Neo4j-Qdrant bridge is working correctly.",
             )
             sys.exit(0)
         else:
