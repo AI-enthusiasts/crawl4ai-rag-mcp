@@ -640,8 +640,8 @@ class HallucinationReporter:
         if report["recommendations"]:
             md.append("## 💡 Recommendations")
             md.append("")
-            for rec in report["recommendations"]:
-                md.append(f"- {rec}")
+            recommendation_lines = [f"- {rec}" for rec in report["recommendations"]]
+            md.extend(recommendation_lines)
             md.append("")
 
         # Detailed Results
