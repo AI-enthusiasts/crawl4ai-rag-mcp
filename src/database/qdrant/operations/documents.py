@@ -51,9 +51,9 @@ async def add_documents(
         try:
             await delete_documents_by_url(client, [url])
         except (QueryError, VectorStoreError) as e:
-            logger.error(f"Failed to delete existing documents for {url}: {e}")
+            logger.error("Failed to delete existing documents for %s: %s", url, e)
         except Exception as e:
-            logger.exception(f"Unexpected error deleting documents from Qdrant: {e}")
+            logger.exception("Unexpected error deleting documents from Qdrant: %s", e)
 
     # Process documents in batches
     for i in range(0, len(urls), BATCH_SIZE):
@@ -119,10 +119,10 @@ async def add_documents(
                 points=points,
             )
         except VectorStoreError as e:
-            logger.error(f"Failed to upsert documents to Qdrant: {e}")
+            logger.error("Failed to upsert documents to Qdrant: %s", e)
             raise
         except Exception as e:
-            logger.exception(f"Unexpected error upserting documents to Qdrant: {e}")
+            logger.exception("Unexpected error upserting documents to Qdrant: %s", e)
             raise
 
 
