@@ -10,19 +10,10 @@ import os
 from typing import Any
 from urllib.parse import urlparse
 
-from fastmcp import Context
-
+from src.core.context import get_app_context
 from src.core.exceptions import GitError, QueryError, RepositoryError
 
 logger = logging.getLogger(__name__)
-
-
-# Import for getting app context
-def get_app_context() -> Any:
-    """Get the stored app context."""
-    from src.core.context import get_app_context as _get_app_context
-
-    return _get_app_context()
 
 
 def validate_github_url(url: str) -> dict[str, Any]:
@@ -35,6 +26,7 @@ def validate_github_url(url: str) -> dict[str, Any]:
     Returns:
         Dictionary with 'valid' boolean and 'error' message if invalid
     """
+    expected_path_parts = 2
     try:
         parsed = urlparse(url)
         if parsed.scheme not in ["http", "https"]:
@@ -45,7 +37,7 @@ def validate_github_url(url: str) -> dict[str, Any]:
 
         # Check path format: /owner/repo or /owner/repo.git
         path_parts = parsed.path.strip("/").split("/")
-        if len(path_parts) != 2:
+        if len(path_parts) != expected_path_parts:
             return {
                 "valid": False,
                 "error": "URL must be in format: https://github.com/owner/repo",
@@ -61,13 +53,13 @@ def validate_github_url(url: str) -> dict[str, Any]:
         # Remove .git extension if present
         if repo.endswith(".git"):
             repo = repo[:-4]
-
-        return {"valid": True, "owner": owner, "repo": repo}
     except (ValueError, AttributeError) as e:
         return {"valid": False, "error": f"Invalid URL format: {e!s}"}
     except Exception as e:
-        logger.exception("Unexpected error validating GitHub URL: %s", e)
+        logger.exception("Unexpected error validating GitHub URL")
         return {"valid": False, "error": f"URL validation failed: {e!s}"}
+    else:
+        return {"valid": True, "owner": owner, "repo": repo}
 
 
 async def parse_github_repository(repo_extractor: Any, repo_url: str) -> str:
@@ -92,7 +84,10 @@ async def parse_github_repository(repo_extractor: Any, repo_url: str) -> str:
             return json.dumps(
                 {
                     "success": False,
-                    "error": "Knowledge graph functionality is disabled. Set USE_KNOWLEDGE_GRAPH=true in environment.",
+                    "error": (
+                        "Knowledge graph functionality is disabled. "
+                        "Set USE_KNOWLEDGE_GRAPH=true in environment."
+                    ),
                 },
                 indent=2,
             )
@@ -101,7 +96,10 @@ async def parse_github_repository(repo_extractor: Any, repo_url: str) -> str:
             return json.dumps(
                 {
                     "success": False,
-                    "error": "Repository extractor not available. Check Neo4j configuration in environment variables.",
+                    "error": (
+                        "Repository extractor not available. "
+                        "Check Neo4j configuration in environment variables."
+                    ),
                 },
                 indent=2,
             )
@@ -162,17 +160,26 @@ async def parse_github_repository(repo_extractor: Any, repo_url: str) -> str:
                     "methods_created": stats["method_count"] if stats else 0,
                     "functions_created": stats["function_count"] if stats else 0,
                 },
-                "message": f"Successfully parsed repository '{repo_name}' into the knowledge graph",
+                "message": (
+                    f"Successfully parsed repository '{repo_name}' "
+                    "into the knowledge graph"
+                ),
                 "next_steps": [
-                    "Use 'query_knowledge_graph' tool with 'explore <repo_name>' to see detailed statistics",
-                    "Use 'check_ai_script_hallucinations' tool to validate AI-generated code against this repository",
+                    (
+                        "Use 'query_knowledge_graph' tool with 'explore <repo_name>' "
+                        "to see detailed statistics"
+                    ),
+                    (
+                        "Use 'check_ai_script_hallucinations' tool to validate "
+                        "AI-generated code against this repository"
+                    ),
                 ],
             },
             indent=2,
         )
 
     except (GitError, RepositoryError) as e:
-        logger.error("Repository operation failed for %s: %s", repo_url, e)
+        logger.exception("Repository operation failed for %s", repo_url)
         return json.dumps(
             {
                 "success": False,
@@ -182,7 +189,7 @@ async def parse_github_repository(repo_extractor: Any, repo_url: str) -> str:
             indent=2,
         )
     except QueryError as e:
-        logger.error("Neo4j query failed for %s: %s", repo_url, e)
+        logger.exception("Neo4j query failed for %s", repo_url)
         return json.dumps(
             {
                 "success": False,
@@ -192,7 +199,7 @@ async def parse_github_repository(repo_extractor: Any, repo_url: str) -> str:
             indent=2,
         )
     except Exception as e:
-        logger.exception("Unexpected error parsing repository %s: %s", repo_url, e)
+        logger.exception("Unexpected error parsing repository %s", repo_url)
         return json.dumps(
             {
                 "success": False,
@@ -204,7 +211,6 @@ async def parse_github_repository(repo_extractor: Any, repo_url: str) -> str:
 
 
 async def parse_github_repository_with_branch(
-    ctx: Context,
     repo_url: str,
     branch: str,
 ) -> str:
@@ -227,7 +233,10 @@ async def parse_github_repository_with_branch(
         return json.dumps(
             {
                 "error": "Knowledge graph functionality is not enabled",
-                "details": "Set USE_KNOWLEDGE_GRAPH=true and configure Neo4j credentials",
+                "details": (
+                    "Set USE_KNOWLEDGE_GRAPH=true "
+                    "and configure Neo4j credentials"
+                ),
             },
         )
 
@@ -302,7 +311,10 @@ async def parse_github_repository_with_branch(
                             "contributors": stats["contributors"] or 0,
                             "repository_size": stats["repo_size"] or "unknown",
                         },
-                        "message": f"Successfully parsed {repo_name} branch {branch} into knowledge graph",
+                        "message": (
+                            f"Successfully parsed {repo_name} branch {branch} "
+                            "into knowledge graph"
+                        ),
                     },
                 )
             return json.dumps(
@@ -313,7 +325,7 @@ async def parse_github_repository_with_branch(
             )
 
     except (GitError, RepositoryError) as e:
-        logger.error("Repository/Git operation failed: %s", e)
+        logger.exception("Repository/Git operation failed")
         return json.dumps(
             {
                 "error": "Failed to parse repository branch",
@@ -321,7 +333,7 @@ async def parse_github_repository_with_branch(
             },
         )
     except QueryError as e:
-        logger.error("Neo4j query failed: %s", e)
+        logger.exception("Neo4j query failed")
         return json.dumps(
             {
                 "error": "Database query failed",
@@ -329,7 +341,7 @@ async def parse_github_repository_with_branch(
             },
         )
     except Exception as e:
-        logger.exception("Unexpected error parsing repository branch: %s", e)
+        logger.exception("Unexpected error parsing repository branch")
         return json.dumps(
             {
                 "error": "Failed to parse repository branch",
@@ -338,7 +350,7 @@ async def parse_github_repository_with_branch(
         )
 
 
-async def get_repository_metadata_from_neo4j(ctx: Context, repo_name: str) -> str:
+async def get_repository_metadata_from_neo4j(repo_name: str) -> str:
     """Get comprehensive repository information from Neo4j."""
     # Get the app context that was stored during lifespan
     app_ctx = get_app_context()
@@ -419,7 +431,11 @@ async def get_repository_metadata_from_neo4j(ctx: Context, repo_name: str) -> st
                 SIZE([c IN classes WHERE c IS NOT NULL]) as class_count,
                 SIZE([m IN methods WHERE m IS NOT NULL]) as method_count,
                 SIZE([func IN functions WHERE func IS NOT NULL]) as function_count,
-                REDUCE(total = 0, f IN [file IN files WHERE file IS NOT NULL] | total + COALESCE(f.line_count, 0)) as total_lines
+                REDUCE(
+                    total = 0,
+                    f IN [file IN files WHERE file IS NOT NULL] |
+                    total + COALESCE(f.line_count, 0)
+                ) as total_lines
             """
             result = await session.run(stats_query, repo_name=repo_name)
             stats = await result.single()
@@ -448,7 +464,7 @@ async def get_repository_metadata_from_neo4j(ctx: Context, repo_name: str) -> st
             )
 
     except QueryError as e:
-        logger.error("Neo4j query failed getting repository metadata: %s", e)
+        logger.exception("Neo4j query failed getting repository metadata")
         return json.dumps(
             {
                 "error": "Database query failed",
@@ -456,7 +472,7 @@ async def get_repository_metadata_from_neo4j(ctx: Context, repo_name: str) -> st
             },
         )
     except Exception as e:
-        logger.exception("Unexpected error getting repository metadata: %s", e)
+        logger.exception("Unexpected error getting repository metadata")
         return json.dumps(
             {
                 "error": "Failed to get repository metadata",
@@ -465,7 +481,7 @@ async def get_repository_metadata_from_neo4j(ctx: Context, repo_name: str) -> st
         )
 
 
-async def update_repository_in_neo4j(ctx: Context, repo_url: str) -> str:
+async def update_repository_in_neo4j(repo_url: str) -> str:
     """Update an existing repository with latest changes."""
     # Get the app context that was stored during lifespan
     app_ctx = get_app_context()
@@ -484,7 +500,9 @@ async def update_repository_in_neo4j(ctx: Context, repo_url: str) -> str:
         return json.dumps(
             {
                 "error": "Git manager not available for incremental updates",
-                "suggestion": "Re-parse the entire repository using parse_github_repository",
+                "suggestion": (
+                    "Re-parse the entire repository using parse_github_repository"
+                ),
             },
         )
 
@@ -503,7 +521,9 @@ async def update_repository_in_neo4j(ctx: Context, repo_url: str) -> str:
                 return json.dumps(
                     {
                         "error": f"Repository {repo_name} not found",
-                        "suggestion": "Parse the repository first using parse_github_repository",
+                        "suggestion": (
+                            "Parse the repository first using parse_github_repository"
+                        ),
                     },
                 )
 
@@ -521,7 +541,7 @@ async def update_repository_in_neo4j(ctx: Context, repo_url: str) -> str:
         )
 
     except (GitError, RepositoryError) as e:
-        logger.error("Repository/Git operation failed during update: %s", e)
+        logger.exception("Repository/Git operation failed during update")
         return json.dumps(
             {
                 "error": "Failed to update repository",
@@ -529,7 +549,7 @@ async def update_repository_in_neo4j(ctx: Context, repo_url: str) -> str:
             },
         )
     except Exception as e:
-        logger.exception("Unexpected error updating repository: %s", e)
+        logger.exception("Unexpected error updating repository")
         return json.dumps(
             {
                 "error": "Failed to update repository",
