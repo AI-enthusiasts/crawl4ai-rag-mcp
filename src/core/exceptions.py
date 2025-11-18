@@ -2,7 +2,10 @@
 
 
 class MCPToolError(Exception):
-    """Custom exception for MCP tool errors that should be returned as JSON-RPC errors."""
+    """Custom exception for MCP tool errors.
+
+    Should be returned as JSON-RPC errors.
+    """
 
     def __init__(self, message: str, code: int = -32000):
         self.message = message
@@ -28,7 +31,7 @@ class DatabaseError(Crawl4AIError):
     """Base exception for database-related errors."""
 
 
-class ConnectionError(DatabaseError):
+class DatabaseConnectionError(DatabaseError):
     """Database connection failed."""
 
 
