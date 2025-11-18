@@ -74,7 +74,7 @@ class CodeValidator:
             final_results = []
             for i, result in enumerate(validated_results):
                 if isinstance(result, Exception):
-                    logger.warning(f"Validation failed for result {i}: {result}")
+                    logger.warning("Validation failed for result %s: %s", i, result)
                     # Add the original result with empty validation
                     final_results.append(self._add_empty_validation(results[i]))
                 else:
@@ -83,10 +83,10 @@ class CodeValidator:
             return final_results
 
         except DatabaseError as e:
-            logger.error(f"Database error in parallel validation: {e}")
+            logger.error("Database error in parallel validation: %s", e)
             return [self._add_empty_validation(result) for result in results]
         except Exception as e:
-            logger.exception(f"Unexpected error in parallel validation: {e}")
+            logger.exception("Unexpected error in parallel validation: %s", e)
             return [self._add_empty_validation(result) for result in results]
 
     async def validate_results_sequential(
@@ -115,10 +115,10 @@ class CodeValidator:
                     validated_result = self._add_empty_validation(result)
                 validated_results.append(validated_result)
             except DatabaseError as e:
-                logger.warning(f"Database error during validation: {e}")
+                logger.warning("Database error during validation: %s", e)
                 validated_results.append(self._add_empty_validation(result))
             except Exception as e:
-                logger.warning(f"Validation failed for single result: {e}")
+                logger.warning("Validation failed for single result: %s", e)
                 validated_results.append(self._add_empty_validation(result))
 
         return validated_results
@@ -300,7 +300,7 @@ class CodeValidator:
             }
 
         except DatabaseError as e:
-            logger.error(f"Neo4j validation error: {e}")
+            logger.error("Neo4j validation error: %s", e)
             return {
                 "is_valid": False,
                 "confidence_score": 0.0,
@@ -310,7 +310,7 @@ class CodeValidator:
                 "error": str(e),
             }
         except Exception as e:
-            logger.exception(f"Unexpected error in Neo4j validation: {e}")
+            logger.exception("Unexpected error in Neo4j validation: %s", e)
             return {
                 "is_valid": False,
                 "confidence_score": 0.0,
