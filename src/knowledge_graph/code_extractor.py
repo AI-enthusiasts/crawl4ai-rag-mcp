@@ -113,7 +113,8 @@ class UniversalCodeExample:
     file_path: str
     module_name: str
     language: str  # Python, JavaScript, TypeScript, Go
-    code_type: str  # class, function, method, interface, struct, type, variable, constant
+    # Code type: class, function, method, interface, struct, type, variable, constant
+    code_type: str
     name: str
     full_name: str
 
@@ -127,7 +128,8 @@ class UniversalCodeExample:
 
     # Relationship fields
     parent_name: str | None = None  # For methods in classes, nested types
-    child_elements: list[str] = field(default_factory=list)  # Methods in class, fields in struct
+    # Methods in class, fields in struct
+    child_elements: list[str] = field(default_factory=list)
 
     # Language-specific metadata as JSON
     language_specific: dict[str, Any] = field(default_factory=dict)
@@ -146,19 +148,34 @@ class UniversalCodeExample:
     def validate(self) -> None:
         """Validate the code example data."""
         if self.language not in SUPPORTED_LANGUAGES:
-            msg = f"Unsupported language: {self.language}. Supported: {SUPPORTED_LANGUAGES}"
+            msg = (
+                f"Unsupported language: {self.language}. "
+                f"Supported: {SUPPORTED_LANGUAGES}"
+            )
             raise ValueError(msg)
 
         if self.code_type not in SUPPORTED_CODE_TYPES:
-            msg = f"Unsupported code_type: {self.code_type}. Supported: {SUPPORTED_CODE_TYPES}"
+            msg = (
+                f"Unsupported code_type: {self.code_type}. "
+                f"Supported: {SUPPORTED_CODE_TYPES}"
+            )
             raise ValueError(msg)
 
         if self.validation_status not in VALIDATION_STATUSES:
-            msg = f"Invalid validation_status: {self.validation_status}. Supported: {VALIDATION_STATUSES}"
+            msg = (
+                f"Invalid validation_status: {self.validation_status}. "
+                f"Supported: {VALIDATION_STATUSES}"
+            )
             raise ValueError(msg)
 
-        if self.confidence_score is not None and not (0.0 <= self.confidence_score <= 1.0):
-            msg = f"confidence_score must be between 0.0 and 1.0, got: {self.confidence_score}"
+        if (
+            self.confidence_score is not None
+            and not (0.0 <= self.confidence_score <= 1.0)
+        ):
+            msg = (
+                f"confidence_score must be between 0.0 and 1.0, "
+                f"got: {self.confidence_score}"
+            )
             raise ValueError(msg)
 
     def to_metadata(self) -> dict[str, Any]:
@@ -179,10 +196,10 @@ class UniversalCodeExample:
             "signature", "documentation", "line_number", "visibility",
             "is_async", "is_static", "parent_name", "confidence_score",
         ]
-        for field in optional_fields:
-            value = getattr(self, field)
+        for field_name in optional_fields:
+            value = getattr(self, field_name)
             if value is not None:
-                metadata[field] = value
+                metadata[field_name] = value
 
         if self.child_elements:
             metadata["child_elements"] = self.child_elements
@@ -217,12 +234,14 @@ class UniversalCodeExample:
         Generate text representation for embedding generation.
 
         Args:
-            context_type: Type of context to generate ("signature", "semantic", "usage", "full")
+            context_type: Type of context ("signature", "semantic", "usage", "full")
         """
         if not self.embedding_context:
             self.generate_embedding_contexts()
 
-        return self.embedding_context.get(context_type, self.embedding_context.get("full", ""))
+        return self.embedding_context.get(
+            context_type, self.embedding_context.get("full", ""),
+        )
 
     def _generate_signature_context(self) -> str:
         """Generate signature-only context."""
@@ -251,7 +270,8 @@ class UniversalCodeExample:
             base += f"\nDescription: {self.documentation}"
 
         if self.child_elements:
-            base += f"\nContains: {', '.join(self.child_elements[:5])}"  # Limit to first 5
+            # Limit to first 5
+            base += f"\nContains: {', '.join(self.child_elements[:5])}"
 
         return base
 
@@ -331,12 +351,14 @@ class UniversalCodeExample:
         if self.code_type == "interface" and self.language == "TypeScript":
             return f"interface {self.name} {{"
         if self.code_type == "type" and self.language == "TypeScript":
-            return f"type {self.name} = {self.language_specific.get('type_definition', 'any')}"
+            type_def = self.language_specific.get('type_definition', 'any')
+            return f"type {self.name} = {type_def}"
         if self.code_type in ["function", "method"]:
             params = self.language_specific.get("parameters", [])
             return_type = self.language_specific.get("return_type", "")
             param_str = ", ".join(params) if params else ""
-            return_str = f": {return_type}" if return_type and self.language == "TypeScript" else ""
+            is_typescript = self.language == "TypeScript"
+            return_str = f": {return_type}" if return_type and is_typescript else ""
             prefix = "async " if self.is_async else ""
             return f"{prefix}function {self.name}({param_str}){return_str} {{"
         return f"const {self.name} = {self.language_specific.get('value', 'undefined')}"
@@ -366,7 +388,10 @@ class UniversalCodeExample:
     def _generate_python_usage(self) -> str:
         """Generate Python usage example."""
         if self.code_type == "class":
-            return f"# Usage:\ninstance = {self.name}()\n# Access methods: instance.method_name()"
+            return (
+                f"# Usage:\ninstance = {self.name}()\n"
+                f"# Access methods: instance.method_name()"
+            )
         if self.code_type == "function":
             params = self.language_specific.get("parameters", [])
             if params:
@@ -380,9 +405,15 @@ class UniversalCodeExample:
     def _generate_js_ts_usage(self) -> str:
         """Generate JavaScript/TypeScript usage example."""
         if self.code_type == "class":
-            return f"// Usage:\nconst instance = new {self.name}();\n// Access methods: instance.methodName()"
+            return (
+                f"// Usage:\nconst instance = new {self.name}();\n"
+                f"// Access methods: instance.methodName()"
+            )
         if self.code_type == "interface" and self.language == "TypeScript":
-            return f"// Usage:\nconst obj: {self.name} = {{ /* implement interface */ }};"
+            return (
+                f"// Usage:\nconst obj: {self.name} = "
+                f"{{ /* implement interface */ }};"
+            )
         if self.code_type == "function":
             return f"// Usage:\nconst result = {self.name}(args);"
         return f"// Usage: {self.name}"
@@ -390,7 +421,10 @@ class UniversalCodeExample:
     def _generate_go_usage(self) -> str:
         """Generate Go usage example."""
         if self.code_type == "struct":
-            return f"// Usage:\ninstance := {self.name}{{}}\n// Access fields: instance.FieldName"
+            return (
+                f"// Usage:\ninstance := {self.name}{{}}\n"
+                f"// Access fields: instance.FieldName"
+            )
         if self.code_type == "function":
             return f"// Usage:\nresult := {self.name}(args)"
         if self.code_type == "method":
@@ -439,7 +473,12 @@ class UniversalCodeExample:
 class Neo4jCodeExtractor:
     """Extracts code examples from Neo4j knowledge graph."""
 
-    def __init__(self, neo4j_session: Any, use_universal: bool = False, language: str = "Python"):
+    def __init__(
+        self,
+        neo4j_session: Any,
+        use_universal: bool = False,
+        language: str = "Python",
+    ):
         """
         Initialize with Neo4j session.
 
@@ -452,7 +491,9 @@ class Neo4jCodeExtractor:
         self.use_universal = use_universal
         self.language = language
 
-    async def extract_repository_code(self, repo_name: str) -> list[CodeExample | UniversalCodeExample]:
+    async def extract_repository_code(
+        self, repo_name: str
+    ) -> list[CodeExample | UniversalCodeExample]:
         """
         Extract all code examples from a repository in Neo4j.
 
@@ -482,7 +523,9 @@ class Neo4jCodeExtractor:
         logger.info("Extracted %s code examples from %s", len(code_examples), repo_name)
         return code_examples
 
-    async def extract_repository_code_universal(self, repo_name: str) -> list[CodeExample | UniversalCodeExample]:
+    async def extract_repository_code_universal(
+        self, repo_name: str
+    ) -> list[CodeExample | UniversalCodeExample]:
         """
         Extract repository code using UniversalCodeExample format.
 
@@ -510,10 +553,13 @@ class Neo4jCodeExtractor:
         record = await result.single()
         return record is not None
 
-    async def _extract_classes(self, repo_name: str) -> list[CodeExample | UniversalCodeExample]:
+    async def _extract_classes(
+        self, repo_name: str
+    ) -> list[CodeExample | UniversalCodeExample]:
         """Extract class definitions with their methods."""
         query = """
-        MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)-[:DEFINES]->(c:Class)
+        MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)
+        -[:DEFINES]->(c:Class)
         OPTIONAL MATCH (c)-[:HAS_METHOD]->(m:Method)
         RETURN
             c.name as class_name,
@@ -568,7 +614,8 @@ class Neo4jCodeExtractor:
 
             # Create individual method examples for important methods
             for method in methods:
-                if method["name"] and not method["name"].startswith("_"):  # Public methods
+                # Public methods
+                if method["name"] and not method["name"].startswith("_"):
                     method_example: CodeExample | UniversalCodeExample
                     if self.use_universal:
                         method_example = self._create_universal_method_example(
@@ -594,10 +641,13 @@ class Neo4jCodeExtractor:
 
         return classes
 
-    async def _extract_functions(self, repo_name: str) -> list[CodeExample | UniversalCodeExample]:
+    async def _extract_functions(
+        self, repo_name: str
+    ) -> list[CodeExample | UniversalCodeExample]:
         """Extract standalone function definitions."""
         query = """
-        MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)-[:DEFINES]->(func:Function)
+        MATCH (r:Repository {name: $repo_name})-[:CONTAINS]->(f:File)
+        -[:DEFINES]->(func:Function)
         RETURN
             func.name as function_name,
             func.params_list as params_list,
@@ -614,7 +664,8 @@ class Neo4jCodeExtractor:
 
         async for record in result:
             function_name = record["function_name"]
-            if not function_name or function_name.startswith("_"):  # Skip private functions
+            # Skip private functions
+            if not function_name or function_name.startswith("_"):
                 continue
 
             file_path = record["file_path"]
@@ -721,7 +772,8 @@ class Neo4jCodeExtractor:
             signature = f"def {method_name}({param_str}){return_str}:"
         elif self.language in ["JavaScript", "TypeScript"]:
             param_str = ", ".join(params_list)
-            return_str = f": {return_type}" if return_type and self.language == "TypeScript" else ""
+            is_typescript = self.language == "TypeScript"
+            return_str = f": {return_type}" if return_type and is_typescript else ""
             signature = f"function {method_name}({param_str}){return_str} {{"
         elif self.language == "Go":
             param_str = ", ".join(params_list)
@@ -770,7 +822,8 @@ class Neo4jCodeExtractor:
             signature = f"def {function_name}({param_str}){return_str}:"
         elif self.language in ["JavaScript", "TypeScript"]:
             param_str = ", ".join(params_list) if params_list else ""
-            return_str = f": {return_type}" if return_type and self.language == "TypeScript" else ""
+            is_ts = self.language == "TypeScript"
+            return_str = f": {return_type}" if return_type and is_ts else ""
             signature = f"function {function_name}({param_str}){return_str} {{"
         elif self.language == "Go":
             param_str = ", ".join(params_list) if params_list else ""
