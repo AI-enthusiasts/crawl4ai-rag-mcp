@@ -9,7 +9,10 @@ Environment Variables for Test Control:
 
 import asyncio
 import os
+import subprocess
 import sys
+from datetime import datetime
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -31,7 +34,7 @@ os.environ["QDRANT_URL"] = "http://localhost:6333"
 # Load test environment
 
 # Import Neo4j fixtures to make them available to all tests
-from .fixtures.neo4j_fixtures import *
+from .fixtures.neo4j_fixtures import *  # noqa: E402, F403
 
 # Register the performance monitoring plugin
 pytest_plugins = ["tests.performance_plugin"]
@@ -699,10 +702,6 @@ async def clean_test_data():
 # ============================================================================
 # Docker Logs Collection for Load Tests
 # ============================================================================
-
-import subprocess
-from datetime import datetime
-from pathlib import Path
 
 
 @pytest.fixture(scope="function", autouse=False)

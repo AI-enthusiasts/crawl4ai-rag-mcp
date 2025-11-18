@@ -23,9 +23,9 @@ os.environ["TRANSPORT"] = "stdio"
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 # Import after setting environment
-import asyncio
+import asyncio  # noqa: E402
 
-from crawl4ai_mcp import main
+from crawl4ai_mcp import main  # noqa: E402
 
 if __name__ == "__main__":
     asyncio.run(main())

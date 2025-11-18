@@ -15,11 +15,11 @@ import os
 import pytest
 
 npytestmark = pytest.mark.skip(reason="Test needs refactoring after module restructure")
-import sys
-from pathlib import Path
-from unittest.mock import AsyncMock, Mock, mock_open, patch
+import sys  # noqa: E402
+from pathlib import Path  # noqa: E402
+from unittest.mock import AsyncMock, Mock, mock_open, patch  # noqa: E402
 
-import pytest
+import pytest  # noqa: E402
 
 # Add src to path for imports
 src_path = Path(__file__).parent.parent / "src"
@@ -82,7 +82,7 @@ def mock_context():
 
 
 # Import mock helper
-from mock_openai_helper import patch_openai_embeddings
+from mock_openai_helper import patch_openai_embeddings  # noqa: E402
 
 
 # Mock all external dependencies before importing
@@ -210,7 +210,7 @@ def mock_external_dependencies():
 
 # Import the module under test after mocking
 # Instead of importing wrapped functions, import the module and access the underlying functions
-import crawl4ai_mcp
+import crawl4ai_mcp  # noqa: E402
 
 
 # Access the underlying functions from the FastMCP tool wrappers

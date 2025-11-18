@@ -13,8 +13,8 @@ import pytest
 # Mock problematic imports before they're loaded
 sys.modules["src.core.context"] = MagicMock()
 
-from src.core.exceptions import ConnectionError, DatabaseError, VectorStoreError
-from src.database.qdrant_adapter import QdrantAdapter
+from src.core.exceptions import ConnectionError, DatabaseError, VectorStoreError  # noqa: E402
+from src.database.qdrant_adapter import QdrantAdapter  # noqa: E402
 
 
 class TestQdrantAdapterInitialization:
