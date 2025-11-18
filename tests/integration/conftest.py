@@ -17,9 +17,9 @@ import pytest
 src_path = Path(__file__).parent.parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
-from src.database.factory import create_and_initialize_database
-from src.database.qdrant_adapter import QdrantAdapter
-from src.database.supabase_adapter import SupabaseAdapter
+from src.database.factory import create_and_initialize_database  # noqa: E402
+from src.database.qdrant_adapter import QdrantAdapter  # noqa: E402
+from src.database.supabase_adapter import SupabaseAdapter  # noqa: E402
 
 
 @pytest.fixture(scope="session")
