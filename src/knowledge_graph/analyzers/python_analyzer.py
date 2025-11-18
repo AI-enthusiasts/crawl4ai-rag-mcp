@@ -25,29 +25,47 @@ class Neo4jCodeAnalyzer:
         # External modules to ignore
         self.external_modules = {
             # Python standard library
-            "os", "sys", "json", "logging", "datetime", "pathlib", "typing", "collections",
-            "asyncio", "subprocess", "ast", "re", "string", "urllib", "http", "email",
-            "time", "uuid", "hashlib", "base64", "itertools", "functools", "operator",
-            "contextlib", "copy", "pickle", "tempfile", "shutil", "glob", "fnmatch",
-            "io", "codecs", "locale", "platform", "socket", "ssl", "threading", "queue",
+            "os", "sys", "json", "logging", "datetime", "pathlib", "typing",
+            "collections",
+            "asyncio", "subprocess", "ast", "re", "string", "urllib", "http",
+            "email",
+            "time", "uuid", "hashlib", "base64", "itertools", "functools",
+            "operator",
+            "contextlib", "copy", "pickle", "tempfile", "shutil", "glob",
+            "fnmatch",
+            "io", "codecs", "locale", "platform", "socket", "ssl", "threading",
+            "queue",
             "multiprocessing", "concurrent", "warnings", "traceback", "inspect",
-            "importlib", "pkgutil", "types", "weakref", "gc", "dataclasses", "enum",
-            "abc", "numbers", "decimal", "fractions", "math", "cmath", "random", "statistics",
+            "importlib", "pkgutil", "types", "weakref", "gc", "dataclasses",
+            "enum",
+            "abc", "numbers", "decimal", "fractions", "math", "cmath", "random",
+            "statistics",
 
             # Common third-party libraries
-            "requests", "urllib3", "httpx", "aiohttp", "flask", "django", "fastapi",
+            "requests", "urllib3", "httpx", "aiohttp", "flask", "django",
+            "fastapi",
             "pydantic", "sqlalchemy", "alembic", "psycopg2", "pymongo", "redis",
-            "celery", "pytest", "unittest", "mock", "faker", "factory", "hypothesis",
-            "numpy", "pandas", "matplotlib", "seaborn", "scipy", "sklearn", "torch",
-            "tensorflow", "keras", "opencv", "pillow", "boto3", "botocore", "azure",
-            "google", "openai", "anthropic", "langchain", "transformers", "huggingface_hub",
-            "click", "typer", "rich", "colorama", "tqdm", "python-dotenv", "pyyaml",
+            "celery", "pytest", "unittest", "mock", "faker", "factory",
+            "hypothesis",
+            "numpy", "pandas", "matplotlib", "seaborn", "scipy", "sklearn",
+            "torch",
+            "tensorflow", "keras", "opencv", "pillow", "boto3", "botocore",
+            "azure",
+            "google", "openai", "anthropic", "langchain", "transformers",
+            "huggingface_hub",
+            "click", "typer", "rich", "colorama", "tqdm", "python-dotenv",
+            "pyyaml",
             "toml", "configargparse", "marshmallow", "attrs", "dataclasses-json",
             "jsonschema", "cerberus", "voluptuous", "schema", "jinja2", "mako",
             "cryptography", "bcrypt", "passlib", "jwt", "authlib", "oauthlib",
         }
 
-    def analyze_python_file(self, file_path: Path, repo_root: Path, project_modules: set[str]) -> dict[str, Any] | None:
+    def analyze_python_file(
+        self,
+        file_path: Path,
+        repo_root: Path,
+        project_modules: set[str],
+    ) -> dict[str, Any] | None:
         """Extract structure for direct Neo4j insertion"""
         try:
             with file_path.open(encoding="utf-8") as f:
@@ -55,7 +73,11 @@ class Neo4jCodeAnalyzer:
 
             tree = ast.parse(content)
             relative_path = str(file_path.relative_to(repo_root))
-            module_name = self._get_importable_module_name(file_path, repo_root, relative_path)
+            module_name = self._get_importable_module_name(
+                file_path,
+                repo_root,
+                relative_path,
+            )
 
             # Extract structure
             classes = []
@@ -68,33 +90,46 @@ class Neo4jCodeAnalyzer:
                     methods = []
 
                     for item in node.body:
-                        if isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef):
-                            if not item.name.startswith("_"):  # Public methods only
-                                # Extract comprehensive parameter info
-                                params = self._extract_function_parameters(item)
+                        if (isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef)
+                                and not item.name.startswith("_")):
+                            # Public methods only
+                            # Extract comprehensive parameter info
+                            params = self._extract_function_parameters(item)
 
-                                # Get return type annotation
-                                return_type = self._get_name(item.returns) if item.returns else "Any"
+                            # Get return type annotation
+                            return_type = (
+                                self._get_name(item.returns)
+                                if item.returns
+                                else "Any"
+                            )
 
-                                # Create detailed parameter list for Neo4j storage
-                                params_detailed = []
-                                for p in params:
-                                    param_str = f"{p['name']}:{p['type']}"
-                                    if p["optional"] and p["default"] is not None:
-                                        param_str += f"={p['default']}"
-                                    elif p["optional"]:
-                                        param_str += "=None"
-                                    if p["kind"] != "positional":
-                                        param_str = f"[{p['kind']}] {param_str}"
-                                    params_detailed.append(param_str)
+                            # Create detailed parameter list for Neo4j storage
+                            params_detailed = []
+                            for p in params:
+                                param_str = f"{p['name']}:{p['type']}"
+                                if (p["optional"]
+                                        and p["default"] is not None):
+                                    param_str += f"={p['default']}"
+                                elif p["optional"]:
+                                    param_str += "=None"
+                                if p["kind"] != "positional":
+                                    param_str = (
+                                        f"[{p['kind']}] {param_str}"
+                                    )
+                                params_detailed.append(param_str)
 
-                                methods.append({
-                                    "name": item.name,
-                                    "params": params,  # Full parameter objects
-                                    "params_detailed": params_detailed,  # Detailed string format
-                                    "return_type": return_type,
-                                    "args": [arg.arg for arg in item.args.args if arg.arg != "self"],  # Keep for backwards compatibility
-                                })
+                            # Backwards compatibility arg list
+                            arg_list = [
+                                arg.arg for arg in item.args.args
+                                if arg.arg != "self"
+                            ]
+                            methods.append({
+                                "name": item.name,
+                                "params": params,
+                                "params_detailed": params_detailed,
+                                "return_type": return_type,
+                                "args": arg_list,
+                            })
 
                     # Use comprehensive attribute extraction
                     attributes = self._extract_class_attributes(node)
@@ -108,48 +143,72 @@ class Neo4jCodeAnalyzer:
 
                 elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                     # Only top-level functions
-                    if not any(node in cls_node.body for cls_node in ast.walk(tree) if isinstance(cls_node, ast.ClassDef)):
-                        if not node.name.startswith("_"):
-                            # Extract comprehensive parameter info
-                            params = self._extract_function_parameters(node)
+                    is_in_class = any(
+                        node in cls_node.body
+                        for cls_node in ast.walk(tree)
+                        if isinstance(cls_node, ast.ClassDef)
+                    )
+                    if not is_in_class and not node.name.startswith("_"):
+                        # Extract comprehensive parameter info
+                        params = self._extract_function_parameters(node)
 
-                            # Get return type annotation
-                            return_type = self._get_name(node.returns) if node.returns else "Any"
+                        # Get return type annotation
+                        return_type = (
+                            self._get_name(node.returns)
+                            if node.returns
+                            else "Any"
+                        )
 
-                            # Create detailed parameter list for Neo4j storage
-                            params_detailed = []
-                            for p in params:
-                                param_str = f"{p['name']}:{p['type']}"
-                                if p["optional"] and p["default"] is not None:
-                                    param_str += f"={p['default']}"
-                                elif p["optional"]:
-                                    param_str += "=None"
-                                if p["kind"] != "positional":
-                                    param_str = f"[{p['kind']}] {param_str}"
-                                params_detailed.append(param_str)
+                        # Create detailed parameter list for Neo4j storage
+                        params_detailed = []
+                        for p in params:
+                            param_str = f"{p['name']}:{p['type']}"
+                            if (p["optional"]
+                                    and p["default"] is not None):
+                                param_str += f"={p['default']}"
+                            elif p["optional"]:
+                                param_str += "=None"
+                            if p["kind"] != "positional":
+                                param_str = (
+                                    f"[{p['kind']}] {param_str}"
+                                )
+                            params_detailed.append(param_str)
 
-                            # Simple format for backwards compatibility
-                            params_list = [f"{p['name']}:{p['type']}" for p in params]
+                        # Simple format for backwards compatibility
+                        params_list = [
+                            f"{p['name']}:{p['type']}" for p in params
+                        ]
 
-                            functions.append({
-                                "name": node.name,
-                                "full_name": f"{module_name}.{node.name}",
-                                "params": params,  # Full parameter objects
-                                "params_detailed": params_detailed,  # Detailed string format
-                                "params_list": params_list,  # Simple string format for backwards compatibility
-                                "return_type": return_type,
-                                "args": [arg.arg for arg in node.args.args],  # Keep for backwards compatibility
-                            })
+                        # Backwards compatibility args list
+                        arg_list = [arg.arg for arg in node.args.args]
+                        functions.append({
+                            "name": node.name,
+                            "full_name": f"{module_name}.{node.name}",
+                            "params": params,
+                            "params_detailed": params_detailed,
+                            "params_list": params_list,
+                            "return_type": return_type,
+                            "args": arg_list,
+                        })
 
                 elif isinstance(node, ast.Import | ast.ImportFrom):
                     # Track internal imports only
                     if isinstance(node, ast.Import):
-                        for alias in node.names:
-                            if self._is_likely_internal(alias.name, project_modules):
-                                imports.append(alias.name)
-                    elif isinstance(node, ast.ImportFrom) and node.module:
-                        if (node.module.startswith(".") or self._is_likely_internal(node.module, project_modules)):
-                            imports.append(node.module)
+                        imports.extend(
+                            alias.name for alias in node.names
+                            if self._is_likely_internal(
+                                alias.name,
+                                project_modules,
+                            )
+                        )
+                    elif (isinstance(node, ast.ImportFrom)
+                            and node.module and
+                            (node.module.startswith(".") or
+                             self._is_likely_internal(
+                                 node.module,
+                                 project_modules,
+                             ))):
+                        imports.append(node.module)
 
             return {
                 "module_name": module_name,
@@ -161,17 +220,18 @@ class Neo4jCodeAnalyzer:
             }
 
         except (SyntaxError, ValueError) as e:
-            logger.error("Failed to parse Python file %s: %s", file_path, e)
-            raise ParsingError(f"Python parsing failed for {file_path}: {e}") from e
+            logger.exception("Failed to parse Python file %s", file_path)
+            msg = f"Python parsing failed for {file_path}: {e}"
+            raise ParsingError(msg) from e
         except ParsingError:
             raise
-        except Exception as e:
-            logger.exception("Unexpected error analyzing %s: %s", file_path, e)
+        except Exception:
+            logger.exception("Unexpected error analyzing %s", file_path)
             return None
 
     def _extract_class_attributes(self, class_node: ast.ClassDef) -> list[dict[str, Any]]:
-        """
-        Comprehensively extract all class attributes including:
+        """Comprehensively extract all class attributes including:
+
         - Instance attributes from __init__ methods (self.attr = value)
         - Type annotated attributes in __init__ (self.attr: Type = value)
         - Property decorators (@property def attr)
@@ -180,7 +240,14 @@ class Neo4jCodeAnalyzer:
         - Dataclass and attrs field definitions
         """
         attributes = []
-        attribute_stats = {"total": 0, "dataclass": 0, "attrs": 0, "class_vars": 0, "properties": 0, "slots": 0}
+        attribute_stats = {
+            "total": 0,
+            "dataclass": 0,
+            "attrs": 0,
+            "class_vars": 0,
+            "properties": 0,
+            "slots": 0,
+        }
 
         try:
             # Check if class has dataclass or attrs decorators
@@ -349,9 +416,9 @@ class Neo4jCodeAnalyzer:
             final_count = len(unique_attributes)
             if attribute_stats["total"] > 0:
                 logger.debug("Extracted %s unique attributes from %s: dataclass=%s, attrs=%s, class_vars=%s, properties=%s, slots=%s, total_processed=%s",
-                           final_count, class_node.name, attribute_stats['dataclass'], attribute_stats['attrs'],
-                           attribute_stats['class_vars'], attribute_stats['properties'],
-                           attribute_stats['slots'], attribute_stats['total'])
+                           final_count, class_node.name, attribute_stats["dataclass"], attribute_stats["attrs"],
+                           attribute_stats["class_vars"], attribute_stats["properties"],
+                           attribute_stats["slots"], attribute_stats["total"])
 
             return list(unique_attributes.values())
 
