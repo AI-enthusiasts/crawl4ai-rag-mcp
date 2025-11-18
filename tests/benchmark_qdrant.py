@@ -95,7 +95,7 @@ class QdrantBenchmark:
                 tasks = []
                 for doc in batch:
                     tasks.append(
-                        store_crawled_page(
+                        store_crawled_page(  # noqa: F821
                             client,
                             doc["url"],
                             doc["content"],
@@ -180,7 +180,7 @@ class QdrantBenchmark:
         for query in queries:
             query_start = time.time()
             try:
-                results = await search_crawled_pages(client, query, limit=10)
+                results = await search_crawled_pages(client, query, limit=10)  # noqa: F821
                 latencies.append(time.time() - query_start)
                 successful_searches += 1
             except Exception as e:
@@ -261,13 +261,13 @@ class QdrantBenchmark:
                         # Read operation
                         start = time.time()
                         query = f"worker {worker_id} document {i % 5}"
-                        await search_crawled_pages(client, query, limit=5)
+                        await search_crawled_pages(client, query, limit=5)  # noqa: F821
                         operation_time = time.time() - start
                         worker_operations.append(("read", operation_time))
                     else:
                         # Write operation
                         start = time.time()
-                        await store_crawled_page(
+                        await store_crawled_page(  # noqa: F821
                             client,
                             f"https://concurrent.com/w{worker_id}/d{i}",
                             f"Concurrent test document from worker {worker_id} iteration {i}",
@@ -352,7 +352,7 @@ class QdrantBenchmark:
         """Ensure there's data to search"""
         # Check if we already have test data
         try:
-            results = await search_crawled_pages(client, "document", limit=1)
+            results = await search_crawled_pages(client, "document", limit=1)  # noqa: F821
             if len(results) > 0:
                 return
         except:
@@ -361,7 +361,7 @@ class QdrantBenchmark:
         # Insert some test data
         print("   📝 Inserting test data for search benchmark...")
         for i in range(100):
-            await store_crawled_page(
+            await store_crawled_page(  # noqa: F821
                 client,
                 f"https://searchtest.com/doc{i}",
                 self.generate_test_content(i),

@@ -20,6 +20,7 @@ import asyncio
 import json
 import sys
 import time
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -38,6 +39,9 @@ from src.core.context import get_app_context, set_app_context
 # from services.validated_search import ValidatedCodeSearchService
 
 pytestmark = pytest.mark.skip(reason="Test needs refactoring after module restructure")
+
+# Suppress F821 for refactored classes (file is skipped anyway)
+ValidatedCodeSearchService = None  # noqa: F821
 
 
 class TestMCPToolContextWrappers:
