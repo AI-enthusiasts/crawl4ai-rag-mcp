@@ -32,7 +32,9 @@ class QdrantAdapter:
         """Initialize Qdrant adapter with connection parameters"""
         self.url = url or os.getenv("QDRANT_URL", "http://localhost:6333")
         self.api_key = api_key or os.getenv("QDRANT_API_KEY")
-        self.client: AsyncQdrantClient = AsyncQdrantClient(url=self.url, api_key=self.api_key)
+        self.client: AsyncQdrantClient = AsyncQdrantClient(
+            url=self.url, api_key=self.api_key
+        )
         self.batch_size = 100  # Qdrant can handle larger batches
 
         # Collection names
@@ -61,7 +63,9 @@ class QdrantAdapter:
                 try:
                     await self.client.create_collection(
                         collection_name=collection_name,
-                        vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+                        vectors_config=VectorParams(
+                            size=vector_size, distance=Distance.COSINE
+                        ),
                     )
                 except VectorStoreError as create_error:
                     logger.warning(
@@ -80,7 +84,9 @@ class QdrantAdapter:
                 try:
                     await self.client.create_collection(
                         collection_name=collection_name,
-                        vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+                        vectors_config=VectorParams(
+                            size=vector_size, distance=Distance.COSINE
+                        ),
                     )
                 except VectorStoreError as create_error:
                     logger.warning(
@@ -266,7 +272,9 @@ class QdrantAdapter:
 
     async def delete_repository_code_examples(self, repo_name: str) -> None:
         """Delete repository code examples - delegates to qdrant.code_examples"""
-        return await qdrant.code_examples.delete_repository_code_examples(self.client, repo_name)
+        return await qdrant.code_examples.delete_repository_code_examples(
+            self.client, repo_name
+        )
 
     async def search_code_by_signature(
         self,
@@ -336,7 +344,9 @@ class QdrantAdapter:
     async def get_all_sources(self) -> list[str]:
         """Get all source IDs - extracts source_id from get_sources()"""
         sources = await self.get_sources()
-        return [source.get("source_id", "") for source in sources if source.get("source_id")]
+        return [
+            source.get("source_id", "") for source in sources if source.get("source_id")
+        ]
 
     async def update_source_info(
         self,
@@ -367,7 +377,7 @@ class QdrantAdapter:
         if title:
             metadata["title"] = title
 
-        embedding = create_embedding(content)
+        embedding = await create_embedding(content)
 
         await self.add_documents(
             urls=[url],
@@ -388,7 +398,7 @@ class QdrantAdapter:
         """Search crawled pages (legacy method for backward compatibility)."""
         from src.utils.embeddings import create_embedding
 
-        query_embedding = create_embedding(query)
+        query_embedding = await create_embedding(query)
 
         # Convert list source_filter to single string (take first if exists)
         source_str = source_filter[0] if source_filter else None

@@ -141,6 +141,28 @@ class VectorDatabase(Protocol):
         """
         ...
 
+    async def add_source(
+        self,
+        source_id: str,
+        url: str,
+        title: str,
+        description: str,
+        metadata: dict[str, Any],
+        embedding: list[float],
+    ) -> None:
+        """
+        Add a web source with metadata and vector embedding.
+
+        Args:
+            source_id: Unique source identifier
+            url: Source URL
+            title: Source title
+            description: Source description
+            metadata: Additional metadata
+            embedding: Embedding vector for semantic search
+        """
+        ...
+
     async def update_source_info(
         self,
         source_id: str,
@@ -148,7 +170,9 @@ class VectorDatabase(Protocol):
         word_count: int,
     ) -> None:
         """
-        Update or create source information.
+        Update or create source information (legacy method).
+
+        Deprecated: Use add_source() instead for full functionality.
 
         Args:
             source_id: Source identifier (usually domain name)
@@ -172,6 +196,21 @@ class VectorDatabase(Protocol):
             - content: Document content
             - metadata: Document metadata
             - source_id: Source identifier
+        """
+        ...
+
+    async def url_exists(self, url: str) -> bool:
+        """
+        Check if URL exists in database.
+
+        This method is used for duplicate detection in crawling operations.
+        Both Qdrant and Supabase adapters must implement this.
+
+        Args:
+            url: URL to check
+
+        Returns:
+            True if URL exists, False otherwise
         """
         ...
 
@@ -245,5 +284,36 @@ class VectorDatabase(Protocol):
 
         Returns:
             List of source identifiers (domain names)
+        """
+        ...
+
+
+@runtime_checkable
+class QdrantDatabase(VectorDatabase, Protocol):
+    """
+    Extended protocol for Qdrant-specific functionality.
+
+    Qdrant adapter implements additional methods beyond the base VectorDatabase protocol.
+    Use isinstance() checks to access these methods in a type-safe way.
+    """
+
+    async def store_crawled_page(
+        self,
+        url: str,
+        content: str,
+        title: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> str:
+        """
+        Store a crawled page (Qdrant-specific, legacy method).
+
+        Args:
+            url: Page URL
+            content: Page content
+            title: Optional page title
+            metadata: Optional metadata
+
+        Returns:
+            Document ID
         """
         ...

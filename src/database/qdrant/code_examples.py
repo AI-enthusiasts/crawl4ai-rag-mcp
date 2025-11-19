@@ -114,7 +114,7 @@ async def search_code_examples(
         if isinstance(query, str):
             from src.utils import create_embedding
 
-            final_embedding = create_embedding(query)
+            final_embedding = await create_embedding(query)
         else:
             final_embedding = query
     else:
@@ -167,12 +167,17 @@ async def search_code_examples(
     return formatted_results
 
 
-async def delete_code_examples_by_url(client: AsyncQdrantClient, urls: list[str]) -> None:
+async def delete_code_examples_by_url(
+    client: AsyncQdrantClient, urls: list[str]
+) -> None:
     """Delete all code examples with the given URLs"""
     for url in urls:
         # First, find all points with this URL
         filter_condition = Filter(
-            must=cast("list[Condition]", [FieldCondition(key="url", match=MatchValue(value=url))]),
+            must=cast(
+                "list[Condition]",
+                [FieldCondition(key="url", match=MatchValue(value=url))],
+            ),
         )
 
         points, _ = await client.scroll(
@@ -301,12 +306,15 @@ async def delete_repository_code_examples(
         repo_name: Repository name to delete code examples for
     """
     filter_condition = Filter(
-        must=cast("list[Condition]", [
-            FieldCondition(
-                key="metadata.repository_name",
-                match=MatchValue(value=repo_name),
-            ),
-        ]),
+        must=cast(
+            "list[Condition]",
+            [
+                FieldCondition(
+                    key="metadata.repository_name",
+                    match=MatchValue(value=repo_name),
+                ),
+            ],
+        ),
     )
 
     points, _ = await client.scroll(

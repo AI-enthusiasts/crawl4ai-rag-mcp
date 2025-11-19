@@ -145,7 +145,9 @@ async def crawl_batch(
         # Create crawler with context manager for automatic cleanup
         # This ensures browser pages are properly closed after crawling
         async with AsyncWebCrawler(config=browser_config) as crawler:
-            async with track_memory(f"crawl_batch({len(validated_urls)} URLs)") as mem_ctx:
+            async with track_memory(
+                f"crawl_batch({len(validated_urls)} URLs)"
+            ) as mem_ctx:
                 logger.info(
                     f"Starting arun_many for {len(validated_urls)} URLs "
                     f"(page_timeout={crawl_config.page_timeout}ms)",
@@ -153,11 +155,16 @@ async def crawl_batch(
 
                 # Crawler will automatically close all pages when exiting context manager
                 with SuppressStdout():
-                    results = await crawler.arun_many(
+                    result_container = await crawler.arun_many(
                         urls=validated_urls,
                         config=crawl_config,
                         dispatcher=dispatcher,
                     )
+                    # stream=False in config, so this is List[CrawlResult]
+                    assert isinstance(result_container, list), (
+                        "Expected list in batch mode"
+                    )
+                    results = result_container
 
                 # Store results for memory tracking
                 mem_ctx["results"] = results

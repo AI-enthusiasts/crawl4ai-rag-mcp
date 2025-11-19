@@ -62,14 +62,14 @@ async def parse_github_repository_wrapper(ctx: Context, repo_url: str) -> str:
             indent=2,
         )
 
-    return await parse_github_repository_impl(app_ctx.repo_extractor, repo_url)  # type: ignore[no-any-return]
+    return await parse_github_repository_impl(app_ctx.repo_extractor, repo_url)
 
 
 async def query_knowledge_graph_wrapper(ctx: Context, command: str) -> str:
     """Wrapper function to call the knowledge graph query implementation."""
     # The query_knowledge_graph function doesn't need a context parameter
     # It creates its own Neo4j connection from environment variables
-    return await query_knowledge_graph(command)  # type: ignore[no-any-return]
+    return await query_knowledge_graph(command)
 
 
 def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
@@ -260,7 +260,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
                 parse_github_repository_with_branch,
             )
 
-            return await parse_github_repository_with_branch(ctx, repo_url, branch)
+            return await parse_github_repository_with_branch(repo_url, branch)
         except MCPToolError:
             raise
         except ValidationError as e:
@@ -305,7 +305,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
                 get_repository_metadata_from_neo4j,
             )
 
-            return await get_repository_metadata_from_neo4j(ctx, repo_name)
+            return await get_repository_metadata_from_neo4j(repo_name)
         except KnowledgeGraphError as e:
             logger.exception("Knowledge graph error")
             msg = f"Failed to get repository info: {e!s}"
@@ -350,7 +350,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
 
             from src.knowledge_graph.repository import update_repository_in_neo4j
 
-            return await update_repository_in_neo4j(ctx, repo_url)
+            return await update_repository_in_neo4j(repo_url)
         except MCPToolError:
             raise
         except ValidationError as e:
@@ -427,9 +427,9 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
             # Define allowed directories for repository parsing (configurable)
             allowed_prefixes = [
                 str(Path("~").expanduser()),  # User home directory
-                "/tmp/",                      # Temporary directory
-                "/var/tmp/",                  # Var temporary
-                "/workspace/",                # Common workspace directory
+                "/tmp/",  # Temporary directory
+                "/var/tmp/",  # Var temporary
+                "/workspace/",  # Common workspace directory
             ]
 
             # Check if path is within allowed directories
@@ -473,10 +473,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
             # Check if it's a Git repository
             git_dir = Path(local_path) / ".git"
             if not git_dir.exists():
-                msg = (
-                    f"Not a Git repository (no .git directory found): "
-                    f"{local_path}"
-                )
+                msg = f"Not a Git repository (no .git directory found): {local_path}"
                 return json.dumps(
                     {
                         "success": False,
@@ -566,8 +563,7 @@ def register_knowledge_graph_tools(mcp: "FastMCP") -> None:
                 indent=2,
             )
         except Exception as e:
-            logger.exception("Unexpected error parsing local repository %s",
-                           local_path)
+            logger.exception("Unexpected error parsing local repository %s", local_path)
             return json.dumps(
                 {
                     "success": False,

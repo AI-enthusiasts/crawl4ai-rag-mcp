@@ -2,18 +2,19 @@
 
 from typing import Any
 
-from anyio.to_thread import run_sync as run_in_thread
+from src.database.base import VectorDatabase
 
 from .basic import create_embedding, create_embeddings_batch
 
 
 async def add_code_examples_to_database(
-    database: Any,  # VectorDatabase instance
+    database: VectorDatabase,
     urls: list[str],
     chunk_numbers: list[int],
     code_examples: list[str],
     summaries: list[str],
     metadatas: list[dict[str, Any]],
+    source_ids: list[str] | None = None,
     batch_size: int = 20,
 ) -> None:
     """
@@ -32,15 +33,15 @@ async def add_code_examples_to_database(
         return  # Early return for empty lists
 
     # Generate embeddings for summaries in batches
-
-    embeddings = []
+    embeddings: list[list[float]] = []
     for i in range(0, len(summaries), batch_size):
         batch_texts = summaries[i : i + batch_size]
-        # Run in thread to avoid blocking event loop
-        batch_embeddings = await run_in_thread(create_embeddings_batch, batch_texts)
+        batch_embeddings = await create_embeddings_batch(batch_texts)
         embeddings.extend(batch_embeddings)
 
     # Store code examples with embeddings using the database adapter
+    # Use empty list if source_ids not provided
+    final_source_ids = source_ids if source_ids is not None else [""] * len(urls)
     await database.add_code_examples(
         urls=urls,
         chunk_numbers=chunk_numbers,
@@ -48,11 +49,12 @@ async def add_code_examples_to_database(
         summaries=summaries,
         metadatas=metadatas,
         embeddings=embeddings,
+        source_ids=final_source_ids,
     )
 
 
 async def search_code_examples(
-    database: Any,  # VectorDatabase instance
+    database: VectorDatabase,
     query: str,
     match_count: int = 5,
     source_filter: str | None = None,
@@ -74,7 +76,7 @@ async def search_code_examples(
 
     # Generate embedding for the enhanced query
     # Run in thread to avoid blocking event loop
-    query_embedding = await run_in_thread(create_embedding, enhanced_query)
+    query_embedding = await create_embedding(enhanced_query)
 
     # Search using the database adapter
     return await database.search_code_examples(

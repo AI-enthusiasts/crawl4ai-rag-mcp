@@ -63,11 +63,16 @@ async def crawl_recursive_internal_links(
             ) as mem_ctx:
                 # Run in executor to avoid blocking event loop
                 with SuppressStdout():
-                    results = await crawler.arun_many(
+                    result_container = await crawler.arun_many(
                         urls=urls_to_crawl,
                         config=run_config,
                         dispatcher=dispatcher,
                     )
+                    # stream=False in config, so this is List[CrawlResult]
+                    assert isinstance(result_container, list), (
+                        "Expected list in batch mode"
+                    )
+                    results = result_container
                 mem_ctx["results"] = results
 
             next_level_urls = set()

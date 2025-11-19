@@ -10,7 +10,7 @@ Analyzes Python source files using AST to extract:
 import ast
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from src.core.exceptions import AnalysisError, ParsingError
 
@@ -25,39 +25,129 @@ class Neo4jCodeAnalyzer:
         # External modules to ignore
         self.external_modules = {
             # Python standard library
-            "os", "sys", "json", "logging", "datetime", "pathlib", "typing",
+            "os",
+            "sys",
+            "json",
+            "logging",
+            "datetime",
+            "pathlib",
+            "typing",
             "collections",
-            "asyncio", "subprocess", "ast", "re", "string", "urllib", "http",
+            "asyncio",
+            "subprocess",
+            "ast",
+            "re",
+            "string",
+            "urllib",
+            "http",
             "email",
-            "time", "uuid", "hashlib", "base64", "itertools", "functools",
+            "time",
+            "uuid",
+            "hashlib",
+            "base64",
+            "itertools",
+            "functools",
             "operator",
-            "contextlib", "copy", "pickle", "tempfile", "shutil", "glob",
+            "contextlib",
+            "copy",
+            "pickle",
+            "tempfile",
+            "shutil",
+            "glob",
             "fnmatch",
-            "io", "codecs", "locale", "platform", "socket", "ssl", "threading",
+            "io",
+            "codecs",
+            "locale",
+            "platform",
+            "socket",
+            "ssl",
+            "threading",
             "queue",
-            "multiprocessing", "concurrent", "warnings", "traceback", "inspect",
-            "importlib", "pkgutil", "types", "weakref", "gc", "dataclasses",
+            "multiprocessing",
+            "concurrent",
+            "warnings",
+            "traceback",
+            "inspect",
+            "importlib",
+            "pkgutil",
+            "types",
+            "weakref",
+            "gc",
+            "dataclasses",
             "enum",
-            "abc", "numbers", "decimal", "fractions", "math", "cmath", "random",
+            "abc",
+            "numbers",
+            "decimal",
+            "fractions",
+            "math",
+            "cmath",
+            "random",
             "statistics",
-
             # Common third-party libraries
-            "requests", "urllib3", "httpx", "aiohttp", "flask", "django",
+            "requests",
+            "urllib3",
+            "httpx",
+            "aiohttp",
+            "flask",
+            "django",
             "fastapi",
-            "pydantic", "sqlalchemy", "alembic", "psycopg2", "pymongo", "redis",
-            "celery", "pytest", "unittest", "mock", "faker", "factory",
+            "pydantic",
+            "sqlalchemy",
+            "alembic",
+            "psycopg2",
+            "pymongo",
+            "redis",
+            "celery",
+            "pytest",
+            "unittest",
+            "mock",
+            "faker",
+            "factory",
             "hypothesis",
-            "numpy", "pandas", "matplotlib", "seaborn", "scipy", "sklearn",
+            "numpy",
+            "pandas",
+            "matplotlib",
+            "seaborn",
+            "scipy",
+            "sklearn",
             "torch",
-            "tensorflow", "keras", "opencv", "pillow", "boto3", "botocore",
+            "tensorflow",
+            "keras",
+            "opencv",
+            "pillow",
+            "boto3",
+            "botocore",
             "azure",
-            "google", "openai", "anthropic", "langchain", "transformers",
+            "google",
+            "openai",
+            "anthropic",
+            "langchain",
+            "transformers",
             "huggingface_hub",
-            "click", "typer", "rich", "colorama", "tqdm", "python-dotenv",
+            "click",
+            "typer",
+            "rich",
+            "colorama",
+            "tqdm",
+            "python-dotenv",
             "pyyaml",
-            "toml", "configargparse", "marshmallow", "attrs", "dataclasses-json",
-            "jsonschema", "cerberus", "voluptuous", "schema", "jinja2", "mako",
-            "cryptography", "bcrypt", "passlib", "jwt", "authlib", "oauthlib",
+            "toml",
+            "configargparse",
+            "marshmallow",
+            "attrs",
+            "dataclasses-json",
+            "jsonschema",
+            "cerberus",
+            "voluptuous",
+            "schema",
+            "jinja2",
+            "mako",
+            "cryptography",
+            "bcrypt",
+            "passlib",
+            "jwt",
+            "authlib",
+            "oauthlib",
         }
 
     def analyze_python_file(
@@ -79,9 +169,9 @@ class Neo4jCodeAnalyzer:
             )
 
             # Extract structure
-            classes = []
-            functions = []
-            imports = []
+            classes: list[dict[str, Any]] = []
+            functions: list[dict[str, Any]] = []
+            imports: list[str] = []
 
             for node in ast.walk(tree):
                 if isinstance(node, ast.ClassDef):
@@ -89,56 +179,55 @@ class Neo4jCodeAnalyzer:
                     methods = []
 
                     for item in node.body:
-                        if (isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef)
-                                and not item.name.startswith("_")):
+                        if isinstance(
+                            item, ast.FunctionDef | ast.AsyncFunctionDef
+                        ) and not item.name.startswith("_"):
                             # Public methods only
                             # Extract comprehensive parameter info
                             params = self._extract_function_parameters(item)
 
                             # Get return type annotation
                             return_type = (
-                                self._get_name(item.returns)
-                                if item.returns
-                                else "Any"
+                                self._get_name(item.returns) if item.returns else "Any"
                             )
 
                             # Create detailed parameter list for Neo4j storage
                             params_detailed = []
                             for p in params:
                                 param_str = f"{p['name']}:{p['type']}"
-                                if (p["optional"]
-                                        and p["default"] is not None):
+                                if p["optional"] and p["default"] is not None:
                                     param_str += f"={p['default']}"
                                 elif p["optional"]:
                                     param_str += "=None"
                                 if p["kind"] != "positional":
-                                    param_str = (
-                                        f"[{p['kind']}] {param_str}"
-                                    )
+                                    param_str = f"[{p['kind']}] {param_str}"
                                 params_detailed.append(param_str)
 
                             # Backwards compatibility arg list
                             arg_list = [
-                                arg.arg for arg in item.args.args
-                                if arg.arg != "self"
+                                arg.arg for arg in item.args.args if arg.arg != "self"
                             ]
-                            methods.append({
-                                "name": item.name,
-                                "params": params,
-                                "params_detailed": params_detailed,
-                                "return_type": return_type,
-                                "args": arg_list,
-                            })
+                            methods.append(
+                                {
+                                    "name": item.name,
+                                    "params": params,
+                                    "params_detailed": params_detailed,
+                                    "return_type": return_type,
+                                    "args": arg_list,
+                                }
+                            )
 
                     # Use comprehensive attribute extraction
                     attributes = self._extract_class_attributes(node)
 
-                    classes.append({
-                        "name": node.name,
-                        "full_name": f"{module_name}.{node.name}",
-                        "methods": methods,
-                        "attributes": attributes,
-                    })
+                    classes.append(
+                        {
+                            "name": node.name,
+                            "full_name": f"{module_name}.{node.name}",
+                            "methods": methods,
+                            "attributes": attributes,
+                        }
+                    )
 
                 elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                     # Only top-level functions
@@ -153,60 +242,60 @@ class Neo4jCodeAnalyzer:
 
                         # Get return type annotation
                         return_type = (
-                            self._get_name(node.returns)
-                            if node.returns
-                            else "Any"
+                            self._get_name(node.returns) if node.returns else "Any"
                         )
 
                         # Create detailed parameter list for Neo4j storage
                         params_detailed = []
                         for p in params:
                             param_str = f"{p['name']}:{p['type']}"
-                            if (p["optional"]
-                                    and p["default"] is not None):
+                            if p["optional"] and p["default"] is not None:
                                 param_str += f"={p['default']}"
                             elif p["optional"]:
                                 param_str += "=None"
                             if p["kind"] != "positional":
-                                param_str = (
-                                    f"[{p['kind']}] {param_str}"
-                                )
+                                param_str = f"[{p['kind']}] {param_str}"
                             params_detailed.append(param_str)
 
                         # Simple format for backwards compatibility
-                        params_list = [
-                            f"{p['name']}:{p['type']}" for p in params
-                        ]
+                        params_list = [f"{p['name']}:{p['type']}" for p in params]
 
                         # Backwards compatibility args list
                         arg_list = [arg.arg for arg in node.args.args]
-                        functions.append({
-                            "name": node.name,
-                            "full_name": f"{module_name}.{node.name}",
-                            "params": params,
-                            "params_detailed": params_detailed,
-                            "params_list": params_list,
-                            "return_type": return_type,
-                            "args": arg_list,
-                        })
+                        functions.append(
+                            {
+                                "name": node.name,
+                                "full_name": f"{module_name}.{node.name}",
+                                "params": params,
+                                "params_detailed": params_detailed,
+                                "params_list": params_list,
+                                "return_type": return_type,
+                                "args": arg_list,
+                            }
+                        )
 
                 elif isinstance(node, ast.Import | ast.ImportFrom):
                     # Track internal imports only
                     if isinstance(node, ast.Import):
                         imports.extend(
-                            alias.name for alias in node.names
+                            alias.name
+                            for alias in node.names
                             if self._is_likely_internal(
                                 alias.name,
                                 project_modules,
                             )
                         )
-                    elif (isinstance(node, ast.ImportFrom)
-                            and node.module and
-                            (node.module.startswith(".") or
-                             self._is_likely_internal(
-                                 node.module,
-                                 project_modules,
-                             ))):
+                    elif (
+                        isinstance(node, ast.ImportFrom)
+                        and node.module
+                        and (
+                            node.module.startswith(".")
+                            or self._is_likely_internal(
+                                node.module,
+                                project_modules,
+                            )
+                        )
+                    ):
                         imports.append(node.module)
 
             return {
@@ -229,7 +318,8 @@ class Neo4jCodeAnalyzer:
             return None
 
     def _extract_class_attributes(
-        self, class_node: ast.ClassDef,
+        self,
+        class_node: ast.ClassDef,
     ) -> list[dict[str, Any]]:
         """Comprehensively extract all class attributes including:
 
@@ -259,15 +349,14 @@ class Neo4jCodeAnalyzer:
             for item in class_node.body:
                 try:
                     # Type annotated class attributes
-                    if (isinstance(item, ast.AnnAssign)
-                            and isinstance(item.target, ast.Name)):
+                    if isinstance(item, ast.AnnAssign) and isinstance(
+                        item.target, ast.Name
+                    ):
                         if not item.target.id.startswith("_"):
                             # Check for ClassVar annotations before
                             # assuming dataclass/attrs semantics
-                            is_class_var = (
-                                self._is_class_var_annotation(
-                                    item.annotation,
-                                )
+                            is_class_var = self._is_class_var_annotation(
+                                item.annotation,
                             )
 
                             # Determine classification based on
@@ -328,21 +417,23 @@ class Neo4jCodeAnalyzer:
                                     slots = self._extract_slots(item.value)
                                     for slot_name in slots:
                                         if not slot_name.startswith("_"):
-                                            attributes.append({
-                                                "name": slot_name,
-                                                "type": "Any",
-                                                # Slots are instance attributes
-                                                "is_instance": True,
-                                                "is_class": False,
-                                                "is_property": False,
-                                                "has_type_hint": False,
-                                                "default_value": None,
-                                                "line_number": item.lineno,
-                                                "from_slots": True,
-                                                "from_dataclass": False,
-                                                "from_attrs": False,
-                                                "is_class_var": False,
-                                            })
+                                            attributes.append(
+                                                {
+                                                    "name": slot_name,
+                                                    "type": "Any",
+                                                    # Slots are instance attributes
+                                                    "is_instance": True,
+                                                    "is_class": False,
+                                                    "is_property": False,
+                                                    "has_type_hint": False,
+                                                    "default_value": None,
+                                                    "line_number": item.lineno,
+                                                    "from_slots": True,
+                                                    "from_dataclass": False,
+                                                    "from_attrs": False,
+                                                    "is_class_var": False,
+                                                }
+                                            )
                                             attribute_stats["slots"] += 1
                                             attribute_stats["total"] += 1
                                 elif not target.id.startswith("_"):
@@ -361,47 +452,52 @@ class Neo4jCodeAnalyzer:
                                         if item.value
                                         else None
                                     )
-                                    attributes.append({
-                                        "name": target.id,
-                                        "type": inferred_type,
-                                        "is_instance": False,
-                                        "is_class": True,
-                                        "is_property": False,
-                                        "has_type_hint": False,
-                                        "default_value": default_val,
-                                        "line_number": item.lineno,
-                                        "from_dataclass": False,
-                                        "from_attrs": False,
-                                        "is_class_var": False,
-                                    })
+                                    attributes.append(
+                                        {
+                                            "name": target.id,
+                                            "type": inferred_type,
+                                            "is_instance": False,
+                                            "is_class": True,
+                                            "is_property": False,
+                                            "has_type_hint": False,
+                                            "default_value": default_val,
+                                            "line_number": item.lineno,
+                                            "from_dataclass": False,
+                                            "from_attrs": False,
+                                            "is_class_var": False,
+                                        }
+                                    )
                                     attribute_stats["total"] += 1
 
                     # Properties with @property decorator
-                    elif (isinstance(item, ast.FunctionDef)
-                            and not item.name.startswith("_")
-                            and any(isinstance(dec, ast.Name)
-                                    and dec.id == "property"
-                                    for dec in item.decorator_list)):
+                    elif (
+                        isinstance(item, ast.FunctionDef)
+                        and not item.name.startswith("_")
+                        and any(
+                            isinstance(dec, ast.Name) and dec.id == "property"
+                            for dec in item.decorator_list
+                        )
+                    ):
                         return_type = (
-                            self._get_name(item.returns)
-                            if item.returns
-                            else "Any"
+                            self._get_name(item.returns) if item.returns else "Any"
                         )
                         # Properties accessed on instances but
                         # defined at class level
-                        attributes.append({
-                            "name": item.name,
-                            "type": return_type,
-                            "is_instance": False,
-                            "is_class": False,
-                            "is_property": True,
-                            "has_type_hint": item.returns is not None,
-                            "default_value": None,
-                            "line_number": item.lineno,
-                            "from_dataclass": False,
-                            "from_attrs": False,
-                            "is_class_var": False,
-                        })
+                        attributes.append(
+                            {
+                                "name": item.name,
+                                "type": return_type,
+                                "is_instance": False,
+                                "is_class": False,
+                                "is_property": True,
+                                "has_type_hint": item.returns is not None,
+                                "default_value": None,
+                                "line_number": item.lineno,
+                                "from_dataclass": False,
+                                "from_attrs": False,
+                                "is_class_var": False,
+                            }
+                        )
                         attribute_stats["properties"] += 1
                         attribute_stats["total"] += 1
 
@@ -441,39 +537,38 @@ class Neo4jCodeAnalyzer:
                     should_replace = False
 
                     # Priority 1: Dataclass/attrs fields take precedence
-                    attr_is_framework = (
-                        attr.get("from_dataclass")
-                        or attr.get("from_attrs")
+                    attr_is_framework = attr.get("from_dataclass") or attr.get(
+                        "from_attrs"
                     )
-                    existing_is_framework = (
-                        existing.get("from_dataclass")
-                        or existing.get("from_attrs")
-                    )
+                    existing_is_framework = existing.get(
+                        "from_dataclass"
+                    ) or existing.get("from_attrs")
                     if attr_is_framework and not existing_is_framework:
                         should_replace = True
                     # Priority 2: Type-hinted over non-hinted
                     # (same framework)
-                    elif (attr["has_type_hint"]
-                            and not existing["has_type_hint"]
-                            and not should_replace):
+                    elif (
+                        attr["has_type_hint"]
+                        and not existing["has_type_hint"]
+                        and not should_replace
+                    ):
                         # Not prioritizing dataclass/attrs
-                        if not (existing_is_framework
-                                and not attr_is_framework):
+                        if not (existing_is_framework and not attr_is_framework):
                             should_replace = True
                     # Priority 3: Instance over class attributes
                     # (same framework and type hint status)
-                    elif (attr["is_instance"]
-                            and not existing["is_instance"]
-                            and (attr["has_type_hint"]
-                                 == existing["has_type_hint"])
-                            and not should_replace):
+                    elif (
+                        attr["is_instance"]
+                        and not existing["is_instance"]
+                        and (attr["has_type_hint"] == existing["has_type_hint"])
+                        and not should_replace
+                    ):
                         # Not prioritizing by framework or
                         # type hints
                         if existing_is_framework == attr_is_framework:
                             should_replace = True
                     # Priority 4: Properties always kept (unique)
-                    elif (attr.get("is_property")
-                            and not existing.get("is_property")):
+                    elif attr.get("is_property") and not existing.get("is_property"):
                         should_replace = True
 
                     if should_replace:
@@ -589,7 +684,8 @@ class Neo4jCodeAnalyzer:
             return "ClassVar" in annotation_str
 
     def _extract_init_attributes(
-        self, class_node: ast.ClassDef,
+        self,
+        class_node: ast.ClassDef,
     ) -> list[dict[str, Any]]:
         """Extract attributes from __init__ method"""
         attributes: list[dict[str, Any]] = []
@@ -597,8 +693,7 @@ class Neo4jCodeAnalyzer:
         # Find __init__ method
         init_method = None
         for item in class_node.body:
-            if (isinstance(item, ast.FunctionDef)
-                    and item.name == "__init__"):
+            if isinstance(item, ast.FunctionDef) and item.name == "__init__":
                 init_method = item
                 break
 
@@ -610,18 +705,17 @@ class Neo4jCodeAnalyzer:
                 try:
                     # Handle annotated assignments (e.g.,
                     # self.attr: Type = value)
-                    if (isinstance(node, ast.AnnAssign)
-                            and isinstance(
-                                node.target, ast.Attribute,
-                            )):
+                    if isinstance(node, ast.AnnAssign) and isinstance(
+                        node.target,
+                        ast.Attribute,
+                    ):
                         is_self = (
                             isinstance(node.target.value, ast.Name)
                             and node.target.value.id == "self"
                         )
-                        if (is_self
-                                and not node.target.attr.startswith(
-                                    "_",
-                                )):
+                        if is_self and not node.target.attr.startswith(
+                            "_",
+                        ):
                             type_hint = (
                                 self._get_name(node.annotation)
                                 if node.annotation
@@ -632,16 +726,18 @@ class Neo4jCodeAnalyzer:
                                 if node.value
                                 else None
                             )
-                            attributes.append({
-                                "name": node.target.attr,
-                                "type": type_hint,
-                                "is_instance": True,
-                                "is_class": False,
-                                "is_property": False,
-                                "has_type_hint": True,
-                                "default_value": default,
-                                "line_number": node.lineno,
-                            })
+                            attributes.append(
+                                {
+                                    "name": node.target.attr,
+                                    "type": type_hint,
+                                    "is_instance": True,
+                                    "is_class": False,
+                                    "is_property": False,
+                                    "has_type_hint": True,
+                                    "default_value": default,
+                                    "line_number": node.lineno,
+                                }
+                            )
 
                     # Handle regular assignments: self.attr = value
                     elif isinstance(node, ast.Assign):
@@ -649,35 +745,33 @@ class Neo4jCodeAnalyzer:
                             if isinstance(target, ast.Attribute):
                                 is_self = (
                                     isinstance(
-                                        target.value, ast.Name,
+                                        target.value,
+                                        ast.Name,
                                     )
                                     and target.value.id == "self"
                                 )
-                                if (is_self
-                                        and not target.attr.startswith(
-                                            "_",
-                                        )):
+                                if is_self and not target.attr.startswith(
+                                    "_",
+                                ):
                                     # Infer type from assignment
-                                    inferred = (
-                                        self._infer_type_from_value(
-                                            node.value,
-                                        )
+                                    inferred = self._infer_type_from_value(
+                                        node.value,
                                     )
-                                    default = (
-                                        self._get_default_value(
-                                            node.value,
-                                        )
+                                    default = self._get_default_value(
+                                        node.value,
                                     )
-                                    attributes.append({
-                                        "name": target.attr,
-                                        "type": inferred,
-                                        "is_instance": True,
-                                        "is_class": False,
-                                        "is_property": False,
-                                        "has_type_hint": False,
-                                        "default_value": default,
-                                        "line_number": node.lineno,
-                                    })
+                                    attributes.append(
+                                        {
+                                            "name": target.attr,
+                                            "type": inferred,
+                                            "is_instance": True,
+                                            "is_class": False,
+                                            "is_property": False,
+                                            "has_type_hint": False,
+                                            "default_value": default,
+                                            "line_number": node.lineno,
+                                        }
+                                    )
 
                             # Handle multiple assignments (e.g.,
                             # self.x = self.y = value)
@@ -686,34 +780,34 @@ class Neo4jCodeAnalyzer:
                                     is_self = (
                                         isinstance(elt, ast.Attribute)
                                         and isinstance(
-                                            elt.value, ast.Name,
+                                            elt.value,
+                                            ast.Name,
                                         )
                                         and elt.value.id == "self"
                                     )
-                                    if (is_self
-                                            and not elt.attr.startswith(
-                                                "_",
-                                            )):
-                                        inferred = (
-                                            self._infer_type_from_value(
-                                                node.value,
-                                            )
+                                    if is_self and not cast(
+                                        ast.Attribute, elt
+                                    ).attr.startswith(
+                                        "_",
+                                    ):
+                                        inferred = self._infer_type_from_value(
+                                            node.value,
                                         )
-                                        default = (
-                                            self._get_default_value(
-                                                node.value,
-                                            )
+                                        default = self._get_default_value(
+                                            node.value,
                                         )
-                                        attributes.append({
-                                            "name": elt.attr,
-                                            "type": inferred,
-                                            "is_instance": True,
-                                            "is_class": False,
-                                            "is_property": False,
-                                            "has_type_hint": False,
-                                            "default_value": default,
-                                            "line_number": node.lineno,
-                                        })
+                                        attributes.append(
+                                            {
+                                                "name": cast(ast.Attribute, elt).attr,
+                                                "type": inferred,
+                                                "is_instance": True,
+                                                "is_class": False,
+                                                "is_property": False,
+                                                "has_type_hint": False,
+                                                "default_value": default,
+                                                "line_number": node.lineno,
+                                            }
+                                        )
 
                 except AnalysisError as e:
                     logger.debug("Failed to extract __init__ attribute: %s", e)
@@ -736,18 +830,16 @@ class Neo4jCodeAnalyzer:
         try:
             if isinstance(slots_node, ast.List | ast.Tuple):
                 for elt in slots_node.elts:
-                    if (isinstance(elt, ast.Constant)
-                            and isinstance(elt.value, str)):
+                    if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
                         slots.append(elt.value)
-                    elif (isinstance(elt, ast.Str)
-                            and isinstance(elt.s, str)):
+                    elif isinstance(elt, ast.Str) and isinstance(elt.s, str):
                         # Python < 3.8 compatibility
                         slots.append(elt.s)
-            elif (isinstance(slots_node, ast.Constant)
-                    and isinstance(slots_node.value, str)):
+            elif isinstance(slots_node, ast.Constant) and isinstance(
+                slots_node.value, str
+            ):
                 slots.append(slots_node.value)
-            elif (isinstance(slots_node, ast.Str)
-                    and isinstance(slots_node.s, str)):
+            elif isinstance(slots_node, ast.Str) and isinstance(slots_node.s, str):
                 # Python < 3.8 compatibility
                 slots.append(slots_node.s)
 
@@ -786,8 +878,14 @@ class Neo4jCodeAnalyzer:
                 # Try to get type from function call
                 func_name = self._get_name(value_node.func)
                 builtins = [
-                    "list", "dict", "set", "tuple", "str", "int",
-                    "float", "bool",
+                    "list",
+                    "dict",
+                    "set",
+                    "tuple",
+                    "str",
+                    "int",
+                    "float",
+                    "bool",
                 ]
                 if func_name in builtins:
                     return func_name
@@ -852,9 +950,7 @@ class Neo4jCodeAnalyzer:
         # If it's not obviously external, consider it internal
         min_module_length = 2
         test_keywords = ["test", "mock", "fake"]
-        is_not_test = not any(
-            ext in base_module.lower() for ext in test_keywords
-        )
+        is_not_test = not any(ext in base_module.lower() for ext in test_keywords)
         is_not_private = not base_module.startswith("_")
         is_long_enough = len(base_module) > min_module_length
         return bool(is_not_test and is_not_private and is_long_enough)
@@ -867,10 +963,7 @@ class Neo4jCodeAnalyzer:
         """Determine the actual importable module name for a Python file"""
         # Start with the default: convert file path to module path
         default_module = (
-            relative_path
-            .replace("/", ".")
-            .replace("\\", ".")
-            .replace(".py", "")
+            relative_path.replace("/", ".").replace("\\", ".").replace(".py", "")
         )
 
         # Common patterns to detect the actual package root
@@ -896,15 +989,19 @@ class Neo4jCodeAnalyzer:
         # Fallback: look for common Python project structures
         # Skip common non-package directories
         skip_dirs = {
-            "src", "lib", "source", "python", "pkg", "packages",
+            "src",
+            "lib",
+            "source",
+            "python",
+            "pkg",
+            "packages",
         }
 
         # Find the first directory that's not in skip_dirs
         filtered_parts: list[str] = []
         for part in path_parts:
             # Once included, include everything
-            if (part.lower() not in skip_dirs
-                    or filtered_parts):
+            if part.lower() not in skip_dirs or filtered_parts:
                 filtered_parts.append(part)
 
         if filtered_parts:
@@ -914,7 +1011,8 @@ class Neo4jCodeAnalyzer:
         return default_module
 
     def _extract_function_parameters(
-        self, func_node: Any,
+        self,
+        func_node: Any,
     ) -> list[dict[str, Any]]:
         """Comprehensive parameter extraction from function def"""
         params: list[dict[str, Any]] = []
@@ -924,11 +1022,7 @@ class Neo4jCodeAnalyzer:
             if arg.arg == "self":
                 continue
 
-            param_type = (
-                self._get_name(arg.annotation)
-                if arg.annotation
-                else "Any"
-            )
+            param_type = self._get_name(arg.annotation) if arg.annotation else "Any"
             param_info = {
                 "name": arg.arg,
                 "type": param_type,
@@ -945,12 +1039,8 @@ class Neo4jCodeAnalyzer:
                 default_idx = i - defaults_start
                 if default_idx < num_defaults:
                     param_info["optional"] = True
-                    default_node = (
-                        func_node.args.defaults[default_idx]
-                    )
-                    param_info["default"] = (
-                        self._get_default_value(default_node)
-                    )
+                    default_node = func_node.args.defaults[default_idx]
+                    param_info["default"] = self._get_default_value(default_node)
 
             params.append(param_info)
 
@@ -963,21 +1053,19 @@ class Neo4jCodeAnalyzer:
                 if func_node.args.vararg.annotation
                 else "Any"
             )
-            params.append({
-                "name": f"*{func_node.args.vararg.arg}",
-                "type": vararg_type,
-                "kind": "var_positional",
-                "optional": True,
-                "default": None,
-            })
+            params.append(
+                {
+                    "name": f"*{func_node.args.vararg.arg}",
+                    "type": vararg_type,
+                    "kind": "var_positional",
+                    "optional": True,
+                    "default": None,
+                }
+            )
 
         # Keyword-only arguments (after *)
         for i, arg in enumerate(func_node.args.kwonlyargs):
-            param_type = (
-                self._get_name(arg.annotation)
-                if arg.annotation
-                else "Any"
-            )
+            param_type = self._get_name(arg.annotation) if arg.annotation else "Any"
             param_info = {
                 "name": arg.arg,
                 "type": param_type,
@@ -989,16 +1077,11 @@ class Neo4jCodeAnalyzer:
             # Check for default value
             has_default = (
                 i < len(func_node.args.kw_defaults)
-                and func_node.args.kw_defaults[i]
-                is not None
+                and func_node.args.kw_defaults[i] is not None
             )
             if has_default:
-                default_node = (
-                    func_node.args.kw_defaults[i]
-                )
-                param_info["default"] = (
-                    self._get_default_value(default_node)
-                )
+                default_node = func_node.args.kw_defaults[i]
+                param_info["default"] = self._get_default_value(default_node)
             else:
                 # No default = required kwonly arg
                 param_info["optional"] = False
@@ -1014,13 +1097,15 @@ class Neo4jCodeAnalyzer:
                 if func_node.args.kwarg.annotation
                 else "Dict[str, Any]"
             )
-            params.append({
-                "name": f"**{func_node.args.kwarg.arg}",
-                "type": kwarg_type,
-                "kind": "var_keyword",
-                "optional": True,
-                "default": None,
-            })
+            params.append(
+                {
+                    "name": f"**{func_node.args.kwarg.arg}",
+                    "type": kwarg_type,
+                    "kind": "var_keyword",
+                    "optional": True,
+                    "default": None,
+                }
+            )
 
         return params
 

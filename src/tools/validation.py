@@ -115,7 +115,8 @@ def register_validation_tools(mcp: "FastMCP") -> None:
 
             # Extract code examples from Neo4j
             extraction_result = await extract_repository_code(
-                app_ctx.repo_extractor, repo_name,
+                app_ctx.repo_extractor,
+                repo_name,
             )
 
             if not extraction_result["success"]:
@@ -141,7 +142,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 len(embedding_texts),
             )
 
-            embeddings = create_embeddings_batch(embedding_texts)
+            embeddings = await create_embeddings_batch(embedding_texts)
 
             if len(embeddings) != len(code_examples):
                 error_msg = (
@@ -319,7 +320,8 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                 neo4j_driver = getattr(app_ctx.repo_extractor, "driver", None)
 
             validated_search = ValidatedCodeSearchService(
-                app_ctx.database_client, neo4j_driver,
+                app_ctx.database_client,
+                neo4j_driver,
             )
 
             # Configure validation based on mode
@@ -330,7 +332,8 @@ def register_validation_tools(mcp: "FastMCP") -> None:
             elif validation_mode == "thorough":
                 parallel_validation = False  # Sequential for thoroughness
                 min_confidence = max(
-                    min_confidence, 0.7,
+                    min_confidence,
+                    0.7,
                 )  # Higher threshold for accuracy
             # balanced mode uses defaults
 
@@ -417,13 +420,15 @@ def register_validation_tools(mcp: "FastMCP") -> None:
             # Validate script path
             validation_result = validate_script_path(script_path)
             if isinstance(validation_result, dict) and not validation_result.get(
-                "valid", False,
+                "valid",
+                False,
             ):
                 return json.dumps(
                     {
                         "success": False,
                         "error": validation_result.get(
-                            "error", "Script validation failed",
+                            "error",
+                            "Script validation failed",
                         ),
                     },
                     indent=2,
@@ -514,9 +519,7 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                     ),
                 },
                 {
-                    "description": (
-                        "Analyze with filename (defaults to user_scripts)"
-                    ),
+                    "description": ("Analyze with filename (defaults to user_scripts)"),
                     "host_path": "./analysis_scripts/user_scripts/script.py",
                     "tool_call": (
                         "check_ai_script_hallucinations(script_path='script.py')"
@@ -528,16 +531,9 @@ def register_validation_tools(mcp: "FastMCP") -> None:
                     "1. Place your Python scripts in "
                     "./analysis_scripts/user_scripts/ on your host machine"
                 ),
-                (
-                    "2. Call the hallucination detection tools with the relative path"
-                ),
-                (
-                    "3. Results will be saved to ./analysis_scripts/validation_results/"
-                ),
-                (
-                    "4. The path translation is automatic - you can use convenient"
-                    " paths"
-                ),
+                ("2. Call the hallucination detection tools with the relative path"),
+                ("3. Results will be saved to ./analysis_scripts/validation_results/"),
+                ("4. The path translation is automatic - you can use convenient paths"),
             ],
             "container_mappings": {
                 "./analysis_scripts/": "/app/analysis_scripts/",

@@ -1,20 +1,29 @@
 """Document management and search utilities for embeddings."""
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any
-
-from anyio.to_thread import run_sync as run_in_thread
+import asyncio
+from typing import Any, TypedDict
 
 from src.core.exceptions import EmbeddingError, LLMError
 from src.core.logging import logger
+from src.database.base import VectorDatabase
 
 from .basic import create_embedding, create_embeddings_batch
 from .config import get_contextual_embedding_config
 from .contextual import process_chunk_with_context
 
 
+class SourceData(TypedDict):
+    """Structure for source metadata."""
+
+    url: str
+    title: str
+    description: str
+    word_count: int
+    metadata: dict[str, Any]
+
+
 async def add_documents_to_database(
-    database: Any,  # VectorDatabase instance
+    database: VectorDatabase,
     urls: list[str],
     chunk_numbers: list[int],
     contents: list[str],
@@ -46,133 +55,84 @@ async def add_documents_to_database(
     if use_contextual_embeddings and url_to_full_document:
         logger.info("Using contextual embeddings for enhanced retrieval")
 
-        # Use ThreadPoolExecutor for parallel processing with individual error handling
-        with ThreadPoolExecutor(
-            max_workers=config["max_workers"],
-        ) as executor:
-            # Submit tasks individually for better error handling
-            future_to_index = {}
-            total_chunks = len(contents)
+        # Process chunks with contextual embeddings using asyncio
+        contextual_contents = contents.copy()
+        embeddings_dict: dict[int, list[float]] = {}
+        successful_contextual_count = 0
+        failed_contextual_count = 0
+        total_chunks = len(contents)
 
+        try:
+            # Process all chunks in parallel with asyncio.gather
+            tasks = []
             for i, (url, content) in enumerate(zip(urls, contents, strict=False)):
                 full_document = url_to_full_document.get(url, "")
                 args = (content, full_document, i, total_chunks)
-                future = executor.submit(process_chunk_with_context, args)
-                future_to_index[future] = i
+                tasks.append(process_chunk_with_context(args))
 
-            # Process results as they complete, with individual error handling
-            contextual_contents = contents.copy()  # Start with original contents
-            # Pre-allocate embeddings list with correct size (Python docs: list assignment requires existing index)
-            embeddings: list[list[float] | None] = [None] * len(contents)
-            successful_contextual_count = 0
-            failed_contextual_count = 0
+            # Wait for all tasks to complete
+            results: list[
+                tuple[str, list[float]] | BaseException
+            ] = await asyncio.gather(*tasks, return_exceptions=True)
 
-            try:
-                for future in as_completed(future_to_index.keys()):
-                    index = future_to_index[future]
-                    try:
-                        contextual_text, embedding = future.result()
-                        contextual_contents[index] = contextual_text
-                        embeddings[index] = embedding
-                        successful_contextual_count += 1
-                    except LLMError as e:
-                        logger.warning(
-                            f"LLM error generating contextual embedding for chunk {index}: {e}. Using original content.",
-                        )
-                        # Keep original content and generate standard embedding
-                        embedding = create_embedding(contents[index])
-                        embeddings[index] = embedding
-                        failed_contextual_count += 1
-                    except EmbeddingError as e:
-                        logger.warning(
-                            f"Embedding error for chunk {index}: {e}. Using original content.",
-                        )
-                        # Keep original content and generate standard embedding
-                        embedding = create_embedding(contents[index])
-                        embeddings[index] = embedding
-                        failed_contextual_count += 1
-                    except Exception as e:
-                        logger.warning(
-                            f"Unexpected error generating contextual embedding for chunk {index}: {e}. Using original content.",
-                        )
-                        # Keep original content and generate standard embedding
-                        embedding = create_embedding(contents[index])
-                        embeddings[index] = embedding
-                        failed_contextual_count += 1
-
-                # Update contents to use contextual versions where successful
-                contents = contextual_contents
-
-                # Add contextual embedding flag to metadata for successful ones
-                for i, metadata in enumerate(metadatas):
-                    metadata["contextual_embedding"] = (
-                        embeddings[i] is not None and i < successful_contextual_count
+            # Process results
+            for i, result in enumerate(results):
+                if isinstance(result, BaseException):
+                    logger.warning(
+                        f"Error generating contextual embedding for chunk {i}: {result}. Using original content.",
                     )
+                    embedding = await create_embedding(contents[i])
+                    embeddings_dict[i] = embedding
+                    failed_contextual_count += 1
+                else:
+                    # Result is tuple[str, list[float]] from process_chunk_with_context
+                    contextual_text, embedding = result
+                    contextual_contents[i] = contextual_text
+                    embeddings_dict[i] = embedding
+                    successful_contextual_count += 1
 
-                logger.info(
-                    f"Contextual embedding processing: {successful_contextual_count} successful, {failed_contextual_count} failed",
-                )
+            # Update contents to use contextual versions where successful
+            contents = contextual_contents
 
-            except LLMError as e:
-                logger.error(
-                    f"LLM error during contextual embedding processing: {e}. Falling back to standard embeddings.",
-                )
-                # Fall back to standard embedding generation for all
+            # Convert dict to list in correct order
+            embeddings = [embeddings_dict[i] for i in range(len(contents))]
 
-                embeddings = []
-                for i in range(0, len(contents), batch_size):
-                    batch_texts = contents[i : i + batch_size]
-                    # Run in thread to avoid blocking event loop
-                    batch_embeddings = await run_in_thread(
-                        create_embeddings_batch, batch_texts,
-                    )
-                    embeddings.extend(batch_embeddings)
-            except EmbeddingError as e:
-                logger.error(
-                    f"Embedding error during contextual embedding processing: {e}. Falling back to standard embeddings.",
-                )
-                # Fall back to standard embedding generation for all
+            # Add contextual embedding flag to metadata for successful ones
+            for i, metadata in enumerate(metadatas):
+                metadata["contextual_embedding"] = i < successful_contextual_count
 
-                embeddings = []
-                for i in range(0, len(contents), batch_size):
-                    batch_texts = contents[i : i + batch_size]
-                    # Run in thread to avoid blocking event loop
-                    batch_embeddings = await run_in_thread(
-                        create_embeddings_batch, batch_texts,
-                    )
-                    embeddings.extend(batch_embeddings)
-            except Exception as e:
-                logger.error(
-                    f"Unexpected error during contextual embedding processing: {e}. Falling back to standard embeddings.",
-                )
-                # Fall back to standard embedding generation for all
+            logger.info(
+                f"Contextual embedding processing: {successful_contextual_count} successful, {failed_contextual_count} failed",
+            )
 
-                embeddings = []
-                for i in range(0, len(contents), batch_size):
-                    batch_texts = contents[i : i + batch_size]
-                    # Run in thread to avoid blocking event loop
-                    batch_embeddings = await run_in_thread(
-                        create_embeddings_batch, batch_texts,
-                    )
-                    embeddings.extend(batch_embeddings)
+        except Exception as e:
+            logger.error(
+                f"Unexpected error during contextual embedding processing: {e}. Falling back to standard embeddings.",
+            )
+            # Fall back to standard embedding generation for all
+            embeddings = []
+            for i in range(0, len(contents), batch_size):
+                batch_texts = contents[i : i + batch_size]
+                batch_embeddings = await create_embeddings_batch(batch_texts)
+                embeddings.extend(batch_embeddings)
     else:
         # Generate embeddings for all contents in batches (standard approach)
-
         embeddings = []
         for i in range(0, len(contents), batch_size):
             batch_texts = contents[i : i + batch_size]
-            # Run in thread to avoid blocking event loop
-            batch_embeddings = await run_in_thread(create_embeddings_batch, batch_texts)
+            batch_embeddings = await create_embeddings_batch(batch_texts)
             embeddings.extend(batch_embeddings)
 
     # Store documents with embeddings using the provided database adapter
+    # Use empty list if source_ids not provided
+    final_source_ids = source_ids if source_ids is not None else [""] * len(urls)
     await database.add_documents(
         urls=urls,
         chunk_numbers=chunk_numbers,
         contents=contents,
         metadatas=metadatas,
         embeddings=embeddings,
-        source_ids=source_ids,
+        source_ids=final_source_ids,
     )
 
     # Add source entries for web scraped content
@@ -187,7 +147,7 @@ async def add_documents_to_database(
 
 
 async def search_documents(
-    database: Any,  # VectorDatabase instance
+    database: VectorDatabase,
     query: str,
     match_count: int = 10,
     filter_metadata: dict[str, Any] | None = None,
@@ -207,8 +167,7 @@ async def search_documents(
         List of documents with similarity scores
     """
     # Generate embedding for the query
-    # Run in thread to avoid blocking event loop
-    query_embedding = await run_in_thread(create_embedding, query)
+    query_embedding = await create_embedding(query)
 
     # Search using the database adapter
     return await database.search_documents(
@@ -220,7 +179,7 @@ async def search_documents(
 
 
 async def _add_web_sources_to_database(
-    database: Any,
+    database: VectorDatabase,
     urls: list[str],
     source_ids: list[str],
     url_to_full_document: dict[str, str],
@@ -238,7 +197,7 @@ async def _add_web_sources_to_database(
     """
     try:
         # Group by source_id to create source summaries
-        source_data = {}
+        source_data: dict[str, SourceData] = {}
 
         for _i, (url, source_id) in enumerate(zip(urls, source_ids, strict=False)):
             if source_id and source_id not in source_data:
@@ -271,35 +230,18 @@ async def _add_web_sources_to_database(
         # Add each unique source to the database
         for source_id, data in source_data.items():
             try:
-                # Check database adapter type and use appropriate method
-                if hasattr(database, "add_source"):
-                    # Qdrant adapter - needs embedding
-                    # Run in thread to avoid blocking event loop
-                    source_embeddings = await run_in_thread(
-                        create_embeddings_batch, [data["description"]],
-                    )
-                    source_embedding = source_embeddings[0]
-                    await database.add_source(
-                        source_id=source_id,
-                        url=data["url"],
-                        title=data["title"],
-                        description=data["description"],
-                        metadata=data["metadata"],
-                        embedding=source_embedding,
-                    )
-                    logger.info(f"Added web source to Qdrant: {source_id}")
-
-                elif hasattr(database, "update_source_info"):
-                    # Supabase adapter - simpler interface
-                    await database.update_source_info(
-                        source_id=source_id,
-                        summary=data["description"],
-                        word_count=data["word_count"],
-                    )
-                    logger.info(f"Added web source to Supabase: {source_id}")
-
-                else:
-                    logger.warning("Database adapter does not support adding sources")
+                # Add source with vector embedding (all adapters support this now)
+                source_embeddings = await create_embeddings_batch([data["description"]])
+                source_embedding = source_embeddings[0]
+                await database.add_source(
+                    source_id=source_id,
+                    url=data["url"],
+                    title=data["title"],
+                    description=data["description"],
+                    metadata=data["metadata"],
+                    embedding=source_embedding,
+                )
+                logger.info(f"Added web source: {source_id}")
 
             except EmbeddingError as e:
                 logger.warning(f"Embedding error adding web source {source_id}: {e}")

@@ -34,7 +34,7 @@ async def track_memory(operation_name: str) -> AsyncIterator[dict[str, Any]]:
     )
 
     # Yield a dict to collect results
-    context = {"results": None}
+    context: dict[str, Any] = {"results": None}
 
     try:
         yield context

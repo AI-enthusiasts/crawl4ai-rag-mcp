@@ -1,17 +1,27 @@
 """Basic embedding creation utilities using OpenAI."""
 
 import os
-import time
 
-import openai
+from openai import AsyncOpenAI
 
 from src.core.exceptions import EmbeddingError
 from src.core.logging import logger
 
 from .config import get_embedding_dimensions, get_embedding_model
 
+# Global async client instance (reused across calls)
+_client: AsyncOpenAI | None = None
 
-def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
+
+def _get_client() -> AsyncOpenAI:
+    """Get or create AsyncOpenAI client instance."""
+    global _client
+    if _client is None:
+        _client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    return _client
+
+
+async def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
     """
     Create embeddings for multiple texts in a single API call.
 
@@ -25,17 +35,12 @@ def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
         return []
 
     max_retries = 3
-    retry_delay = 1.0  # Start with 1 second delay
-
-    # Use the embedding model from environment or default
     model = get_embedding_model()
-
-    # Create OpenAI client instance once
-    client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = _get_client()
 
     for retry in range(max_retries):
         try:
-            response = client.embeddings.create(
+            response = await client.embeddings.create(
                 model=model,
                 input=texts,
             )
@@ -48,9 +53,8 @@ def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
                     max_retries,
                     str(e),
                 )
-                logger.info("Retrying in %s seconds...", retry_delay)
-                time.sleep(retry_delay)
-                retry_delay *= 2  # Exponential backoff
+                # OpenAI SDK handles retries automatically, just continue
+                continue
             else:
                 logger.error(
                     "Failed to create batch embeddings after %d attempts: %s",
@@ -64,7 +68,7 @@ def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
 
                 for i, text in enumerate(texts):
                     try:
-                        individual_response = client.embeddings.create(
+                        individual_response = await client.embeddings.create(
                             model=model,
                             input=[text],
                         )
@@ -103,36 +107,20 @@ def create_embeddings_batch(texts: list[str]) -> list[list[float]]:
                     max_retries,
                     str(e),
                 )
-                logger.info("Retrying in %s seconds...", retry_delay)
-                time.sleep(retry_delay)
-                retry_delay *= 2  # Exponential backoff
+                continue
             else:
                 logger.error(
                     "Failed to create batch embeddings after %d attempts: %s",
                     max_retries,
                     str(e),
                 )
-                # Try creating embeddings one by one as fallback
-                logger.info("Attempting to create embeddings individually...")
-                embeddings: list[list[float]] = []
-                successful_count = 0
 
-                for i, text in enumerate(texts):
-                    # This block is now handled above in the EmbeddingError catch
-                    pass
-
-                logger.info(
-                    "Successfully created %d/%d embeddings individually",
-                    successful_count,
-                    len(texts),
-                )
-                return embeddings
-
-    # This should never be reached, but added for type safety
-    return []
+    # Fallback: return zero embeddings
+    dimensions = get_embedding_dimensions(model)
+    return [[0.0] * dimensions for _ in texts]
 
 
-def create_embedding(text: str) -> list[float]:
+async def create_embedding(text: str) -> list[float]:
     """
     Create an embedding for a single text using OpenAI's API.
 
@@ -143,22 +131,19 @@ def create_embedding(text: str) -> list[float]:
         List of floats representing the embedding
     """
     try:
-        embeddings = create_embeddings_batch([text])
+        embeddings = await create_embeddings_batch([text])
         if embeddings:
             return embeddings[0]
-        # Fallback with dynamic dimensions
         model = get_embedding_model()
         dimensions = get_embedding_dimensions(model)
         return [0.0] * dimensions
     except EmbeddingError as e:
         logger.error("Embedding error creating single embedding: %s", str(e))
-        # Return empty embedding with dynamic dimensions
         model = get_embedding_model()
         dimensions = get_embedding_dimensions(model)
         return [0.0] * dimensions
     except Exception as e:
         logger.error("Unexpected error creating embedding: %s", str(e))
-        # Return empty embedding with dynamic dimensions
         model = get_embedding_model()
         dimensions = get_embedding_dimensions(model)
         return [0.0] * dimensions

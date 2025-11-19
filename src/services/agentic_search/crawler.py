@@ -57,13 +57,16 @@ class SelectiveCrawler:
 
         # HIGH PRIORITY FIX #10: Duplicate detection - filter out already crawled URLs
         # Uses Qdrant count() for efficient existence check (per Qdrant docs)
-        app_ctx = get_app_context(ctx)
+        app_ctx = get_app_context()
+        if not app_ctx:
+            msg = "Application context not available"
+            raise DatabaseError(msg)
         database_client = app_ctx.database_client
         urls_to_crawl = []
         urls_skipped = 0
 
         for url in urls:
-            # Check if URL already exists in Qdrant (efficient count-based check)
+            # Check if URL already exists in database (efficient existence check)
             try:
                 exists = await database_client.url_exists(url)
                 if exists:

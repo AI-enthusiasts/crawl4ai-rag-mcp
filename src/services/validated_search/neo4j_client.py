@@ -40,6 +40,11 @@ class Neo4jValidationClient:
             return None
 
         if not self.neo4j_driver:
+            # Validate required configuration
+            if not self.neo4j_uri or not self.neo4j_password:
+                msg = "Neo4j URI and password are required"
+                raise QueryError(msg)
+
             # Import notification suppression (available in neo4j>=5.21.0)
             try:
                 from neo4j import NotificationMinimumSeverity
@@ -91,7 +96,10 @@ class Neo4jValidationClient:
             return False
 
     async def check_class_exists(
-        self, session: Any, class_name: str, source_id: str,
+        self,
+        session: Any,
+        class_name: str,
+        source_id: str,
     ) -> bool:
         """Check if class exists in the repository.
 
@@ -113,7 +121,9 @@ class Neo4jValidationClient:
             RETURN count(c) > 0 as exists
             """
             result = await session.run(
-                query, repo_name=source_id, class_name=class_name,
+                query,
+                repo_name=source_id,
+                class_name=class_name,
             )
             record = await result.single()
             return record["exists"] if record else False
@@ -166,7 +176,9 @@ class Neo4jValidationClient:
                 RETURN count(m) > 0 as exists
                 """
                 result = await session.run(
-                    query, repo_name=source_id, method_name=method_name,
+                    query,
+                    repo_name=source_id,
+                    method_name=method_name,
                 )
 
             record = await result.single()
@@ -179,7 +191,10 @@ class Neo4jValidationClient:
             return False
 
     async def check_function_exists(
-        self, session: Any, function_name: str, source_id: str,
+        self,
+        session: Any,
+        function_name: str,
+        source_id: str,
     ) -> bool:
         """Check if standalone function exists in the repository.
 
@@ -201,7 +216,9 @@ class Neo4jValidationClient:
             RETURN count(func) > 0 as exists
             """
             result = await session.run(
-                query, repo_name=source_id, function_name=function_name,
+                query,
+                repo_name=source_id,
+                function_name=function_name,
             )
             record = await result.single()
             return record["exists"] if record else False

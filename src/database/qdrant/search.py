@@ -46,7 +46,7 @@ async def search_documents(
     # Create filter if conditions exist
     search_filter = None
     if filter_conditions:
-        search_filter = Filter(must=cast("Sequence[Condition]", filter_conditions))
+        search_filter = Filter(must=list(filter_conditions))
 
     # Perform search
     results = await client.search(
@@ -94,7 +94,7 @@ async def search_documents_by_keyword(
             ),
         )
 
-    search_filter = Filter(must=cast("Sequence[Condition]", filter_conditions))
+    search_filter = Filter(must=list(filter_conditions))
 
     # Use scroll to find matching documents
     points, _ = await client.scroll(
@@ -138,7 +138,7 @@ async def search(
     # Generate embedding for the query
     from src.utils import create_embedding
 
-    query_embedding = create_embedding(query)
+    query_embedding = await create_embedding(query)
 
     # Delegate to the existing search_documents method
     return await search_documents(
@@ -214,9 +214,7 @@ async def hybrid_search(
                 # Document only found in keyword search
                 result["search_type"] = "keyword"
                 result["similarity"] = 0.5  # Base similarity for keyword matches
-                result["combined_score"] = (
-                    0.3  # Lower weight for keyword-only matches
-                )
+                result["combined_score"] = 0.3  # Lower weight for keyword-only matches
                 combined_results[doc_id] = result
 
     # Sort by combined score and return top results

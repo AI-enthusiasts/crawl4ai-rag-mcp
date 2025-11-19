@@ -2,7 +2,7 @@
 
 import os
 
-import openai
+from openai import AsyncOpenAI
 
 from src.core.exceptions import LLMError
 from src.core.logging import logger
@@ -10,8 +10,19 @@ from src.core.logging import logger
 from .basic import create_embedding
 from .config import get_contextual_embedding_config
 
+# Global async client instance
+_client: AsyncOpenAI | None = None
 
-def generate_contextual_embedding(
+
+def _get_client() -> AsyncOpenAI:
+    """Get or create AsyncOpenAI client instance."""
+    global _client
+    if _client is None:
+        _client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    return _client
+
+
+async def generate_contextual_embedding(
     chunk: str,
     full_document: str,
     chunk_index: int = 0,
@@ -57,11 +68,11 @@ Here is the chunk{position_info} we want to situate within the whole document:
 
 Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else."""
 
-        # Create OpenAI client instance
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        # Get async OpenAI client
+        client = _get_client()
 
         # Call the OpenAI API to generate contextual information
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model=model_choice,
             messages=[
                 {
@@ -95,10 +106,11 @@ Please give a short succinct context to situate this chunk within the overall do
         return chunk
 
 
-def process_chunk_with_context(args) -> tuple[str, list[float]]:
+async def process_chunk_with_context(
+    args: tuple[str, str, int, int],
+) -> tuple[str, list[float]]:
     """
     Process a single chunk with contextual embedding.
-    This function is designed to be used with concurrent.futures.
 
     Args:
         args: Tuple containing (chunk, full_document, chunk_index, total_chunks)
@@ -109,8 +121,11 @@ def process_chunk_with_context(args) -> tuple[str, list[float]]:
         - The embedding for the contextual text
     """
     chunk, full_document, chunk_index, total_chunks = args
-    contextual_text = generate_contextual_embedding(
-        chunk, full_document, chunk_index, total_chunks,
+    contextual_text = await generate_contextual_embedding(
+        chunk,
+        full_document,
+        chunk_index,
+        total_chunks,
     )
-    embedding = create_embedding(contextual_text)
+    embedding = await create_embedding(contextual_text)
     return contextual_text, embedding

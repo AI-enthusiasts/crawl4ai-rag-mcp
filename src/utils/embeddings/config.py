@@ -5,6 +5,7 @@ including model dimensions and client initialization.
 """
 
 import os
+from typing import Any
 
 
 def get_embedding_dimensions(model: str) -> int:
@@ -36,7 +37,7 @@ def get_embedding_model() -> str:
     return os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 
 
-def get_contextual_embedding_config() -> dict[str, any]:
+def get_contextual_embedding_config() -> dict[str, Any]:
     """Get contextual embedding configuration from environment.
 
     Returns:

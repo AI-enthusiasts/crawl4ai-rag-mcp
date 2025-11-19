@@ -9,6 +9,7 @@ from fastmcp import Context
 from src.core import MCPToolError
 from src.core.context import get_app_context
 from src.core.exceptions import CrawlError, DatabaseError, FetchError
+from src.database.base import QdrantDatabase
 from src.database.rag_queries import perform_rag_query
 from src.utils import (
     add_documents_to_database,
@@ -416,19 +417,24 @@ async def _crawl_recursive(
         db_client = app_ctx.database_client
 
         stored_count = 0
-        for result in crawl_results:
-            if result.get("success") and result.get("markdown"):
-                try:
-                    await db_client.store_crawled_page(
-                        url=result["url"],
-                        content=result["markdown"],
-                        chunk_size=chunk_size,
-                    )
-                    stored_count += 1
-                except DatabaseError:
-                    logger.exception("Database error storing %s", result["url"])
-                except Exception:
-                    logger.exception("Failed to store %s", result["url"])
+        # Check if database supports store_crawled_page (Qdrant-specific)
+        if isinstance(db_client, QdrantDatabase):
+            for result in crawl_results:
+                if result.get("success") and result.get("markdown"):
+                    try:
+                        await db_client.store_crawled_page(
+                            url=result["url"],
+                            content=result["markdown"],
+                        )
+                        stored_count += 1
+                    except DatabaseError:
+                        logger.exception("Database error storing %s", result["url"])
+                    except Exception:
+                        logger.exception("Failed to store %s", result["url"])
+        else:
+            logger.warning(
+                "Database does not support store_crawled_page, skipping storage"
+            )
 
         # Create response data
         data = {

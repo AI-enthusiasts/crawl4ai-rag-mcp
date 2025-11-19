@@ -350,11 +350,16 @@ async def crawl_urls_for_agentic_search(
                     f"agentic_crawl(depth={depth}, urls={len(urls_to_crawl)})",
                 ) as mem_ctx:
                     with SuppressStdout():
-                        results = await crawler.arun_many(
+                        result_container = await crawler.arun_many(
                             urls=urls_to_crawl,
                             config=run_config,
                             dispatcher=dispatcher,
                         )
+                        # stream=False in config, so this is List[CrawlResult]
+                        assert isinstance(result_container, list), (
+                            "Expected list in batch mode"
+                        )
+                        results = result_container
                     mem_ctx["results"] = results
 
                 next_level_urls = set()
@@ -387,7 +392,9 @@ async def crawl_urls_for_agentic_search(
                     if result.success and result.markdown:
                         # Store in Qdrant
                         try:
-                            chunks = smart_chunk_markdown(result.markdown, chunk_size=2000)
+                            chunks = smart_chunk_markdown(
+                                result.markdown, chunk_size=2000
+                            )
                             if chunks:
                                 source_id = extract_domain_from_url(result.url)
                                 urls_list = [result.url] * len(chunks)
@@ -397,7 +404,9 @@ async def crawl_urls_for_agentic_search(
                                     for i in range(len(chunks))
                                 ]
                                 url_to_full_document = {result.url: result.markdown}
-                                source_ids = [source_id] * len(chunks) if source_id else None
+                                source_ids = (
+                                    [source_id] * len(chunks) if source_id else None
+                                )
 
                                 await add_documents_to_database(
                                     database=database_client,
@@ -418,7 +427,9 @@ async def crawl_urls_for_agentic_search(
                                     result.url,
                                 )
                         except DatabaseError as e:
-                            logger.exception("Database error storing %s: %s", result.url, e)
+                            logger.exception(
+                                "Database error storing %s: %s", result.url, e
+                            )
                         except Exception as e:
                             logger.exception("Failed to store %s: %s", result.url, e)
 
@@ -432,7 +443,9 @@ async def crawl_urls_for_agentic_search(
 
                                 if not is_visited:
                                     # Apply smart filtering
-                                    if should_filter_url(next_url, enable_url_filtering):
+                                    if should_filter_url(
+                                        next_url, enable_url_filtering
+                                    ):
                                         urls_filtered += 1
                                         continue
                                     next_level_urls.add(next_url)

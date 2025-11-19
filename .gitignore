@@ -40,6 +40,9 @@ analysis_scripts/validation_results/*
 .idea/inspectionProfiles
 .idea/shelf.mypy_cache/
 
+# Mypy cache
+.mypy_cache/
+
 # Logs and debug artifacts
 *.log
 build.log

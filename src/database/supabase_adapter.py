@@ -438,7 +438,9 @@ class SupabaseAdapter:
                 if retry < self.max_retries - 1:
                     logger.warning(
                         "Insert failed for %s (attempt %s/%s)",
-                        table_name, retry + 1, self.max_retries,
+                        table_name,
+                        retry + 1,
+                        self.max_retries,
                     )
                     logger.info("Retrying in %s seconds...", retry_delay)
                     time.sleep(retry_delay)
@@ -446,7 +448,8 @@ class SupabaseAdapter:
                 else:
                     # Final attempt failed
                     logger.exception(
-                        "Failed to insert batch after %s attempts", self.max_retries,
+                        "Failed to insert batch after %s attempts",
+                        self.max_retries,
                     )
                     # Try inserting records one by one as a last resort
                     logger.info("Attempting to insert records individually...")
@@ -465,8 +468,85 @@ class SupabaseAdapter:
                     if successful_inserts > 0:
                         logger.info(
                             "Successfully inserted %s/%s records individually",
-                            successful_inserts, len(batch_data),
+                            successful_inserts,
+                            len(batch_data),
                         )
             except Exception:
                 logger.exception("Unexpected error inserting into %s", table_name)
                 break
+
+    async def url_exists(self, url: str) -> bool:
+        """
+        Check if URL exists in database.
+
+        Uses maybe_single() for efficient existence check without counting overhead.
+
+        Args:
+            url: URL to check
+
+        Returns:
+            True if URL exists, False otherwise
+        """
+        if not self.client:
+            msg = "Supabase client not initialized"
+            raise VectorStoreError(msg)
+
+        try:
+            # Use maybe_single() for minimal overhead (no COUNT(*))
+            response = (
+                self.client.table("crawled_pages")
+                .select("url")
+                .eq("url", url)
+                .maybe_single()
+                .execute()
+            )
+
+            return response.data is not None if response else False
+        except Exception as e:
+            logger.exception("Error checking URL existence: %s", e)
+            # Fail open - return False to allow crawling on error
+            return False
+
+    async def add_source(
+        self,
+        source_id: str,
+        url: str,
+        title: str,
+        description: str,
+        metadata: dict[str, Any],
+        embedding: list[float],
+    ) -> None:
+        """
+        Add a web source with metadata and vector embedding.
+
+        Requires 'sources' table to have 'embedding' column (vector type).
+
+        Args:
+            source_id: Unique source identifier
+            url: Source URL
+            title: Source title
+            description: Source description
+            metadata: Additional metadata
+            embedding: Embedding vector
+        """
+        if not self.client:
+            msg = "Supabase client not initialized"
+            raise VectorStoreError(msg)
+
+        try:
+            source_data = {
+                "source_id": source_id,
+                "url": url,
+                "title": title,
+                "description": description,
+                "embedding": embedding,
+                "metadata": metadata or {},
+                "updated_at": "now()",
+            }
+
+            self.client.table("sources").upsert(source_data).execute()
+            logger.info(f"Added source to Supabase: {source_id}")
+
+        except Exception as e:
+            logger.exception("Error adding source: %s", e)
+            raise VectorStoreError(f"Failed to add source {source_id}") from e
