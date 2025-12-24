@@ -14,8 +14,8 @@ from crawl4ai import (
     CrawlerRunConfig,
     MemoryAdaptiveDispatcher,
 )
+from crawl4ai.async_logger import AsyncLoggerBase
 
-from src.core.stdout_utils import SuppressStdout
 from src.utils.url_helpers import normalize_url
 
 from .memory import track_memory
@@ -28,6 +28,7 @@ async def crawl_recursive_internal_links(
     start_urls: list[str],
     dispatcher: MemoryAdaptiveDispatcher,
     max_depth: int = 3,
+    crawl4ai_logger: AsyncLoggerBase | None = None,
 ) -> list[dict[str, Any]]:
     """Recursively crawl internal links from start URLs up to a maximum depth.
 
@@ -47,8 +48,11 @@ async def crawl_recursive_internal_links(
     current_urls = {normalize_url(u) for u in start_urls}
     results_all = []
 
-    # Create crawler with context manager for automatic cleanup
-    async with AsyncWebCrawler(config=browser_config) as crawler:
+    crawler_kwargs: dict[str, Any] = {"config": browser_config}
+    if crawl4ai_logger is not None:
+        crawler_kwargs["logger"] = crawl4ai_logger
+
+    async with AsyncWebCrawler(**crawler_kwargs) as crawler:
         for depth in range(max_depth):
             urls_to_crawl = [
                 normalize_url(url)
@@ -61,18 +65,13 @@ async def crawl_recursive_internal_links(
             async with track_memory(
                 f"recursive_crawl(depth={depth}, urls={len(urls_to_crawl)})",
             ) as mem_ctx:
-                # Run in executor to avoid blocking event loop
-                with SuppressStdout():
-                    result_container = await crawler.arun_many(
-                        urls=urls_to_crawl,
-                        config=run_config,
-                        dispatcher=dispatcher,
-                    )
-                    # stream=False in config, so this is List[CrawlResult]
-                    assert isinstance(result_container, list), (
-                        "Expected list in batch mode"
-                    )
-                    results = result_container
+                result_container = await crawler.arun_many(
+                    urls=urls_to_crawl,
+                    config=run_config,
+                    dispatcher=dispatcher,
+                )
+                assert isinstance(result_container, list), "Expected list in batch mode"
+                results = result_container
                 mem_ctx["results"] = results
 
             next_level_urls = set()
