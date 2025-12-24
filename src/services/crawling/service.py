@@ -16,7 +16,6 @@ from fastmcp import Context
 from src.core.constants import MAX_VISITED_URLS_LIMIT, URL_FILTER_PATTERNS
 from src.core.context import get_app_context
 from src.core.exceptions import DatabaseError
-from src.core.stdout_utils import SuppressStdout
 from src.utils import add_documents_to_database
 from src.utils.text_processing import smart_chunk_markdown
 from src.utils.url_helpers import extract_domain_from_url, normalize_url
@@ -98,11 +97,11 @@ async def process_urls_for_mcp(
                 },
             )
 
-        # Call the low-level crawl_batch function
         crawl_results = await crawl_batch(
             browser_config=crawl4ai_ctx.browser_config,
             urls=urls,
             dispatcher=crawl4ai_ctx.dispatcher,
+            crawl4ai_logger=getattr(crawl4ai_ctx, "crawl4ai_logger", None),
         )
 
         if return_raw_markdown:
@@ -319,7 +318,12 @@ async def crawl_urls_for_agentic_search(
             "enabled" if enable_url_filtering else "disabled",
         )
 
-        async with AsyncWebCrawler(config=browser_config) as crawler:
+        crawl4ai_logger = getattr(app_ctx, "crawl4ai_logger", None)
+        crawler_kwargs: dict[str, Any] = {"config": browser_config}
+        if crawl4ai_logger is not None:
+            crawler_kwargs["logger"] = crawl4ai_logger
+
+        async with AsyncWebCrawler(**crawler_kwargs) as crawler:
             depth = 0
             while current_urls and pages_crawled < max_pages:
                 depth += 1
@@ -349,17 +353,15 @@ async def crawl_urls_for_agentic_search(
                 async with track_memory(
                     f"agentic_crawl(depth={depth}, urls={len(urls_to_crawl)})",
                 ) as mem_ctx:
-                    with SuppressStdout():
-                        result_container = await crawler.arun_many(
-                            urls=urls_to_crawl,
-                            config=run_config,
-                            dispatcher=dispatcher,
-                        )
-                        # stream=False in config, so this is List[CrawlResult]
-                        assert isinstance(result_container, list), (
-                            "Expected list in batch mode"
-                        )
-                        results = result_container
+                    result_container = await crawler.arun_many(
+                        urls=urls_to_crawl,
+                        config=run_config,
+                        dispatcher=dispatcher,
+                    )
+                    assert isinstance(result_container, list), (
+                        "Expected list in batch mode"
+                    )
+                    results = result_container
                     mem_ctx["results"] = results
 
                 next_level_urls = set()
