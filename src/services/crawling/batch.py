@@ -22,11 +22,11 @@ from crawl4ai import (
     CrawlerRunConfig,
     MemoryAdaptiveDispatcher,
 )
+from crawl4ai.async_logger import AsyncLoggerBase
 
 from src.core.constants import URL_FILTER_PATTERNS
 from src.core.exceptions import CrawlError
 from src.core.logging import logger
-from src.core.stdout_utils import SuppressStdout
 from src.services.crawling.memory import track_memory
 
 
@@ -34,6 +34,7 @@ async def crawl_batch(
     browser_config: BrowserConfig,
     urls: list[str],
     dispatcher: MemoryAdaptiveDispatcher,
+    crawl4ai_logger: AsyncLoggerBase | None = None,
 ) -> list[dict[str, Any]]:
     """Batch crawl multiple URLs in parallel.
 
@@ -41,6 +42,7 @@ async def crawl_batch(
         browser_config: BrowserConfig for creating crawler instance
         urls: List of URLs to crawl
         dispatcher: Shared MemoryAdaptiveDispatcher for global concurrency control
+        crawl4ai_logger: Optional stderr-based logger for MCP stdio compliance
 
     Returns:
         List of dictionaries with URL and markdown content
@@ -144,7 +146,12 @@ async def crawl_batch(
     try:
         # Create crawler with context manager for automatic cleanup
         # This ensures browser pages are properly closed after crawling
-        async with AsyncWebCrawler(config=browser_config) as crawler:
+        # Pass custom logger if provided (for MCP stdio compliance)
+        crawler_kwargs: dict[str, Any] = {"config": browser_config}
+        if crawl4ai_logger is not None:
+            crawler_kwargs["logger"] = crawl4ai_logger
+
+        async with AsyncWebCrawler(**crawler_kwargs) as crawler:
             async with track_memory(
                 f"crawl_batch({len(validated_urls)} URLs)"
             ) as mem_ctx:
@@ -153,18 +160,14 @@ async def crawl_batch(
                     f"(page_timeout={crawl_config.page_timeout}ms)",
                 )
 
-                # Crawler will automatically close all pages when exiting context manager
-                with SuppressStdout():
-                    result_container = await crawler.arun_many(
-                        urls=validated_urls,
-                        config=crawl_config,
-                        dispatcher=dispatcher,
-                    )
-                    # stream=False in config, so this is List[CrawlResult]
-                    assert isinstance(result_container, list), (
-                        "Expected list in batch mode"
-                    )
-                    results = result_container
+                result_container = await crawler.arun_many(
+                    urls=validated_urls,
+                    config=crawl_config,
+                    dispatcher=dispatcher,
+                )
+                # stream=False in config, so this is List[CrawlResult]
+                assert isinstance(result_container, list), "Expected list in batch mode"
+                results = result_container
 
                 # Store results for memory tracking
                 mem_ctx["results"] = results

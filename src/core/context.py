@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 from crawl4ai import BrowserConfig, MemoryAdaptiveDispatcher, RateLimiter
+from crawl4ai.async_logger import AsyncLoggerBase
 from fastmcp import FastMCP
 from sentence_transformers import CrossEncoder
 
@@ -18,6 +19,7 @@ from src.core.exceptions import (
 from src.database.base import VectorDatabase
 from src.database.factory import create_and_initialize_database
 
+from .crawl4ai_logger import StderrAsyncLogger
 from .logging import logger
 
 # Get settings instance
@@ -79,6 +81,11 @@ async def initialize_global_context() -> "Crawl4AIContext":
             f"(headless={browser_config.headless}, "
             f"browser_type={browser_config.browser_type})",
         )
+
+        # Create stderr-based logger for Crawl4AI (MCP stdio compliance)
+        # This ensures Rich output goes to stderr, not stdout
+        crawl4ai_logger = StderrAsyncLogger(verbose=browser_config.verbose)
+        logger.info("✓ StderrAsyncLogger created for MCP stdio compliance")
 
         # Initialize database client
         database_client = await create_and_initialize_database()
@@ -194,6 +201,7 @@ async def initialize_global_context() -> "Crawl4AIContext":
 
         context = Crawl4AIContext(
             browser_config=browser_config,
+            crawl4ai_logger=crawl4ai_logger,
             database_client=database_client,
             dispatcher=dispatcher,
             reranking_model=reranking_model,
@@ -261,6 +269,8 @@ class Crawl4AIContext:
 
     # Shared config for creating crawlers per-request
     browser_config: BrowserConfig
+    # Stderr-based logger for MCP stdio compliance
+    crawl4ai_logger: AsyncLoggerBase
     database_client: VectorDatabase
     # Shared dispatcher for global concurrency control
     dispatcher: MemoryAdaptiveDispatcher

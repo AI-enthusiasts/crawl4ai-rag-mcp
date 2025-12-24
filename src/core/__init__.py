@@ -21,6 +21,7 @@ from .context import (
     get_app_context,
     initialize_global_context,
 )
+from .crawl4ai_logger import StderrAsyncLogger
 from .decorators import track_request
 from .exceptions import MCPToolError
 from .logging import configure_logging, logger
@@ -41,6 +42,7 @@ __all__ = [
     "URL_SCORE_THRESHOLD_DEFAULT",
     "Crawl4AIContext",
     "MCPToolError",
+    "StderrAsyncLogger",
     "SuppressStdout",
     "cleanup_global_context",
     "configure_logging",

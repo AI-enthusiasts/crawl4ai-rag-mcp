@@ -7,8 +7,7 @@ import logging
 from typing import Any
 
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
-
-from src.core.stdout_utils import SuppressStdout
+from crawl4ai.async_logger import AsyncLoggerBase
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +15,7 @@ logger = logging.getLogger(__name__)
 async def crawl_markdown_file(
     browser_config: BrowserConfig,
     url: str,
+    crawl4ai_logger: AsyncLoggerBase | None = None,
 ) -> list[dict[str, Any]]:
     """Crawl a .txt or markdown file.
 
@@ -28,11 +28,12 @@ async def crawl_markdown_file(
     """
     crawl_config = CrawlerRunConfig()
 
-    # Create crawler with context manager for automatic cleanup
-    async with AsyncWebCrawler(config=browser_config) as crawler:
-        # Run in executor to avoid blocking event loop
-        with SuppressStdout():
-            result = await crawler.arun(url=url, config=crawl_config)
+    crawler_kwargs: dict[str, Any] = {"config": browser_config}
+    if crawl4ai_logger is not None:
+        crawler_kwargs["logger"] = crawl4ai_logger
+
+    async with AsyncWebCrawler(**crawler_kwargs) as crawler:
+        result = await crawler.arun(url=url, config=crawl_config)
         if result.success and result.markdown:
             return [{"url": url, "markdown": result.markdown}]
         logger.error("Failed to crawl %s: %s", url, result.error_message)
