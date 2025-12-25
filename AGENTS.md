@@ -296,8 +296,6 @@ class Config:
     def __init__(self, verbose: bool = ...) -> None: ...
 ```
 
-**Do not commit:** `out/`, `typings/` — temporary pyright directories.
-
 ### Pre-commit Hooks
 
 Install once to auto-run tests before commits:
