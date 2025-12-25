@@ -2,6 +2,7 @@
 
 import json
 import logging
+from typing import Any
 
 import httpx
 from fastmcp import Context
@@ -437,7 +438,7 @@ async def _crawl_recursive(
             )
 
         # Create response data
-        data = {
+        data: dict[str, Any] = {
             "success": True,
             "type": "recursive",
             "urls_crawled": len(crawl_results),

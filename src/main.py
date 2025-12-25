@@ -10,9 +10,10 @@ import sys
 import traceback
 
 from fastmcp import FastMCP
-from fastmcp.server.auth import OAuthProvider, StaticTokenVerifier
+from fastmcp.server.auth import StaticTokenVerifier
 from mcp.server.auth.settings import ClientRegistrationOptions, RevocationOptions
 
+from src.auth import PersistentOAuthProvider
 from src.config import get_settings
 from src.core import logger
 from src.core.context import cleanup_global_context, initialize_global_context
@@ -39,15 +40,16 @@ try:
     logger.info(f"Host: {host}, Port: {port}")
 
     # Determine authentication mode based on settings
-    auth = None
+    auth: PersistentOAuthProvider | StaticTokenVerifier | None = None
     auth_mode = "none"
 
     if settings.use_oauth2:
         # Mode 1: OAuth Provider with DCR (for Claude Web custom connectors)
         logger.info("Configuring OAuth Provider with Dynamic Client Registration...")
 
-        auth = OAuthProvider(
+        auth = PersistentOAuthProvider(
             base_url=settings.oauth2_issuer or "",
+            storage_dir=settings.oauth_storage_dir,
             issuer_url=settings.oauth2_issuer,
             service_documentation_url=f"{settings.oauth2_issuer}/docs",
             client_registration_options=ClientRegistrationOptions(
@@ -61,7 +63,9 @@ try:
         logger.info("✓ OAuth Provider enabled")
         logger.info(f"  - Issuer: {settings.oauth2_issuer}")
         logger.info(f"  - Valid scopes: {', '.join(settings.oauth2_scopes)}")
-        logger.info(f"  - Required scopes: {', '.join(settings.oauth2_required_scopes)}")
+        logger.info(
+            f"  - Required scopes: {', '.join(settings.oauth2_required_scopes)}"
+        )
         logger.info("  - DCR enabled: Yes")
         logger.info("  - Endpoints:")
         logger.info("    - /.well-known/oauth-authorization-server")
@@ -89,7 +93,9 @@ try:
     else:
         # Mode 3: No authentication
         logger.warning("⚠ No authentication configured - server is open to all!")
-        logger.warning("  Set USE_OAUTH2=true for OAuth or MCP_API_KEY for API key auth")
+        logger.warning(
+            "  Set USE_OAUTH2=true for OAuth or MCP_API_KEY for API key auth"
+        )
         auth_mode = "none"
 
     # Create FastMCP server with appropriate auth
@@ -137,18 +143,27 @@ async def main() -> None:
         sys.stderr.flush()
 
         # Run server with appropriate transport
-        if transport == "http":
-            logger.info("Setting up Streamable HTTP server...")
+        # Normalize transport names to FastMCP Transport literals
+        transport_map = {
+            "http": "streamable-http",
+            "streamable-http": "streamable-http",
+            "sse": "sse",
+            "stdio": "stdio",
+        }
+        fastmcp_transport = transport_map.get(transport, "stdio")
 
-            # Run Streamable HTTP server - authentication is handled by FastMCP's built-in auth
-            # Streamable HTTP is the recommended transport for production
-            await mcp.run_http_async(
-                transport="streamable-http", host=host, port=int(port),
+        if fastmcp_transport in ("streamable-http", "sse"):
+            logger.info(
+                "Setting up %s server on %s:%s...", fastmcp_transport, host, port
             )
-        elif transport == "sse":
-            await mcp.run_sse_async()
-        else:  # Default to stdio for Claude Desktop compatibility
-            await mcp.run_stdio_async()
+            await mcp.run_async(
+                transport=fastmcp_transport,  # type: ignore[arg-type]
+                host=host,
+                port=int(port),
+            )
+        else:
+            logger.info("Setting up stdio server...")
+            await mcp.run_async(transport="stdio")
 
     except Exception as e:
         logger.error(f"Error in main function: {e}")

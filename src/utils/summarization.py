@@ -1,30 +1,68 @@
-"""Summarization utilities using AI models."""
+"""Summarization utilities using Pydantic AI.
 
+This module provides LLM-powered summarization following project architecture:
+- Uses Pydantic AI (NOT OpenAI SDK directly) per AGENTS.md
+- Singleton agent pattern for connection pooling
+- Proper error handling with UnexpectedModelBehavior
+"""
+
+import logging
 import os
 import sys
 
-import openai
+from pydantic_ai import Agent
+from pydantic_ai.exceptions import UnexpectedModelBehavior
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.settings import ModelSettings
 
-# Lazy client initialization
-_client: openai.OpenAI | None = None
+from src.config import get_settings
+from src.core.constants import LLM_API_TIMEOUT_DEFAULT, MAX_RETRIES_DEFAULT
+
+logger = logging.getLogger(__name__)
+
+# Singleton agent instance
+_summarization_agent: Agent[None, str] | None = None
 
 
-def _get_client() -> openai.OpenAI:
-    """Get or create OpenAI client instance (lazy initialization)."""
-    global _client
-    if _client is None:
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError("OPENAI_API_KEY environment variable is not set")
-        _client = openai.OpenAI(api_key=api_key)
-    return _client
+def _get_agent() -> Agent[None, str]:
+    """Get or create summarization agent (singleton pattern).
+
+    Returns:
+        Pydantic AI Agent configured for text summarization.
+    """
+    global _summarization_agent
+    if _summarization_agent is None:
+        settings = get_settings()
+
+        # Create OpenAI model - API key read from OPENAI_API_KEY env var
+        model = OpenAIModel(model_name=settings.model_choice)
+
+        # Configure model settings per Pydantic AI docs
+        model_settings = ModelSettings(
+            temperature=0.3,
+            timeout=LLM_API_TIMEOUT_DEFAULT,
+        )
+
+        # Create agent with string output (plain text summarization)
+        _summarization_agent = Agent(
+            model=model,
+            output_type=str,
+            output_retries=MAX_RETRIES_DEFAULT,
+            model_settings=model_settings,
+            system_prompt="You are a helpful assistant that provides concise library/tool/framework summaries.",
+        )
+
+        logger.debug(
+            "Initialized summarization agent with model=%s", settings.model_choice
+        )
+
+    return _summarization_agent
 
 
 def extract_source_summary(source_id: str, content: str, max_length: int = 500) -> str:
-    """
-    Extract a summary for a source from its content using an LLM.
+    """Extract a summary for a source from its content using an LLM.
 
-    This function uses the OpenAI API to generate a concise summary of the source content.
+    This function uses Pydantic AI to generate a concise summary of the source content.
 
     Args:
         source_id: The source ID (domain)
@@ -40,9 +78,6 @@ def extract_source_summary(source_id: str, content: str, max_length: int = 500) 
     if not content or len(content.strip()) == 0:
         return default_summary
 
-    # Get the model choice from environment variables
-    model_choice = os.getenv("MODEL_CHOICE", "gpt-4o-mini")
-
     # Limit content length to avoid token limits
     truncated_content = content[:25000] if len(content) > 25000 else content
 
@@ -55,32 +90,23 @@ The above content is from the documentation for '{source_id}'. Please provide a 
 """
 
     try:
-        # Get OpenAI client (lazy initialization)
-        client = _get_client()
-
-        # Call the OpenAI API to generate the summary
-        response = client.chat.completions.create(
-            model=model_choice,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant that provides concise library/tool/framework summaries.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.3,
-            max_tokens=150,
-        )
-
-        # Extract the generated summary
-        summary = response.choices[0].message.content.strip()
+        agent = _get_agent()
+        result = agent.run_sync(prompt)
+        summary = result.output.strip() if result.output else ""
 
         # Ensure the summary is not too long
         if len(summary) > max_length:
             summary = summary[:max_length] + "..."
 
-        return summary
+        return summary if summary else default_summary
 
+    except UnexpectedModelBehavior as e:
+        logger.exception(
+            "LLM failed after retries for source %s: %s",
+            source_id,
+            e,
+        )
+        return default_summary
     except Exception as e:
         print(
             f"Error generating summary with LLM for {source_id}: {e}. Using default summary.",

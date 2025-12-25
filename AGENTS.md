@@ -266,6 +266,38 @@ uv run mypy src/
 uv run ruff format src/
 ```
 
+### Type Stubs Generation
+
+For libraries without built-in types (e.g. `crawl4ai`), stubs are needed in `stubs/`.
+
+```bash
+# Generate (saves to stubs/ via pyproject.toml [tool.pyright] stubPath)
+uv run pyright --createstub crawl4ai
+
+# Check for errors in generated stubs
+uv run mypy src/ --no-error-summary 2>&1 | grep "stubs/"
+
+# Validate stubs match runtime API
+uv run python -m mypy.stubtest crawl4ai
+```
+
+**Generated stubs require manual fixes:**
+
+```python
+# Add return types
+def foo(self) -> ReturnType: ...
+
+# Type **kwargs
+def foo(self, **kwargs: Any) -> None: ...
+
+# Add class attributes (generator only creates __init__ params)
+class Config:
+    verbose: bool
+    def __init__(self, verbose: bool = ...) -> None: ...
+```
+
+**Do not commit:** `out/`, `typings/` — temporary pyright directories.
+
 ### Pre-commit Hooks
 
 Install once to auto-run tests before commits:

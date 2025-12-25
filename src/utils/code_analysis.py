@@ -1,17 +1,70 @@
-"""Code analysis utilities for extracting and summarizing code examples."""
+"""Code analysis utilities for extracting and summarizing code examples.
 
-import os
+This module provides:
+- Code block extraction from markdown
+- LLM-powered code example summarization using Pydantic AI
+
+Uses Pydantic AI (NOT OpenAI SDK directly) per AGENTS.md architecture.
+"""
+
+import logging
 import sys
 from typing import Any
 
-import openai
+from pydantic_ai import Agent
+from pydantic_ai.exceptions import UnexpectedModelBehavior
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.settings import ModelSettings
+
+from src.config import get_settings
+from src.core.constants import LLM_API_TIMEOUT_DEFAULT, MAX_RETRIES_DEFAULT
+
+logger = logging.getLogger(__name__)
+
+# Singleton agent instance
+_code_summary_agent: Agent[None, str] | None = None
+
+
+def _get_agent() -> Agent[None, str]:
+    """Get or create code summary agent (singleton pattern).
+
+    Returns:
+        Pydantic AI Agent configured for code example summarization.
+    """
+    global _code_summary_agent
+    if _code_summary_agent is None:
+        settings = get_settings()
+
+        # Create OpenAI model - API key read from OPENAI_API_KEY env var
+        model = OpenAIModel(model_name=settings.model_choice)
+
+        # Configure model settings per Pydantic AI docs
+        model_settings = ModelSettings(
+            temperature=0.3,
+            timeout=LLM_API_TIMEOUT_DEFAULT,
+        )
+
+        # Create agent with string output (plain text summarization)
+        _code_summary_agent = Agent(
+            model=model,
+            output_type=str,
+            output_retries=MAX_RETRIES_DEFAULT,
+            model_settings=model_settings,
+            system_prompt="You are a helpful assistant that provides concise code example summaries.",
+        )
+
+        logger.debug(
+            "Initialized code summary agent with model=%s", settings.model_choice
+        )
+
+    return _code_summary_agent
 
 
 def extract_code_blocks(
-    markdown_content: str, min_length: int = 1000,
+    markdown_content: str,
+    min_length: int = 1000,
 ) -> list[dict[str, Any]]:
-    """
-    Extract code blocks from markdown content along with context.
+    """Extract code blocks from markdown content along with context.
 
     Args:
         markdown_content: The markdown content to extract code blocks from
@@ -86,10 +139,13 @@ def extract_code_blocks(
 
 
 def generate_code_example_summary(
-    code: str, context_before: str = "", context_after: str = "",
+    code: str,
+    context_before: str = "",
+    context_after: str = "",
 ) -> str:
-    """
-    Generate a summary for a code example using its surrounding context.
+    """Generate a summary for a code example using its surrounding context.
+
+    Uses Pydantic AI for LLM calls with proper error handling.
 
     Args:
         code: The code example
@@ -99,7 +155,7 @@ def generate_code_example_summary(
     Returns:
         A summary of what the code example demonstrates
     """
-    model_choice = os.getenv("MODEL_CHOICE", "gpt-4o-mini")
+    default_summary = "Code example for demonstration purposes."
 
     # Create the prompt
     prompt = f"""<context_before>
@@ -118,32 +174,22 @@ Based on the code example and its surrounding context, provide a concise summary
 """
 
     try:
-        # Create OpenAI client instance
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        agent = _get_agent()
+        result = agent.run_sync(prompt)
+        summary = result.output.strip() if result.output else ""
+        return summary if summary else default_summary
 
-        response = client.chat.completions.create(
-            model=model_choice,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant that provides concise code example summaries.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.3,
-            max_tokens=100,
-        )
-
-        return response.choices[0].message.content.strip()
-
+    except UnexpectedModelBehavior as e:
+        logger.exception("LLM failed after retries: %s", e)
+        return default_summary
     except Exception as e:
         print(f"Error generating code example summary: {e}", file=sys.stderr)
-        return "Code example for demonstration purposes."
+        return default_summary
 
 
 def process_code_example(args: tuple[str, str, str]) -> str:
-    """
-    Process a single code example to generate its summary.
+    """Process a single code example to generate its summary.
+
     This function is designed to be used with concurrent.futures.
 
     Args:

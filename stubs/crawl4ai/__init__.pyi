@@ -1,92 +1,25 @@
-"""Type stubs for crawl4ai library."""
+from .adaptive_crawler import AdaptiveConfig as AdaptiveConfig, AdaptiveCrawler as AdaptiveCrawler, CrawlState as CrawlState, CrawlStrategy as CrawlStrategy, StatisticalStrategy as StatisticalStrategy
+from .async_configs import BrowserConfig as BrowserConfig, CrawlerRunConfig as CrawlerRunConfig, GeolocationConfig as GeolocationConfig, HTTPCrawlerConfig as HTTPCrawlerConfig, LLMConfig as LLMConfig, LinkPreviewConfig as LinkPreviewConfig, MatchMode as MatchMode, ProxyConfig as ProxyConfig, SeedingConfig as SeedingConfig, VirtualScrollConfig as VirtualScrollConfig
+from .async_dispatcher import BaseDispatcher as BaseDispatcher, MemoryAdaptiveDispatcher as MemoryAdaptiveDispatcher, RateLimiter as RateLimiter, SemaphoreDispatcher as SemaphoreDispatcher
+from .async_logger import AsyncLogger as AsyncLogger, AsyncLoggerBase as AsyncLoggerBase
+from .async_url_seeder import AsyncUrlSeeder as AsyncUrlSeeder
+from .async_webcrawler import AsyncWebCrawler as AsyncWebCrawler, CacheMode as CacheMode
+from .browser_adapter import BrowserAdapter as BrowserAdapter, PlaywrightAdapter as PlaywrightAdapter, UndetectedAdapter as UndetectedAdapter
+from .browser_profiler import BrowserProfiler as BrowserProfiler
+from .chunking_strategy import ChunkingStrategy as ChunkingStrategy, RegexChunking as RegexChunking
+from .components.crawler_monitor import CrawlerMonitor as CrawlerMonitor
+from .content_filter_strategy import BM25ContentFilter as BM25ContentFilter, LLMContentFilter as LLMContentFilter, PruningContentFilter as PruningContentFilter, RelevantContentFilter as RelevantContentFilter
+from .content_scraping_strategy import ContentScrapingStrategy as ContentScrapingStrategy, LXMLWebScrapingStrategy as LXMLWebScrapingStrategy, WebScrapingStrategy as WebScrapingStrategy
+from .deep_crawling import BFSDeepCrawlStrategy as BFSDeepCrawlStrategy, BestFirstCrawlingStrategy as BestFirstCrawlingStrategy, CompositeScorer as CompositeScorer, ContentTypeFilter as ContentTypeFilter, DFSDeepCrawlStrategy as DFSDeepCrawlStrategy, DeepCrawlDecorator as DeepCrawlDecorator, DeepCrawlStrategy as DeepCrawlStrategy, DomainAuthorityScorer as DomainAuthorityScorer, DomainFilter as DomainFilter, FilterChain as FilterChain, FilterStats as FilterStats, FreshnessScorer as FreshnessScorer, KeywordRelevanceScorer as KeywordRelevanceScorer, PathDepthScorer as PathDepthScorer, SEOFilter as SEOFilter, URLFilter as URLFilter, URLPatternFilter as URLPatternFilter, URLScorer as URLScorer
+from .docker_client import Crawl4aiDockerClient as Crawl4aiDockerClient
+from .extraction_strategy import CosineStrategy as CosineStrategy, ExtractionStrategy as ExtractionStrategy, JsonCssExtractionStrategy as JsonCssExtractionStrategy, JsonLxmlExtractionStrategy as JsonLxmlExtractionStrategy, JsonXPathExtractionStrategy as JsonXPathExtractionStrategy, LLMExtractionStrategy as LLMExtractionStrategy, RegexExtractionStrategy as RegexExtractionStrategy
+from .hub import CrawlerHub as CrawlerHub
+from .link_preview import LinkPreview as LinkPreview
+from .markdown_generation_strategy import DefaultMarkdownGenerator as DefaultMarkdownGenerator
+from .models import CrawlResult as CrawlResult, DisplayMode as DisplayMode, MarkdownGenerationResult as MarkdownGenerationResult
+from .proxy_strategy import ProxyRotationStrategy as ProxyRotationStrategy, RoundRobinProxyStrategy as RoundRobinProxyStrategy
+from .script import CompilationResult as CompilationResult, ErrorDetail as ErrorDetail, ValidationResult as ValidationResult, compile as c4a_compile, compile_file as c4a_compile_file, validate as c4a_validate
+from .table_extraction import DefaultTableExtraction as DefaultTableExtraction, NoTableExtraction as NoTableExtraction, TableExtractionStrategy as TableExtractionStrategy
+from .utils import hooks_to_string as hooks_to_string, setup_colab_environment as setup_colab_environment, start_colab_display_server as start_colab_display_server
 
-from collections.abc import AsyncIterator
-from typing import Any
-
-class BrowserConfig:
-    """Browser configuration for crawling."""
-    # Accept all kwargs - API changed
-    def __init__(self, **kwargs: Any) -> None: ...
-    def __getattr__(self, name: str) -> Any: ...
-
-class CrawlerRunConfig:
-    """Configuration for a crawler run."""
-    # Accept all kwargs - API changed
-    def __init__(self, **kwargs: Any) -> None: ...
-    def __getattr__(self, name: str) -> Any: ...
-
-class CacheMode:
-    """Cache mode enumeration."""
-    ENABLED: str
-    DISABLED: str
-    READ_ONLY: str
-    WRITE_ONLY: str
-    BYPASS: str
-
-class MemoryAdaptiveDispatcher:
-    """Memory-adaptive task dispatcher."""
-    # Accept all kwargs - API changed
-    def __init__(self, **kwargs: Any) -> None: ...
-    def __getattr__(self, name: str) -> Any: ...
-
-class RateLimiter:
-    """Rate limiter for controlling request frequency."""
-    def __init__(
-        self,
-        *,
-        base_delay: tuple[float, float] = (1.0, 3.0),
-        max_delay: float = 60.0,
-        **kwargs: Any,
-    ) -> None: ...
-
-class AsyncWebCrawler:
-    """Asynchronous web crawler."""
-    def __init__(
-        self,
-        *,
-        browser_config: BrowserConfig | None = None,
-        crawler_config: CrawlerRunConfig | None = None,
-        **kwargs: Any,
-    ) -> None: ...
-
-    async def __aenter__(self) -> AsyncWebCrawler: ...
-    async def __aexit__(self, *args: object) -> None: ...
-
-    async def arun(
-        self,
-        url: str,
-        *,
-        config: CrawlerRunConfig | None = None,
-        **kwargs: Any,
-    ) -> CrawlResult: ...
-
-    async def arun_many(
-        self,
-        urls: list[str],
-        *,
-        config: CrawlerRunConfig | None = None,
-        **kwargs: Any,
-    ) -> AsyncIterator[CrawlResult]: ...
-
-class CrawlResult:
-    """Result of a crawl operation."""
-    url: str
-    html: str
-    markdown: str
-    cleaned_html: str
-    success: bool
-    error_message: str | None
-    status_code: int | None
-
-    def __init__(
-        self,
-        *,
-        url: str,
-        html: str = "",
-        markdown: str = "",
-        cleaned_html: str = "",
-        success: bool = True,
-        error_message: str | None = None,
-        status_code: int | None = None,
-        **kwargs: Any,
-    ) -> None: ...
+__all__ = ['AsyncLoggerBase', 'AsyncLogger', 'AsyncWebCrawler', 'BrowserProfiler', 'LLMConfig', 'GeolocationConfig', 'SeedingConfig', 'VirtualScrollConfig', 'AsyncUrlSeeder', 'AdaptiveCrawler', 'AdaptiveConfig', 'CrawlState', 'CrawlStrategy', 'StatisticalStrategy', 'DeepCrawlStrategy', 'BFSDeepCrawlStrategy', 'BestFirstCrawlingStrategy', 'DFSDeepCrawlStrategy', 'FilterChain', 'URLPatternFilter', 'ContentTypeFilter', 'DomainFilter', 'FilterStats', 'URLFilter', 'SEOFilter', 'KeywordRelevanceScorer', 'URLScorer', 'CompositeScorer', 'DomainAuthorityScorer', 'FreshnessScorer', 'PathDepthScorer', 'DeepCrawlDecorator', 'CrawlResult', 'CrawlerHub', 'CacheMode', 'MatchMode', 'ContentScrapingStrategy', 'WebScrapingStrategy', 'LXMLWebScrapingStrategy', 'BrowserConfig', 'CrawlerRunConfig', 'HTTPCrawlerConfig', 'ExtractionStrategy', 'LLMExtractionStrategy', 'CosineStrategy', 'JsonCssExtractionStrategy', 'JsonXPathExtractionStrategy', 'JsonLxmlExtractionStrategy', 'RegexExtractionStrategy', 'ChunkingStrategy', 'RegexChunking', 'DefaultMarkdownGenerator', 'TableExtractionStrategy', 'DefaultTableExtraction', 'NoTableExtraction', 'RelevantContentFilter', 'PruningContentFilter', 'BM25ContentFilter', 'LLMContentFilter', 'BaseDispatcher', 'MemoryAdaptiveDispatcher', 'SemaphoreDispatcher', 'RateLimiter', 'CrawlerMonitor', 'LinkPreview', 'DisplayMode', 'MarkdownGenerationResult', 'Crawl4aiDockerClient', 'ProxyRotationStrategy', 'RoundRobinProxyStrategy', 'ProxyConfig', 'start_colab_display_server', 'setup_colab_environment', 'hooks_to_string', 'c4a_compile', 'c4a_validate', 'c4a_compile_file', 'CompilationResult', 'ValidationResult', 'ErrorDetail', 'BrowserAdapter', 'PlaywrightAdapter', 'UndetectedAdapter', 'LinkPreviewConfig']

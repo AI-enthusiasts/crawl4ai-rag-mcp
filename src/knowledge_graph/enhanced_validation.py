@@ -264,7 +264,8 @@ class EnhancedHallucinationDetector:
 
         # Initialize validated search service
         self.validated_search = ValidatedCodeSearchService(
-            database_client, neo4j_driver,
+            database_client,
+            neo4j_driver,
         )
 
         # Confidence thresholds
@@ -297,24 +298,28 @@ class EnhancedHallucinationDetector:
             script_file = Path(script_path)
             if not script_file.exists():
                 return self._create_error_response(
-                    script_path, f"Script file not found: {script_path}",
+                    script_path,
+                    f"Script file not found: {script_path}",
                 )
 
             if script_file.suffix != ".py":
                 return self._create_error_response(
-                    script_path, "Only Python (.py) files are supported",
+                    script_path,
+                    "Only Python (.py) files are supported",
                 )
 
             script_content = script_file.read_text(encoding="utf-8")
 
             # Step 1: Analyze script structure
             analysis_result = self.script_analyzer.analyze_script(
-                script_content, script_path,
+                script_content,
+                script_path,
             )
 
             if "error" in analysis_result:
                 return self._create_error_response(
-                    script_path, analysis_result["error"],
+                    script_path,
+                    analysis_result["error"],
                 )
 
             # Step 2: Perform Neo4j validation (traditional approach)
@@ -348,7 +353,8 @@ class EnhancedHallucinationDetector:
             return self._create_error_response(script_path, f"Detection failed: {e!s}")
 
     async def _perform_neo4j_validation(
-        self, analysis_result: dict[str, Any],
+        self,
+        analysis_result: dict[str, Any],
     ) -> dict[str, Any]:
         """Perform traditional Neo4j knowledge graph validation."""
         try:
@@ -363,7 +369,7 @@ class EnhancedHallucinationDetector:
                     "function_validations": [],
                 }
 
-            session = await self.validated_search._get_neo4j_session()
+            session = await self.validated_search.neo4j_client.get_session()
             if not session:
                 return {
                     "available": False,
@@ -376,16 +382,20 @@ class EnhancedHallucinationDetector:
 
             try:
                 import_validations = await self._validate_imports(
-                    session, analysis_result.get("imports", []),
+                    session,
+                    analysis_result.get("imports", []),
                 )
                 class_validations = await self._validate_classes(
-                    session, analysis_result.get("classes", []),
+                    session,
+                    analysis_result.get("classes", []),
                 )
                 method_validations = await self._validate_method_calls(
-                    session, analysis_result.get("method_calls", []),
+                    session,
+                    analysis_result.get("method_calls", []),
                 )
                 function_validations = await self._validate_function_calls(
-                    session, analysis_result.get("functions", []),
+                    session,
+                    analysis_result.get("functions", []),
                 )
 
                 return {
@@ -460,7 +470,8 @@ class EnhancedHallucinationDetector:
                             "query": search_query,
                             "examples": search_result["results"],
                             "validation_summary": search_result.get(
-                                "validation_summary", {},
+                                "validation_summary",
+                                {},
                             ),
                         },
                     )
@@ -494,7 +505,8 @@ class EnhancedHallucinationDetector:
             }
 
     def _extract_code_elements_for_search(
-        self, analysis_result: dict[str, Any],
+        self,
+        analysis_result: dict[str, Any],
     ) -> list[dict[str, Any]]:
         """Extract key code elements that should be validated against examples."""
         elements = []
@@ -568,7 +580,9 @@ class EnhancedHallucinationDetector:
         return context or name
 
     async def _validate_imports(
-        self, session: Any, imports: list[dict[str, Any]],
+        self,
+        session: Any,
+        imports: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """Validate imports against Neo4j knowledge graph."""
         validations = []
@@ -611,7 +625,9 @@ class EnhancedHallucinationDetector:
                     },
                 )
             except Exception as e:
-                logger.exception("Unexpected error validating import %s.%s", module, name)
+                logger.exception(
+                    "Unexpected error validating import %s.%s", module, name
+                )
                 validations.append(
                     {
                         "import": import_info,
@@ -624,7 +640,9 @@ class EnhancedHallucinationDetector:
         return validations
 
     async def _validate_classes(
-        self, session: Any, classes: list[dict[str, Any]],
+        self,
+        session: Any,
+        classes: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """Validate class definitions against Neo4j knowledge graph."""
         validations = []
@@ -674,7 +692,9 @@ class EnhancedHallucinationDetector:
         return validations
 
     async def _validate_method_calls(
-        self, session: Any, method_calls: list[dict[str, Any]],
+        self,
+        session: Any,
+        method_calls: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """Validate method calls against Neo4j knowledge graph."""
         validations = []
@@ -730,7 +750,9 @@ class EnhancedHallucinationDetector:
         return validations
 
     async def _validate_function_calls(
-        self, session: Any, functions: list[dict[str, Any]],
+        self,
+        session: Any,
+        functions: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """Validate function calls against Neo4j knowledge graph."""
         validations = []
@@ -858,7 +880,8 @@ class EnhancedHallucinationDetector:
         return total_confidence / total_examples if total_examples > 0 else 0.5
 
     def _extract_neo4j_hallucinations(
-        self, neo4j_validation: dict[str, Any],
+        self,
+        neo4j_validation: dict[str, Any],
     ) -> list[dict[str, Any]]:
         """Extract hallucinations from Neo4j validation results."""
         hallucinations = []
@@ -887,7 +910,8 @@ class EnhancedHallucinationDetector:
         return hallucinations
 
     def _extract_qdrant_hallucinations(
-        self, qdrant_validation: dict[str, Any],
+        self,
+        qdrant_validation: dict[str, Any],
     ) -> list[dict[str, Any]]:
         """Extract hallucinations from Qdrant validation results."""
         hallucinations = []
@@ -926,7 +950,8 @@ class EnhancedHallucinationDetector:
         return hallucinations
 
     def _generate_neo4j_suggestions(
-        self, neo4j_validation: dict[str, Any],
+        self,
+        neo4j_validation: dict[str, Any],
     ) -> list[str]:
         """Generate suggestions from Neo4j validation results."""
         suggestions = []
@@ -1036,7 +1061,9 @@ class EnhancedHallucinationDetector:
         return report
 
     def _create_error_response(
-        self, script_path: str, error_message: str,
+        self,
+        script_path: str,
+        error_message: str,
     ) -> dict[str, Any]:
         """Create a standardized error response."""
         return {
@@ -1072,9 +1099,7 @@ async def check_ai_script_hallucinations_enhanced(
     """
     try:
         # Check if knowledge graph functionality is enabled
-        knowledge_graph_enabled = os.getenv(
-            "USE_KNOWLEDGE_GRAPH", "false"
-        ) == "true"
+        knowledge_graph_enabled = os.getenv("USE_KNOWLEDGE_GRAPH", "false") == "true"
         if not knowledge_graph_enabled:
             error_msg = (
                 "Knowledge graph functionality is disabled. "

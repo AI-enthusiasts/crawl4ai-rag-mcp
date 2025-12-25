@@ -103,11 +103,11 @@ class SelectiveCrawler:
             enable_url_filtering=self.config.enable_url_filtering,
         )
 
-        # Extract results
-        urls_crawled = crawl_result.get("urls_crawled", 0)
-        urls_stored = crawl_result.get("urls_stored", 0)
-        chunks_stored = crawl_result.get("chunks_stored", 0)
-        urls_filtered = crawl_result.get("urls_filtered", 0)
+        # Extract results (cast to int for type safety)
+        urls_crawled: int = crawl_result.get("urls_crawled", 0)
+        urls_stored: int = crawl_result.get("urls_stored", 0)
+        chunks_stored: int = crawl_result.get("chunks_stored", 0)
+        urls_filtered: int = crawl_result.get("urls_filtered", 0)
 
         logger.info(
             "Crawled %d pages, stored %d URLs, %d chunks, filtered %d URLs",

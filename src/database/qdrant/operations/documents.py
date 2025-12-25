@@ -90,6 +90,7 @@ async def add_documents(
             # Extract source_id from URL if not provided - same logic as Supabase adapter
             if not source_id:
                 from urllib.parse import urlparse
+
                 parsed_url = urlparse(url)
                 source_id = parsed_url.netloc or parsed_url.path
                 # Remove 'www.' prefix if present for consistency
@@ -149,16 +150,20 @@ async def url_exists(client: AsyncQdrantClient, url: str) -> bool:
     )
 
     # Use count for efficient existence check
+    # CRITICAL: Must use exact=True because approximate count doesn't properly
+    # filter by URL field - it returns ~half of total collection size regardless
     count_result = await client.count(
         collection_name=CRAWLED_PAGES,
         count_filter=filter_condition,
-        exact=False,  # Approximate count is fine for existence check
+        exact=True,
     )
 
     return count_result.count > 0
 
 
-async def get_documents_by_url(client: AsyncQdrantClient, url: str) -> list[dict[str, Any]]:
+async def get_documents_by_url(
+    client: AsyncQdrantClient, url: str
+) -> list[dict[str, Any]]:
     """Get all document chunks for a specific URL.
 
     Args:

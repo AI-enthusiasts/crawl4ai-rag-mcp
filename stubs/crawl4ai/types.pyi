@@ -1,0 +1,61 @@
+from .async_configs import LLMConfig as LLMConfigType
+from _typeshed import Incomplete
+
+AsyncLoggerBase: Incomplete
+AsyncLogger: Incomplete
+AsyncWebCrawler: Incomplete
+CacheMode: Incomplete
+CrawlResult: Incomplete
+CrawlerHub: Incomplete
+BrowserProfiler: Incomplete
+AsyncUrlSeeder: Incomplete
+BrowserConfig: Incomplete
+CrawlerRunConfig: Incomplete
+HTTPCrawlerConfig: Incomplete
+LLMConfig: Incomplete
+SeedingConfig: Incomplete
+ContentScrapingStrategy: Incomplete
+LXMLWebScrapingStrategy: Incomplete
+WebScrapingStrategy: Incomplete
+ProxyRotationStrategy: Incomplete
+RoundRobinProxyStrategy: Incomplete
+ExtractionStrategy: Incomplete
+LLMExtractionStrategy: Incomplete
+CosineStrategy: Incomplete
+JsonCssExtractionStrategy: Incomplete
+JsonXPathExtractionStrategy: Incomplete
+ChunkingStrategy: Incomplete
+RegexChunking: Incomplete
+DefaultMarkdownGenerator: Incomplete
+MarkdownGenerationResult: Incomplete
+RelevantContentFilter: Incomplete
+PruningContentFilter: Incomplete
+BM25ContentFilter: Incomplete
+LLMContentFilter: Incomplete
+BaseDispatcher: Incomplete
+MemoryAdaptiveDispatcher: Incomplete
+SemaphoreDispatcher: Incomplete
+RateLimiter: Incomplete
+CrawlerMonitor: Incomplete
+DisplayMode: Incomplete
+RunManyReturn: Incomplete
+Crawl4aiDockerClient: Incomplete
+DeepCrawlStrategy: Incomplete
+BFSDeepCrawlStrategy: Incomplete
+FilterChain: Incomplete
+ContentTypeFilter: Incomplete
+DomainFilter: Incomplete
+URLFilter: Incomplete
+FilterStats: Incomplete
+SEOFilter: Incomplete
+KeywordRelevanceScorer: Incomplete
+URLScorer: Incomplete
+CompositeScorer: Incomplete
+DomainAuthorityScorer: Incomplete
+FreshnessScorer: Incomplete
+PathDepthScorer: Incomplete
+BestFirstCrawlingStrategy: Incomplete
+DFSDeepCrawlStrategy: Incomplete
+DeepCrawlDecorator: Incomplete
+
+def create_llm_config(*args, **kwargs) -> LLMConfigType: ...

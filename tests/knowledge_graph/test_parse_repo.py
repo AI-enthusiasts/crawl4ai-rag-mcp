@@ -41,35 +41,63 @@ from src.core.exceptions import (
 # Mock Setup and Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def mock_git_manager():
     """Mock GitRepositoryManager"""
     manager = MagicMock()
-    manager.validate_repository_size = AsyncMock(return_value=(True, {
-        "estimated_size_mb": 10.5,
-        "file_count": 150,
-        "free_space_gb": 50.0,
-        "errors": [],
-    }))
+    manager.validate_repository_size = AsyncMock(
+        return_value=(
+            True,
+            {
+                "estimated_size_mb": 10.5,
+                "file_count": 150,
+                "free_space_gb": 50.0,
+                "errors": [],
+            },
+        )
+    )
     manager.clone_repository_with_validation = AsyncMock(return_value="/tmp/test_repo")
-    manager.get_repository_info = AsyncMock(return_value={
-        "remote_url": "https://github.com/test/repo.git",
-        "current_branch": "main",
-        "file_count": 150,
-        "size": "10.5 MiB",
-        "contributor_count": 5,
-    })
-    manager.get_branches = AsyncMock(return_value=[
-        {"name": "main", "last_commit_date": "2024-01-01", "last_commit_message": "Initial commit"},
-        {"name": "develop", "last_commit_date": "2024-01-02", "last_commit_message": "Dev branch"},
-    ])
-    manager.get_tags = AsyncMock(return_value=[
-        {"name": "v1.0.0", "date": "2024-01-01", "message": "Release 1.0"},
-    ])
-    manager.get_commits = AsyncMock(return_value=[
-        {"hash": "abc123", "author_name": "Test", "author_email": "test@example.com",
-         "timestamp": 1704067200, "date": "2024-01-01T00:00:00", "message": "Test commit"},
-    ])
+    manager.get_repository_info = AsyncMock(
+        return_value={
+            "remote_url": "https://github.com/test/repo.git",
+            "current_branch": "main",
+            "file_count": 150,
+            "size": "10.5 MiB",
+            "contributor_count": 5,
+        }
+    )
+    manager.get_branches = AsyncMock(
+        return_value=[
+            {
+                "name": "main",
+                "last_commit_date": "2024-01-01",
+                "last_commit_message": "Initial commit",
+            },
+            {
+                "name": "develop",
+                "last_commit_date": "2024-01-02",
+                "last_commit_message": "Dev branch",
+            },
+        ]
+    )
+    manager.get_tags = AsyncMock(
+        return_value=[
+            {"name": "v1.0.0", "date": "2024-01-01", "message": "Release 1.0"},
+        ]
+    )
+    manager.get_commits = AsyncMock(
+        return_value=[
+            {
+                "hash": "abc123",
+                "author_name": "Test",
+                "author_email": "test@example.com",
+                "timestamp": 1704067200,
+                "date": "2024-01-01T00:00:00",
+                "message": "Test commit",
+            },
+        ]
+    )
     return manager
 
 
@@ -77,28 +105,43 @@ def mock_git_manager():
 def mock_analyzer():
     """Mock Neo4jCodeAnalyzer"""
     analyzer = MagicMock()
-    analyzer.analyze_python_file = MagicMock(return_value={
-        "file_path": "test.py",
-        "module_name": "test",
-        "classes": [
-            {
-                "name": "TestClass",
-                "line_number": 5,
-                "methods": [
-                    {"name": "__init__", "line_number": 6, "parameters": ["self"]},
-                    {"name": "test_method", "line_number": 9, "parameters": ["self", "arg1"]},
-                ],
-                "attributes": [{"name": "test_attr", "type": "str"}],
-            },
-        ],
-        "functions": [
-            {"name": "test_function", "line_number": 15, "parameters": ["x", "y"], "return_type": "int"},
-        ],
-        "imports": [
-            {"module": "os", "type": "import"},
-            {"module": "typing", "imports": ["Dict", "List"], "type": "from_import"},
-        ],
-    })
+    analyzer.analyze_python_file = MagicMock(
+        return_value={
+            "file_path": "test.py",
+            "module_name": "test",
+            "classes": [
+                {
+                    "name": "TestClass",
+                    "line_number": 5,
+                    "methods": [
+                        {"name": "__init__", "line_number": 6, "parameters": ["self"]},
+                        {
+                            "name": "test_method",
+                            "line_number": 9,
+                            "parameters": ["self", "arg1"],
+                        },
+                    ],
+                    "attributes": [{"name": "test_attr", "type": "str"}],
+                },
+            ],
+            "functions": [
+                {
+                    "name": "test_function",
+                    "line_number": 15,
+                    "parameters": ["x", "y"],
+                    "return_type": "int",
+                },
+            ],
+            "imports": [
+                {"module": "os", "type": "import"},
+                {
+                    "module": "typing",
+                    "imports": ["Dict", "List"],
+                    "type": "from_import",
+                },
+            ],
+        }
+    )
     return analyzer
 
 
@@ -106,35 +149,55 @@ def mock_analyzer():
 def mock_analyzer_factory():
     """Mock AnalyzerFactory"""
     factory = MagicMock()
-    factory.get_supported_languages = MagicMock(return_value=["python", "javascript", "typescript", "go"])
-    factory.get_supported_extensions = MagicMock(return_value=[".py", ".js", ".jsx", ".ts", ".tsx", ".go"])
+    factory.get_supported_languages = MagicMock(
+        return_value=["python", "javascript", "typescript", "go"]
+    )
+    factory.get_supported_extensions = MagicMock(
+        return_value=[".py", ".js", ".jsx", ".ts", ".tsx", ".go"]
+    )
 
     # Mock analyzer for JS/TS/Go
     js_analyzer = MagicMock()
-    js_analyzer.analyze_file = AsyncMock(return_value={
-        "file_path": "test.js",
-        "module_name": "test",
-        "language": "javascript",
-        "classes": [],
-        "functions": [{"name": "jsFunction", "line_number": 1, "parameters": []}],
-        "imports": [],
-    })
+    js_analyzer.analyze_file = AsyncMock(
+        return_value={
+            "file_path": "test.js",
+            "module_name": "test",
+            "language": "javascript",
+            "classes": [],
+            "functions": [{"name": "jsFunction", "line_number": 1, "parameters": []}],
+            "imports": [],
+        }
+    )
 
     factory.get_analyzer = MagicMock(return_value=js_analyzer)
     return factory
 
 
 @pytest.fixture
-async def extractor(mock_neo4j_driver, mock_git_manager, mock_analyzer, mock_analyzer_factory):
+async def extractor(
+    mock_neo4j_driver, mock_git_manager, mock_analyzer, mock_analyzer_factory
+):
     """Create DirectNeo4jExtractor with mocked dependencies"""
     # Import here to avoid issues with module-level mocking
     from src.knowledge_graph.parse_repo_into_neo4j import DirectNeo4jExtractor
 
-    with patch("src.knowledge_graph.parse_repo_into_neo4j.GitRepositoryManager", return_value=mock_git_manager), \
-         patch("src.knowledge_graph.parse_repo_into_neo4j.Neo4jCodeAnalyzer", return_value=mock_analyzer), \
-         patch("src.knowledge_graph.parse_repo_into_neo4j.AnalyzerFactory", return_value=mock_analyzer_factory), \
-         patch("src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
-
+    with (
+        patch(
+            "src.knowledge_graph.parse_repo_into_neo4j.GitRepositoryManager",
+            return_value=mock_git_manager,
+        ),
+        patch(
+            "src.knowledge_graph.parse_repo_into_neo4j.Neo4jCodeAnalyzer",
+            return_value=mock_analyzer,
+        ),
+        patch(
+            "src.knowledge_graph.parse_repo_into_neo4j.AnalyzerFactory",
+            return_value=mock_analyzer_factory,
+        ),
+        patch(
+            "src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase"
+        ) as mock_db,
+    ):
         mock_db.driver = MagicMock(return_value=mock_neo4j_driver)
 
         extractor = DirectNeo4jExtractor(
@@ -158,17 +221,30 @@ async def extractor(mock_neo4j_driver, mock_git_manager, mock_analyzer, mock_ana
 # Test DirectNeo4jExtractor Initialization
 # =============================================================================
 
+
 class TestDirectNeo4jExtractorInit:
     """Test DirectNeo4jExtractor initialization and configuration"""
 
-    def test_init_default_configuration(self, mock_git_manager, mock_analyzer, mock_analyzer_factory):
+    def test_init_default_configuration(
+        self, mock_git_manager, mock_analyzer, mock_analyzer_factory
+    ):
         """Test initialization with default configuration"""
         from src.knowledge_graph.parse_repo_into_neo4j import DirectNeo4jExtractor
 
-        with patch("src.knowledge_graph.parse_repo_into_neo4j.GitRepositoryManager", return_value=mock_git_manager), \
-             patch("src.knowledge_graph.parse_repo_into_neo4j.Neo4jCodeAnalyzer", return_value=mock_analyzer), \
-             patch("src.knowledge_graph.parse_repo_into_neo4j.AnalyzerFactory", return_value=mock_analyzer_factory):
-
+        with (
+            patch(
+                "src.knowledge_graph.parse_repo_into_neo4j.GitRepositoryManager",
+                return_value=mock_git_manager,
+            ),
+            patch(
+                "src.knowledge_graph.parse_repo_into_neo4j.Neo4jCodeAnalyzer",
+                return_value=mock_analyzer,
+            ),
+            patch(
+                "src.knowledge_graph.parse_repo_into_neo4j.AnalyzerFactory",
+                return_value=mock_analyzer_factory,
+            ),
+        ):
             extractor = DirectNeo4jExtractor(
                 neo4j_uri="bolt://localhost:7687",
                 neo4j_user="neo4j",
@@ -185,22 +261,37 @@ class TestDirectNeo4jExtractorInit:
             assert extractor.repo_min_free_space_gb == 1.0  # Default
             assert extractor.repo_allow_size_override is False  # Default
 
-    def test_init_custom_environment_variables(self, mock_git_manager, mock_analyzer, mock_analyzer_factory):
+    def test_init_custom_environment_variables(
+        self, mock_git_manager, mock_analyzer, mock_analyzer_factory
+    ):
         """Test initialization with custom environment variables"""
         from src.knowledge_graph.parse_repo_into_neo4j import DirectNeo4jExtractor
 
-        with patch.dict(os.environ, {
-            "NEO4J_BATCH_SIZE": "100",
-            "NEO4J_BATCH_TIMEOUT": "240",
-            "REPO_MAX_SIZE_MB": "1000",
-            "REPO_MAX_FILE_COUNT": "20000",
-            "REPO_MIN_FREE_SPACE_GB": "2.0",
-            "REPO_ALLOW_SIZE_OVERRIDE": "true",
-        }), \
-             patch("src.knowledge_graph.parse_repo_into_neo4j.GitRepositoryManager", return_value=mock_git_manager), \
-             patch("src.knowledge_graph.parse_repo_into_neo4j.Neo4jCodeAnalyzer", return_value=mock_analyzer), \
-             patch("src.knowledge_graph.parse_repo_into_neo4j.AnalyzerFactory", return_value=mock_analyzer_factory):
-
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "NEO4J_BATCH_SIZE": "100",
+                    "NEO4J_BATCH_TIMEOUT": "240",
+                    "REPO_MAX_SIZE_MB": "1000",
+                    "REPO_MAX_FILE_COUNT": "20000",
+                    "REPO_MIN_FREE_SPACE_GB": "2.0",
+                    "REPO_ALLOW_SIZE_OVERRIDE": "true",
+                },
+            ),
+            patch(
+                "src.knowledge_graph.parse_repo_into_neo4j.GitRepositoryManager",
+                return_value=mock_git_manager,
+            ),
+            patch(
+                "src.knowledge_graph.parse_repo_into_neo4j.Neo4jCodeAnalyzer",
+                return_value=mock_analyzer,
+            ),
+            patch(
+                "src.knowledge_graph.parse_repo_into_neo4j.AnalyzerFactory",
+                return_value=mock_analyzer_factory,
+            ),
+        ):
             extractor = DirectNeo4jExtractor(
                 neo4j_uri="bolt://localhost:7687",
                 neo4j_user="neo4j",
@@ -219,13 +310,16 @@ class TestDirectNeo4jExtractorInit:
 # Test Neo4j Connection Management
 # =============================================================================
 
+
 class TestNeo4jConnection:
     """Test Neo4j connection initialization and management"""
 
     @pytest.mark.asyncio
     async def test_initialize_success(self, extractor):
         """Test successful Neo4j initialization"""
-        with patch("src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db:
+        with patch(
+            "src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase"
+        ) as mock_db:
             mock_driver = MagicMock()
             mock_driver.close = AsyncMock()
             mock_db.driver = MagicMock(return_value=mock_driver)
@@ -240,18 +334,23 @@ class TestNeo4jConnection:
         """Test initialization with Neo4j notification suppression (v5.21.0+)"""
         from src.knowledge_graph.parse_repo_into_neo4j import DirectNeo4jExtractor
 
-        with patch("src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db, \
-             patch("neo4j.NotificationMinimumSeverity") as mock_notif, \
-             patch("src.knowledge_graph.parse_repo_into_neo4j.GitRepositoryManager"), \
-             patch("src.knowledge_graph.parse_repo_into_neo4j.Neo4jCodeAnalyzer"), \
-             patch("src.knowledge_graph.parse_repo_into_neo4j.AnalyzerFactory"):
-
+        with (
+            patch(
+                "src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase"
+            ) as mock_db,
+            patch("neo4j.NotificationMinimumSeverity") as mock_notif,
+            patch("src.knowledge_graph.parse_repo_into_neo4j.GitRepositoryManager"),
+            patch("src.knowledge_graph.parse_repo_into_neo4j.Neo4jCodeAnalyzer"),
+            patch("src.knowledge_graph.parse_repo_into_neo4j.AnalyzerFactory"),
+        ):
             mock_driver = MagicMock()
             mock_driver.close = AsyncMock()
             mock_db.driver = MagicMock(return_value=mock_driver)
             mock_notif.OFF = "OFF"
 
-            test_extractor = DirectNeo4jExtractor("bolt://localhost:7687", "neo4j", "password")
+            test_extractor = DirectNeo4jExtractor(
+                "bolt://localhost:7687", "neo4j", "password"
+            )
             await test_extractor.initialize()
 
             # Verify driver was created with notification suppression
@@ -267,17 +366,22 @@ class TestNeo4jConnection:
         """Test initialization fallback for older Neo4j versions"""
         from src.knowledge_graph.parse_repo_into_neo4j import DirectNeo4jExtractor
 
-        with patch("src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase") as mock_db, \
-             patch("neo4j.NotificationMinimumSeverity", side_effect=ImportError), \
-             patch("src.knowledge_graph.parse_repo_into_neo4j.GitRepositoryManager"), \
-             patch("src.knowledge_graph.parse_repo_into_neo4j.Neo4jCodeAnalyzer"), \
-             patch("src.knowledge_graph.parse_repo_into_neo4j.AnalyzerFactory"):
-
+        with (
+            patch(
+                "src.knowledge_graph.parse_repo_into_neo4j.AsyncGraphDatabase"
+            ) as mock_db,
+            patch("neo4j.NotificationMinimumSeverity", side_effect=ImportError),
+            patch("src.knowledge_graph.parse_repo_into_neo4j.GitRepositoryManager"),
+            patch("src.knowledge_graph.parse_repo_into_neo4j.Neo4jCodeAnalyzer"),
+            patch("src.knowledge_graph.parse_repo_into_neo4j.AnalyzerFactory"),
+        ):
             mock_driver = MagicMock()
             mock_driver.close = AsyncMock()
             mock_db.driver = MagicMock(return_value=mock_driver)
 
-            test_extractor = DirectNeo4jExtractor("bolt://localhost:7687", "neo4j", "password")
+            test_extractor = DirectNeo4jExtractor(
+                "bolt://localhost:7687", "neo4j", "password"
+            )
             await test_extractor.initialize()
 
             # Should still create driver, just without notification suppression
@@ -310,20 +414,28 @@ class TestNeo4jConnection:
 # Test Repository Validation
 # =============================================================================
 
+
 class TestRepositoryValidation:
     """Test repository validation before processing"""
 
     @pytest.mark.asyncio
     async def test_validate_success(self, extractor):
         """Test successful repository validation"""
-        extractor.git_manager.validate_repository_size = AsyncMock(return_value=(True, {
-            "estimated_size_mb": 100.5,
-            "file_count": 500,
-            "free_space_gb": 50.0,
-            "errors": [],
-        }))
+        extractor.git_manager.validate_repository_size = AsyncMock(
+            return_value=(
+                True,
+                {
+                    "estimated_size_mb": 100.5,
+                    "file_count": 500,
+                    "free_space_gb": 50.0,
+                    "errors": [],
+                },
+            )
+        )
 
-        is_valid, info = await extractor.validate_before_processing("https://github.com/test/repo.git")
+        is_valid, info = await extractor.validate_before_processing(
+            "https://github.com/test/repo.git"
+        )
 
         assert is_valid is True
         assert info["estimated_size_mb"] == 100.5
@@ -334,14 +446,21 @@ class TestRepositoryValidation:
     async def test_validate_failure_without_override(self, extractor):
         """Test validation failure without size override"""
         extractor.repo_allow_size_override = False
-        extractor.git_manager.validate_repository_size = AsyncMock(return_value=(False, {
-            "estimated_size_mb": 1000.0,
-            "file_count": 20000,
-            "free_space_gb": 50.0,
-            "errors": ["Repository too large: 1000.0MB exceeds limit of 500MB"],
-        }))
+        extractor.git_manager.validate_repository_size = AsyncMock(
+            return_value=(
+                False,
+                {
+                    "estimated_size_mb": 1000.0,
+                    "file_count": 20000,
+                    "free_space_gb": 50.0,
+                    "errors": ["Repository too large: 1000.0MB exceeds limit of 500MB"],
+                },
+            )
+        )
 
-        is_valid, info = await extractor.validate_before_processing("https://github.com/test/large-repo.git")
+        is_valid, info = await extractor.validate_before_processing(
+            "https://github.com/test/large-repo.git"
+        )
 
         assert is_valid is False
         assert len(info["errors"]) > 0
@@ -351,14 +470,21 @@ class TestRepositoryValidation:
     async def test_validate_failure_with_override(self, extractor):
         """Test validation failure with size override enabled"""
         extractor.repo_allow_size_override = True
-        extractor.git_manager.validate_repository_size = AsyncMock(return_value=(False, {
-            "estimated_size_mb": 1000.0,
-            "file_count": 20000,
-            "free_space_gb": 50.0,
-            "errors": ["Repository too large"],
-        }))
+        extractor.git_manager.validate_repository_size = AsyncMock(
+            return_value=(
+                False,
+                {
+                    "estimated_size_mb": 1000.0,
+                    "file_count": 20000,
+                    "free_space_gb": 50.0,
+                    "errors": ["Repository too large"],
+                },
+            )
+        )
 
-        is_valid, info = await extractor.validate_before_processing("https://github.com/test/large-repo.git")
+        is_valid, info = await extractor.validate_before_processing(
+            "https://github.com/test/large-repo.git"
+        )
 
         # Should pass due to override
         assert is_valid is True
@@ -369,7 +495,9 @@ class TestRepositoryValidation:
         """Test validation when GitRepositoryManager is not available"""
         extractor.git_manager = None
 
-        is_valid, info = await extractor.validate_before_processing("https://github.com/test/repo.git")
+        is_valid, info = await extractor.validate_before_processing(
+            "https://github.com/test/repo.git"
+        )
 
         # Should pass with warning
         assert is_valid is True
@@ -382,7 +510,9 @@ class TestRepositoryValidation:
             side_effect=RepositoryError("Validation failed"),
         )
 
-        is_valid, info = await extractor.validate_before_processing("https://github.com/test/repo.git")
+        is_valid, info = await extractor.validate_before_processing(
+            "https://github.com/test/repo.git"
+        )
 
         assert is_valid is False
         assert len(info["errors"]) > 0
@@ -395,7 +525,9 @@ class TestRepositoryValidation:
             side_effect=Exception("Unexpected error"),
         )
 
-        is_valid, info = await extractor.validate_before_processing("https://github.com/test/repo.git")
+        is_valid, info = await extractor.validate_before_processing(
+            "https://github.com/test/repo.git"
+        )
 
         assert is_valid is False
         assert len(info["errors"]) > 0
@@ -404,6 +536,7 @@ class TestRepositoryValidation:
 # =============================================================================
 # Test Git Clone Operations
 # =============================================================================
+
 
 class TestGitClone:
     """Test repository cloning operations"""
@@ -529,6 +662,7 @@ class TestGitClone:
 # Test Git Metadata Extraction
 # =============================================================================
 
+
 class TestGitMetadata:
     """Test Git metadata extraction"""
 
@@ -566,7 +700,9 @@ class TestGitMetadata:
         assert metadata["recent_commits"] == []
 
     @pytest.mark.asyncio
-    async def test_get_repository_metadata_without_git_manager(self, extractor, tmp_path):
+    async def test_get_repository_metadata_without_git_manager(
+        self, extractor, tmp_path
+    ):
         """Test metadata extraction when GitRepositoryManager is unavailable"""
         extractor.git_manager = None
         repo_dir = str(tmp_path / "test_repo")
@@ -594,6 +730,7 @@ class TestGitMetadata:
 # =============================================================================
 # Test File Discovery
 # =============================================================================
+
 
 class TestFileDiscovery:
     """Test code file discovery"""
@@ -702,6 +839,7 @@ class TestFileDiscovery:
 # Test Repository Analysis
 # =============================================================================
 
+
 class TestRepositoryAnalysis:
     """Test repository analysis workflow"""
 
@@ -713,9 +851,10 @@ class TestRepositoryAnalysis:
         src_dir.mkdir(parents=True)
         (src_dir / "main.py").write_text("# Main module\nclass TestClass:\n    pass")
 
-        with patch.object(extractor, "clone_repo", return_value=str(repo_dir)), \
-             patch.object(extractor, "_create_graph", new=AsyncMock()) as mock_create:
-
+        with (
+            patch.object(extractor, "clone_repo", return_value=str(repo_dir)),
+            patch.object(extractor, "_create_graph", new=AsyncMock()) as mock_create,
+        ):
             await extractor.analyze_repository(
                 repo_url="https://github.com/test/repo.git",
                 temp_dir=str(repo_dir),
@@ -733,19 +872,31 @@ class TestRepositoryAnalysis:
         repo_dir = tmp_path / "test_repo"
         repo_dir.mkdir()
 
-        with patch.object(extractor, "clone_repo", return_value=str(repo_dir)) as mock_clone, \
-             patch.object(extractor, "get_code_files", return_value={"python": [], "javascript": [], "typescript": [], "go": []}), \
-             patch.object(extractor, "_create_graph", new=AsyncMock()):
-
+        with (
+            patch.object(
+                extractor, "clone_repo", return_value=str(repo_dir)
+            ) as mock_clone,
+            patch.object(
+                extractor,
+                "get_code_files",
+                return_value={
+                    "python": [],
+                    "javascript": [],
+                    "typescript": [],
+                    "go": [],
+                },
+            ),
+            patch.object(extractor, "_create_graph", new=AsyncMock()),
+        ):
             await extractor.analyze_repository(
                 repo_url="https://github.com/test/repo.git",
                 temp_dir=str(repo_dir),
                 branch="develop",
             )
 
-            # Should pass branch to clone_repo (as 3rd positional argument)
+            # Should pass branch to clone_repo as keyword argument
             mock_clone.assert_called_once()
-            assert mock_clone.call_args[0][2] == "develop"  # branch is 3rd positional arg
+            assert mock_clone.call_args.kwargs.get("branch") == "develop"
 
     @pytest.mark.asyncio
     async def test_analyze_repository_clears_existing_data(self, extractor, tmp_path):
@@ -753,11 +904,23 @@ class TestRepositoryAnalysis:
         repo_dir = tmp_path / "test_repo"
         repo_dir.mkdir()
 
-        with patch.object(extractor, "clear_repository_data", new=AsyncMock()) as mock_clear, \
-             patch.object(extractor, "clone_repo", return_value=str(repo_dir)), \
-             patch.object(extractor, "get_code_files", return_value={"python": [], "javascript": [], "typescript": [], "go": []}), \
-             patch.object(extractor, "_create_graph", new=AsyncMock()):
-
+        with (
+            patch.object(
+                extractor, "clear_repository_data", new=AsyncMock()
+            ) as mock_clear,
+            patch.object(extractor, "clone_repo", return_value=str(repo_dir)),
+            patch.object(
+                extractor,
+                "get_code_files",
+                return_value={
+                    "python": [],
+                    "javascript": [],
+                    "typescript": [],
+                    "go": [],
+                },
+            ),
+            patch.object(extractor, "_create_graph", new=AsyncMock()),
+        ):
             await extractor.analyze_repository(
                 repo_url="https://github.com/test/repo.git",
                 temp_dir=str(repo_dir),
@@ -773,9 +936,10 @@ class TestRepositoryAnalysis:
         src_dir.mkdir(parents=True)
         (src_dir / "main.py").write_text("# Main")
 
-        with patch.object(extractor, "clone_repo", return_value=str(repo_dir)), \
-             patch.object(extractor, "_create_graph", new=AsyncMock()):
-
+        with (
+            patch.object(extractor, "clone_repo", return_value=str(repo_dir)),
+            patch.object(extractor, "_create_graph", new=AsyncMock()),
+        ):
             await extractor.analyze_repository(
                 repo_url="https://github.com/test/repo.git",
                 temp_dir=str(repo_dir),
@@ -788,8 +952,9 @@ class TestRepositoryAnalysis:
     @pytest.mark.asyncio
     async def test_analyze_repository_git_error(self, extractor, tmp_path):
         """Test repository analysis with GitError during clone"""
-        with patch.object(extractor, "clone_repo", side_effect=GitError("Clone failed")):
-
+        with patch.object(
+            extractor, "clone_repo", side_effect=GitError("Clone failed")
+        ):
             with pytest.raises(GitError, match="Clone failed"):
                 await extractor.analyze_repository(
                     repo_url="https://github.com/test/repo.git",
@@ -804,7 +969,6 @@ class TestRepositoryAnalysis:
         (src_dir / "main.py").write_text("# Main module")
 
         with patch.object(extractor, "_create_graph", new=AsyncMock()) as mock_create:
-
             await extractor.analyze_local_repository(
                 local_path=str(repo_dir),
                 repo_name="local-repo",
@@ -825,7 +989,16 @@ class TestRepositoryAnalysis:
         )
 
         # Should handle ParsingError gracefully or raise
-        with patch.object(extractor, "get_code_files", return_value={"python": [Path(repo_dir / "test.py")], "javascript": [], "typescript": [], "go": []}):
+        with patch.object(
+            extractor,
+            "get_code_files",
+            return_value={
+                "python": [Path(repo_dir / "test.py")],
+                "javascript": [],
+                "typescript": [],
+                "go": [],
+            },
+        ):
             try:
                 await extractor.analyze_local_repository(
                     local_path=str(repo_dir),
@@ -841,8 +1014,9 @@ class TestRepositoryAnalysis:
         repo_dir = tmp_path / "local_repo"
         repo_dir.mkdir()
 
-        with patch.object(extractor, "get_code_files", side_effect=AnalysisError("Analysis failed")):
-
+        with patch.object(
+            extractor, "get_code_files", side_effect=AnalysisError("Analysis failed")
+        ):
             with pytest.raises(AnalysisError, match="Analysis failed"):
                 await extractor.analyze_local_repository(
                     local_path=str(repo_dir),
@@ -854,14 +1028,17 @@ class TestRepositoryAnalysis:
 # Test Neo4j Operations Delegation
 # =============================================================================
 
+
 class TestNeo4jOperations:
     """Test Neo4j operations delegation"""
 
     @pytest.mark.asyncio
     async def test_clear_repository_data(self, extractor):
         """Test clearing repository data"""
-        with patch("src.knowledge_graph.parse_repo_into_neo4j.clear_repository_data", new=AsyncMock()) as mock_clear:
-
+        with patch(
+            "src.knowledge_graph.parse_repo_into_neo4j.clear_repository_data",
+            new=AsyncMock(),
+        ) as mock_clear:
             await extractor.clear_repository_data("test-repo")
 
             mock_clear.assert_called_once_with(extractor.driver, "test-repo")
@@ -872,8 +1049,9 @@ class TestNeo4jOperations:
         modules_data = [{"module": "test", "classes": [], "functions": []}]
         git_metadata = {"branches": [], "commits": []}
 
-        with patch("src.knowledge_graph.parse_repo_into_neo4j.create_graph", new=AsyncMock()) as mock_create:
-
+        with patch(
+            "src.knowledge_graph.parse_repo_into_neo4j.create_graph", new=AsyncMock()
+        ) as mock_create:
             await extractor._create_graph("test-repo", modules_data, git_metadata)
 
             mock_create.assert_called_once_with(
@@ -886,8 +1064,10 @@ class TestNeo4jOperations:
     @pytest.mark.asyncio
     async def test_search_graph(self, extractor):
         """Test graph search delegation"""
-        with patch("src.knowledge_graph.parse_repo_into_neo4j.search_graph", new=AsyncMock(return_value=[{"result": "data"}])) as mock_search:
-
+        with patch(
+            "src.knowledge_graph.parse_repo_into_neo4j.search_graph",
+            new=AsyncMock(return_value=[{"result": "data"}]),
+        ) as mock_search:
             result = await extractor.search_graph(
                 query_type="files_importing",
                 target="models",
@@ -901,23 +1081,28 @@ class TestNeo4jOperations:
 # Test Error Handling
 # =============================================================================
 
+
 class TestErrorHandling:
     """Test comprehensive error handling"""
 
     @pytest.mark.asyncio
     async def test_repository_error_handling(self, extractor, tmp_path):
         """Test RepositoryError handling"""
-        with patch.object(extractor, "clone_repo", side_effect=RepositoryError("Repository invalid")):
-
+        with patch.object(
+            extractor, "clone_repo", side_effect=RepositoryError("Repository invalid")
+        ):
             with pytest.raises(RepositoryError, match="Repository invalid"):
-                await extractor.analyze_repository("https://github.com/test/invalid.git")
+                await extractor.analyze_repository(
+                    "https://github.com/test/invalid.git"
+                )
 
     @pytest.mark.asyncio
     async def test_query_error_handling(self, extractor):
         """Test QueryError handling in Neo4j operations"""
-        with patch("src.knowledge_graph.parse_repo_into_neo4j.clear_repository_data",
-                   new=AsyncMock(side_effect=QueryError("Query failed"))):
-
+        with patch(
+            "src.knowledge_graph.parse_repo_into_neo4j.clear_repository_data",
+            new=AsyncMock(side_effect=QueryError("Query failed")),
+        ):
             with pytest.raises(QueryError, match="Query failed"):
                 await extractor.clear_repository_data("test-repo")
 
@@ -946,6 +1131,7 @@ class TestErrorHandling:
 
         # Make analyzer fail for some files
         call_count = [0]
+
         def side_effect_fn(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 2:
@@ -973,15 +1159,19 @@ class TestErrorHandling:
         repo_dir = tmp_path / "unexpected_repo"
         repo_dir.mkdir()
 
-        with patch.object(extractor, "get_code_files", side_effect=Exception("Unexpected error")):
-
+        with patch.object(
+            extractor, "get_code_files", side_effect=Exception("Unexpected error")
+        ):
             with pytest.raises(Exception, match="Unexpected error"):
-                await extractor.analyze_local_repository(str(repo_dir), "unexpected-repo")
+                await extractor.analyze_local_repository(
+                    str(repo_dir), "unexpected-repo"
+                )
 
 
 # =============================================================================
 # Test Edge Cases
 # =============================================================================
+
 
 class TestEdgeCases:
     """Test edge cases and boundary conditions"""
@@ -993,7 +1183,6 @@ class TestEdgeCases:
         repo_dir.mkdir()
 
         with patch.object(extractor, "_create_graph", new=AsyncMock()) as mock_create:
-
             await extractor.analyze_local_repository(str(repo_dir), "empty-repo")
 
             # Should call _create_graph with empty modules
@@ -1010,7 +1199,6 @@ class TestEdgeCases:
         (repo_dir / "config.json").write_text('{"key": "value"}')
 
         with patch.object(extractor, "_create_graph", new=AsyncMock()) as mock_create:
-
             await extractor.analyze_local_repository(str(repo_dir), "no-python-repo")
 
             # Should handle gracefully
@@ -1028,10 +1216,22 @@ class TestEdgeCases:
     @pytest.mark.asyncio
     async def test_analyze_repository_with_default_temp_dir(self, extractor, tmp_path):
         """Test repository analysis with default temp_dir"""
-        with patch.object(extractor, "clone_repo", return_value=str(tmp_path / "default_repo")) as mock_clone, \
-             patch.object(extractor, "get_code_files", return_value={"python": [], "javascript": [], "typescript": [], "go": []}), \
-             patch.object(extractor, "_create_graph", new=AsyncMock()):
-
+        with (
+            patch.object(
+                extractor, "clone_repo", return_value=str(tmp_path / "default_repo")
+            ) as mock_clone,
+            patch.object(
+                extractor,
+                "get_code_files",
+                return_value={
+                    "python": [],
+                    "javascript": [],
+                    "typescript": [],
+                    "go": [],
+                },
+            ),
+            patch.object(extractor, "_create_graph", new=AsyncMock()),
+        ):
             await extractor.analyze_repository("https://github.com/test/repo.git")
 
             # Should use default temp_dir
@@ -1050,7 +1250,6 @@ class TestEdgeCases:
             repos.append(str(repo_dir))
 
         with patch.object(extractor, "_create_graph", new=AsyncMock()):
-
             tasks = [
                 extractor.analyze_local_repository(repo, f"repo-{i}")
                 for i, repo in enumerate(repos)
@@ -1068,4 +1267,12 @@ class TestEdgeCases:
 # =============================================================================
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v", "--tb=short", "--cov=src.knowledge_graph.parse_repo_into_neo4j", "--cov-report=term-missing"])
+    pytest.main(
+        [
+            __file__,
+            "-v",
+            "--tb=short",
+            "--cov=src.knowledge_graph.parse_repo_into_neo4j",
+            "--cov-report=term-missing",
+        ]
+    )

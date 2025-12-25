@@ -26,8 +26,10 @@ from neo4j import AsyncDriver, AsyncGraphDatabase
 # Handle neo4j version compatibility for NotificationMinimumSeverity
 try:
     from neo4j import NotificationMinimumSeverity
+
+    HAS_NOTIFICATION_SEVERITY = True
 except ImportError:
-    NotificationMinimumSeverity = None
+    HAS_NOTIFICATION_SEVERITY = False
 
 from src.core.exceptions import AnalysisError, GitError, ParsingError, RepositoryError
 
@@ -101,7 +103,9 @@ class DirectNeo4jExtractor:
         driver_kwargs: dict[str, Any] = {
             "auth": (self.neo4j_user, self.neo4j_password),
         }
-        if NotificationMinimumSeverity is not None:
+        if HAS_NOTIFICATION_SEVERITY:
+            from neo4j import NotificationMinimumSeverity
+
             driver_kwargs["warn_notification_severity"] = (
                 NotificationMinimumSeverity.OFF
             )
@@ -123,7 +127,8 @@ class DirectNeo4jExtractor:
             await self.driver.close()
 
     async def validate_before_processing(
-        self, repo_url: str,
+        self,
+        repo_url: str,
     ) -> tuple[bool, dict[str, Any]]:
         """
         Validate repository before processing.
@@ -225,7 +230,9 @@ class DirectNeo4jExtractor:
             try:
 
                 def handle_remove_readonly(
-                    func: Callable[[str], None], path: str,
+                    func: Callable[[str], None],
+                    path: str,
+                    _exc_info: tuple[type[BaseException], BaseException, Any],
                 ) -> None:
                     try:
                         if Path(path).exists():
@@ -233,7 +240,8 @@ class DirectNeo4jExtractor:
                             func(path)
                     except PermissionError:
                         logger.warning(
-                            "Could not remove %s - file in use, skipping", path,
+                            "Could not remove %s - file in use, skipping",
+                            path,
                         )
 
                 shutil.rmtree(target_dir, onerror=handle_remove_readonly)
@@ -308,8 +316,7 @@ class DirectNeo4jExtractor:
                 logger.warning("Continuing without Git metadata")
         else:
             msg = (
-                "GitRepositoryManager not available - "
-                "skipping Git metadata extraction"
+                "GitRepositoryManager not available - skipping Git metadata extraction"
             )
             logger.warning(msg)
 
@@ -340,19 +347,14 @@ class DirectNeo4jExtractor:
 
         for root, dirs, files in os.walk(repo_path):
             dirs[:] = [
-                d
-                for d in dirs
-                if d not in exclude_dirs and not d.startswith(".")
+                d for d in dirs if d not in exclude_dirs and not d.startswith(".")
             ]
 
             for file in files:
                 if not (file.endswith(".py") and not file.startswith("test_")):
                     continue
                 file_path = Path(root) / file
-                if (
-                    file_path.stat().st_size < max_file_size
-                    and file not in skip_files
-                ):
+                if file_path.stat().st_size < max_file_size and file not in skip_files:
                     python_files.append(file_path)
 
         return python_files
@@ -396,15 +398,11 @@ class DirectNeo4jExtractor:
             "go": [],
         }
 
-        supported_extensions = (
-            self.analyzer_factory.get_supported_extensions()
-        )
+        supported_extensions = self.analyzer_factory.get_supported_extensions()
 
         for root, dirs, files in os.walk(repo_path):
             dirs[:] = [
-                d
-                for d in dirs
-                if d not in exclude_dirs and not d.startswith(".")
+                d for d in dirs if d not in exclude_dirs and not d.startswith(".")
             ]
 
             for file in files:
@@ -514,7 +512,9 @@ class DirectNeo4jExtractor:
                 file_counter += 1
 
                 analysis = self.analyzer.analyze_python_file(
-                    file_path, repo_path, project_modules,
+                    file_path,
+                    repo_path,
+                    project_modules,
                 )
                 if analysis:
                     analysis["language"] = "Python"
@@ -534,7 +534,8 @@ class DirectNeo4jExtractor:
 
                     if js_analyzer:
                         analysis = await js_analyzer.analyze_file(
-                            str(file_path), str(repo_path),
+                            str(file_path),
+                            str(repo_path),
                         )
                         if analysis:
                             modules_data.append(analysis)
@@ -552,7 +553,8 @@ class DirectNeo4jExtractor:
 
                 if go_analyzer:
                     analysis = await go_analyzer.analyze_file(
-                        str(file_path), str(repo_path),
+                        str(file_path),
+                        str(repo_path),
                     )
                     if analysis:
                         modules_data.append(analysis)
@@ -564,23 +566,16 @@ class DirectNeo4jExtractor:
             logger.info("Creating nodes and relationships in Neo4j...")
             await self._create_graph(repo_name, modules_data, git_metadata)
 
-            total_classes = sum(
-                len(mod["classes"]) for mod in modules_data
-            )
+            total_classes = sum(len(mod["classes"]) for mod in modules_data)
             total_methods = sum(
-                len(cls["methods"])
-                for mod in modules_data
-                for cls in mod["classes"]
+                len(cls["methods"]) for mod in modules_data for cls in mod["classes"]
             )
-            total_functions = sum(
-                len(mod["functions"]) for mod in modules_data
-            )
-            total_imports = sum(
-                len(mod["imports"]) for mod in modules_data
-            )
+            total_functions = sum(len(mod["functions"]) for mod in modules_data)
+            total_imports = sum(len(mod["imports"]) for mod in modules_data)
 
             logger.info(
-                "\n=== Direct Neo4j Repository Analysis for %s ===", repo_name,
+                "\n=== Direct Neo4j Repository Analysis for %s ===",
+                repo_name,
             )
             logger.info("Files processed: %s", len(modules_data))
             logger.info("Classes created: %s", total_classes)
@@ -596,7 +591,9 @@ class DirectNeo4jExtractor:
                 try:
 
                     def handle_remove_readonly(
-                        func: Callable[[str], None], path: str,
+                        func: Callable[[str], None],
+                        path: str,
+                        _exc_info: tuple[type[BaseException], BaseException, Any],
                     ) -> None:
                         try:
                             if Path(path).exists():
@@ -610,15 +607,14 @@ class DirectNeo4jExtractor:
 
                     shutil.rmtree(temp_dir, onerror=handle_remove_readonly)
                     logger.info("Cleanup completed")
+                except GitError:
+                    logger.exception("Git-related cleanup failed")
                 except Exception as e:
                     logger.warning(
                         "Cleanup failed: %s. Directory may remain at %s",
                         e,
                         temp_dir,
                     )
-                except GitError:
-                    logger.exception("Git-related cleanup failed")
-
 
     async def analyze_local_repository(self, local_path: str, repo_name: str) -> None:
         """
@@ -684,12 +680,15 @@ class DirectNeo4jExtractor:
 
                         if lang == "python":
                             module_data = self.analyzer.analyze_python_file(
-                                file_path_obj, repo_path, project_modules,
+                                file_path_obj,
+                                repo_path,
+                                project_modules,
                             )
                         else:
                             module_data = (
                                 await analyzer.analyze_file(
-                                    str(file_path_obj), str(repo_path),
+                                    str(file_path_obj),
+                                    str(repo_path),
                                 )
                                 if analyzer
                                 else None
@@ -715,7 +714,8 @@ class DirectNeo4jExtractor:
                     )
                     branches = await self.git_manager.get_branches(local_path)
                     commits = await self.git_manager.get_commits(
-                        local_path, limit=50,
+                        local_path,
+                        limit=50,
                     )
 
                     git_metadata = {
@@ -750,6 +750,7 @@ class DirectNeo4jExtractor:
         except Exception:
             logger.exception("Unexpected error analyzing local repository")
             raise
+
     async def _create_graph(
         self,
         repo_name: str,
@@ -760,7 +761,9 @@ class DirectNeo4jExtractor:
         await create_graph(self.driver, repo_name, modules_data, git_metadata)
 
     async def search_graph(
-        self, query_type: str, **kwargs: Any,
+        self,
+        query_type: str,
+        **kwargs: Any,
     ) -> list[dict[str, Any]] | None:
         """Delegate to neo4j.search_graph"""
         return await search_graph(self.driver, query_type, **kwargs)
@@ -795,7 +798,8 @@ async def main() -> None:
 
         # What classes are in a specific file?
         results = await extractor.search_graph(
-            "classes_in_file", file_path="pydantic_ai/models/openai.py",
+            "classes_in_file",
+            file_path="pydantic_ai/models/openai.py",
         )
         if results:
             print(f"\\nClasses in openai.py: {len(results)}")
@@ -804,7 +808,8 @@ async def main() -> None:
 
         # What methods does OpenAIModel have?
         results = await extractor.search_graph(
-            "methods_of_class", class_name="OpenAIModel",
+            "methods_of_class",
+            class_name="OpenAIModel",
         )
         if results:
             print(f"\\nMethods of OpenAIModel: {len(results)}")

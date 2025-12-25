@@ -31,7 +31,7 @@ class QdrantAdapter:
     def __init__(self, url: str | None = None, api_key: str | None = None):
         """Initialize Qdrant adapter with connection parameters"""
         self.url = url or os.getenv("QDRANT_URL", "http://localhost:6333")
-        self.api_key = api_key or os.getenv("QDRANT_API_KEY")
+        self.api_key = api_key or os.getenv("QDRANT_API_KEY") or None
         self.client: AsyncQdrantClient = AsyncQdrantClient(
             url=self.url, api_key=self.api_key
         )

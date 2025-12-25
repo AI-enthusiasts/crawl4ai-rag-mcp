@@ -1,0 +1,19 @@
+from .utils import *
+from .chunking_strategy import *
+from .extraction_strategy import *
+from .crawler_strategy import *
+from .config import *
+from .models import CrawlResult, UrlModel as UrlModel
+from _typeshed import Incomplete
+
+class WebCrawler:
+    crawler_strategy: Incomplete
+    always_by_pass_cache: Incomplete
+    crawl4ai_folder: Incomplete
+    ready: bool
+    def __init__(self, crawler_strategy: CrawlerStrategy = None, always_by_pass_cache: bool = False, verbose: bool = False) -> None: ...
+    def warmup(self) -> None: ...
+    def fetch_page(self, url_model: UrlModel, provider: str = ..., api_token: str = None, extract_blocks_flag: bool = True, word_count_threshold=..., css_selector: str = None, screenshot: bool = False, use_cached_html: bool = False, extraction_strategy: ExtractionStrategy = None, chunking_strategy: ChunkingStrategy = ..., **kwargs) -> CrawlResult: ...
+    def fetch_pages(self, url_models: list[UrlModel], provider: str = ..., api_token: str = None, extract_blocks_flag: bool = True, word_count_threshold=..., use_cached_html: bool = False, css_selector: str = None, screenshot: bool = False, extraction_strategy: ExtractionStrategy = None, chunking_strategy: ChunkingStrategy = ..., **kwargs) -> list[CrawlResult]: ...
+    def run(self, url: str, word_count_threshold=..., extraction_strategy: ExtractionStrategy = None, chunking_strategy: ChunkingStrategy = ..., bypass_cache: bool = False, css_selector: str = None, screenshot: bool = False, user_agent: str = None, verbose: bool = True, **kwargs) -> CrawlResult: ...
+    def process_html(self, url: str, html: str, extracted_content: str, word_count_threshold: int, extraction_strategy: ExtractionStrategy, chunking_strategy: ChunkingStrategy, css_selector: str, screenshot: bool, verbose: bool, is_cached: bool, **kwargs) -> CrawlResult: ...

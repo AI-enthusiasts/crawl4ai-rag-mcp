@@ -174,8 +174,7 @@ class Settings(BaseSettings):
         ge=0.0,
         le=1.0,
         description=(
-            "Completeness threshold (0.0-1.0) for determining when answer is "
-            "sufficient"
+            "Completeness threshold (0.0-1.0) for determining when answer is sufficient"
         ),
     )
 
@@ -198,8 +197,7 @@ class Settings(BaseSettings):
         ge=1,
         le=200,
         description=(
-            "Maximum total pages to crawl recursively across all URLs in "
-            "iteration"
+            "Maximum total pages to crawl recursively across all URLs in iteration"
         ),
     )
 
@@ -218,8 +216,7 @@ class Settings(BaseSettings):
     agentic_search_enable_url_filtering: bool = Field(
         default=True,
         description=(
-            "Enable smart URL filtering to avoid GitHub commits, pagination, "
-            "etc."
+            "Enable smart URL filtering to avoid GitHub commits, pagination, etc."
         ),
     )
 
@@ -228,8 +225,7 @@ class Settings(BaseSettings):
         ge=5,
         le=50,
         description=(
-            "Maximum number of search results to rank with LLM (reduce for "
-            "lower costs)"
+            "Maximum number of search results to rank with LLM (reduce for lower costs)"
         ),
     )
 
@@ -301,6 +297,11 @@ class Settings(BaseSettings):
     oauth2_required_scopes: str = Field(
         default="read:data",
         description="Comma-separated list of required OAuth2 scopes",
+    )
+
+    oauth_storage_dir: str = Field(
+        default=".oauth_storage",
+        description="Directory for persistent OAuth storage (clients, tokens)",
     )
 
     # ========================================
@@ -379,9 +380,7 @@ class Settings(BaseSettings):
 
     def get_oauth2_required_scopes_list(self) -> list[str]:
         """Get required OAuth2 scopes as a list."""
-        return [
-            s.strip() for s in self.oauth2_required_scopes.split(",") if s.strip()
-        ]
+        return [s.strip() for s in self.oauth2_required_scopes.split(",") if s.strip()]
 
     def to_dict(self) -> dict[str, Any]:
         """Export settings as a dictionary (safe version without secrets)."""

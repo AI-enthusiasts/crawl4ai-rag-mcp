@@ -62,7 +62,7 @@ async def qdrant_with_test_data():
     test_url = "https://test-incomplete-python-info.example.com"
 
     # Get embeddings for test chunks
-    embeddings = create_embeddings_batch(test_chunks)
+    embeddings = await create_embeddings_batch(test_chunks)
 
     # Store in Qdrant
     await adapter.add_documents(
@@ -131,22 +131,19 @@ async def test_agentic_search_with_real_qdrant_data(qdrant_with_test_data):
                 pytest.skip(f"SearXNG not available at {settings.searxng_url}")
 
             # Check if SearXNG can return search results
+            # Use wikipedia engine - stable, no CAPTCHA, no rate limits
             search_response = await client.get(
-                f"{settings.searxng_url}/search?q=test&format=json&limit=1",
+                f"{settings.searxng_url}/search?q=test&format=json&engines=wikipedia",
             )
             if search_response.status_code == 200:
                 search_data = search_response.json()
-                # SearXNG is working if it returns at least 1 result OR no unresponsive engines
-                has_results = search_data.get("number_of_results", 0) > 0
-                has_responsive_engines = len(search_data.get("unresponsive_engines", [])) < len(search_data.get("unresponsive_engines", [])) if search_data.get("unresponsive_engines") else True
+                results = search_data.get("results", [])
+                has_valid_result = (
+                    results and isinstance(results[0], dict) and results[0].get("url")
+                )
 
-                if not has_results:
-                    unresponsive = search_data.get("unresponsive_engines", [])
-                    pytest.skip(
-                        f"SearXNG cannot return search results. "
-                        f"All {len(unresponsive)} engines unresponsive (likely DNS/firewall issue). "
-                        f"Test requires working search engines.",
-                    )
+                if not has_valid_result:
+                    pytest.skip("SearXNG wikipedia engine not returning valid results")
 
                 searxng_working = True
     except Exception as e:
@@ -200,8 +197,8 @@ async def test_agentic_search_with_real_qdrant_data(qdrant_with_test_data):
 
     # Since SearXNG is working and test data is INCOMPLETE, should attempt web search
     if result["completeness"] < 0.8:
-        assert (
-            "web_search" in actions or "max_iterations_reached" in result.get("status", "")
+        assert "web_search" in actions or "max_iterations_reached" in result.get(
+            "status", ""
         ), "Expected web_search attempt when completeness low and SearXNG working"
 
     # Verify results were retrieved from Qdrant

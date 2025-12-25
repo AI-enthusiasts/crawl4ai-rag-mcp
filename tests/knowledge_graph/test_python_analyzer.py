@@ -58,9 +58,11 @@ class SimpleClass:
 '''
         file_path = self.repo_root / "simple.py"
 
-        with patch("builtins.open", mock_open(read_data=python_content)):
+        with patch.object(Path, "open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules,
+                file_path,
+                self.repo_root,
+                self.project_modules,
             )
 
         assert result is not None
@@ -93,9 +95,11 @@ async def async_function(data: dict) -> None:
 '''
         file_path = self.repo_root / "functions.py"
 
-        with patch("builtins.open", mock_open(read_data=python_content)):
+        with patch.object(Path, "open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules,
+                file_path,
+                self.repo_root,
+                self.project_modules,
             )
 
         assert result is not None
@@ -128,9 +132,11 @@ from .relative import RelativeImport
 """
         file_path = self.repo_root / "src/myproject/module.py"
 
-        with patch("builtins.open", mock_open(read_data=python_content)):
+        with patch.object(Path, "open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules,
+                file_path,
+                self.repo_root,
+                self.project_modules,
             )
 
         assert result is not None
@@ -162,9 +168,11 @@ class DataModel:
 '''
         file_path = self.repo_root / "models.py"
 
-        with patch("builtins.open", mock_open(read_data=python_content)):
+        with patch.object(Path, "open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules,
+                file_path,
+                self.repo_root,
+                self.project_modules,
             )
 
         assert result is not None
@@ -197,9 +205,11 @@ class User:
 '''
         file_path = self.repo_root / "user.py"
 
-        with patch("builtins.open", mock_open(read_data=python_content)):
+        with patch.object(Path, "open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules,
+                file_path,
+                self.repo_root,
+                self.project_modules,
             )
 
         assert result is not None
@@ -237,9 +247,11 @@ class PropertyClass:
 '''
         file_path = self.repo_root / "props.py"
 
-        with patch("builtins.open", mock_open(read_data=python_content)):
+        with patch.object(Path, "open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules,
+                file_path,
+                self.repo_root,
+                self.project_modules,
             )
 
         assert result is not None
@@ -266,9 +278,11 @@ def complex_function(
 '''
         file_path = self.repo_root / "params.py"
 
-        with patch("builtins.open", mock_open(read_data=python_content)):
+        with patch.object(Path, "open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules,
+                file_path,
+                self.repo_root,
+                self.project_modules,
             )
 
         assert result is not None
@@ -310,10 +324,12 @@ def broken_function(
 """
         file_path = self.repo_root / "broken.py"
 
-        with patch("builtins.open", mock_open(read_data=invalid_python)):
+        with patch.object(Path, "open", mock_open(read_data=invalid_python)):
             with pytest.raises(ParsingError) as exc_info:
                 self.analyzer.analyze_python_file(
-                    file_path, self.repo_root, self.project_modules,
+                    file_path,
+                    self.repo_root,
+                    self.project_modules,
                 )
 
         assert "Python parsing failed" in str(exc_info.value)
@@ -323,21 +339,45 @@ def broken_function(
         python_content = "# Valid Python but might trigger issues"
         file_path = self.repo_root / "test.py"
 
-        # Mock ast.parse to raise ValueError
-        with patch("builtins.open", mock_open(read_data=python_content)):
-            with patch("ast.parse", side_effect=ValueError("Parse error")):
+        # Use documented unittest.mock pattern: wraps + side_effect returning DEFAULT
+        # This allows first call to raise ValueError, subsequent calls (from traceback
+        # formatting in logger.exception) to use the real ast.parse
+        # Reference: https://docs.python.org/3/library/unittest.mock.html#unittest.mock.DEFAULT
+        import ast
+        from unittest.mock import DEFAULT
+
+        call_count = [0]  # Use list to allow modification in nested function
+
+        def side_effect_func(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise ValueError("Parse error")
+            return DEFAULT  # Delegate to wrapped function for subsequent calls
+
+        with patch.object(Path, "open", mock_open(read_data=python_content)):
+            with patch(
+                "src.knowledge_graph.analyzers.python_analyzer.ast.parse",
+                wraps=ast.parse,
+                side_effect=side_effect_func,
+            ):
                 with pytest.raises(ParsingError):
                     self.analyzer.analyze_python_file(
-                        file_path, self.repo_root, self.project_modules,
+                        file_path,
+                        self.repo_root,
+                        self.project_modules,
                     )
 
     def test_analyze_python_file_file_not_found(self):
         """Test handling of missing files."""
         file_path = self.repo_root / "nonexistent.py"
 
-        with patch("builtins.open", side_effect=FileNotFoundError("File not found")):
+        with patch.object(
+            Path, "open", side_effect=FileNotFoundError("File not found")
+        ):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules,
+                file_path,
+                self.repo_root,
+                self.project_modules,
             )
 
         # Should return None for unexpected errors
@@ -345,9 +385,16 @@ def broken_function(
 
     def test_is_likely_internal_relative_imports(self):
         """Test detection of relative imports."""
-        assert self.analyzer._is_likely_internal(".module", self.project_modules) is True
-        assert self.analyzer._is_likely_internal("..parent", self.project_modules) is True
-        assert self.analyzer._is_likely_internal("...grandparent", self.project_modules) is True
+        assert (
+            self.analyzer._is_likely_internal(".module", self.project_modules) is True
+        )
+        assert (
+            self.analyzer._is_likely_internal("..parent", self.project_modules) is True
+        )
+        assert (
+            self.analyzer._is_likely_internal("...grandparent", self.project_modules)
+            is True
+        )
 
     def test_is_likely_internal_external_modules(self):
         """Test detection of external modules."""
@@ -357,37 +404,51 @@ def broken_function(
         assert self.analyzer._is_likely_internal("json", self.project_modules) is False
 
         # Third-party libraries
-        assert self.analyzer._is_likely_internal("requests", self.project_modules) is False
-        assert self.analyzer._is_likely_internal("django", self.project_modules) is False
-        assert self.analyzer._is_likely_internal("pydantic", self.project_modules) is False
+        assert (
+            self.analyzer._is_likely_internal("requests", self.project_modules) is False
+        )
+        assert (
+            self.analyzer._is_likely_internal("django", self.project_modules) is False
+        )
+        assert (
+            self.analyzer._is_likely_internal("pydantic", self.project_modules) is False
+        )
 
     def test_is_likely_internal_project_modules(self):
         """Test detection of project modules."""
-        assert self.analyzer._is_likely_internal("myproject", self.project_modules) is True
-        assert self.analyzer._is_likely_internal("myproject.utils", self.project_modules) is True
+        assert (
+            self.analyzer._is_likely_internal("myproject", self.project_modules) is True
+        )
+        assert (
+            self.analyzer._is_likely_internal("myproject.utils", self.project_modules)
+            is True
+        )
         assert self.analyzer._is_likely_internal("src", self.project_modules) is True
-        assert self.analyzer._is_likely_internal("src.services", self.project_modules) is True
+        assert (
+            self.analyzer._is_likely_internal("src.services", self.project_modules)
+            is True
+        )
 
     def test_get_importable_module_name_simple(self):
         """Test module name extraction for simple files."""
-        file_path = self.repo_root / "module.py"
         relative_path = "module.py"
 
         module_name = self.analyzer._get_importable_module_name(
-            file_path, self.repo_root, relative_path,
+            self.repo_root,
+            relative_path,
         )
 
         assert module_name == "module"
 
     def test_get_importable_module_name_nested(self):
         """Test module name extraction for nested files."""
-        file_path = self.repo_root / "src/myproject/services/api.py"
         relative_path = "src/myproject/services/api.py"
 
         # Mock __init__.py existence
         with patch.object(Path, "exists", return_value=True):
             module_name = self.analyzer._get_importable_module_name(
-                file_path, self.repo_root, relative_path,
+                self.repo_root,
+                relative_path,
             )
 
         # Should skip "src" and start from first package with __init__.py
@@ -587,9 +648,11 @@ class ComplexModel:
 '''
         file_path = self.repo_root / "complex.py"
 
-        with patch("builtins.open", mock_open(read_data=python_content)):
+        with patch.object(Path, "open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules,
+                file_path,
+                self.repo_root,
+                self.project_modules,
             )
 
         assert result is not None
@@ -616,9 +679,11 @@ class ComplexModel:
         python_content = ""
         file_path = self.repo_root / "empty.py"
 
-        with patch("builtins.open", mock_open(read_data=python_content)):
+        with patch.object(Path, "open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules,
+                file_path,
+                self.repo_root,
+                self.project_modules,
             )
 
         assert result is not None
@@ -641,9 +706,11 @@ that spans multiple lines.
 '''
         file_path = self.repo_root / "comments.py"
 
-        with patch("builtins.open", mock_open(read_data=python_content)):
+        with patch.object(Path, "open", mock_open(read_data=python_content)):
             result = self.analyzer.analyze_python_file(
-                file_path, self.repo_root, self.project_modules,
+                file_path,
+                self.repo_root,
+                self.project_modules,
             )
 
         assert result is not None

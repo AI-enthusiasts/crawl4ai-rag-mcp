@@ -1,0 +1,3 @@
+from .bfs_strategy import BFSDeepCrawlStrategy
+
+class DFSDeepCrawlStrategy(BFSDeepCrawlStrategy): ...

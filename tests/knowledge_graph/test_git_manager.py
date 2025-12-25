@@ -65,7 +65,10 @@ class TestCloneRepository:
 
     @pytest.mark.asyncio
     async def test_clone_basic_success(
-        self, git_manager, mock_subprocess_factory, tmp_path,
+        self,
+        git_manager,
+        mock_subprocess_factory,
+        tmp_path,
     ):
         """Test basic repository cloning."""
         target_dir = str(tmp_path / "test_repo")
@@ -74,7 +77,8 @@ class TestCloneRepository:
         mock_proc = mock_subprocess_factory(stdout=b"Cloning into...", returncode=0)
 
         with patch(
-            "asyncio.create_subprocess_exec", return_value=mock_proc,
+            "asyncio.create_subprocess_exec",
+            return_value=mock_proc,
         ) as mock_exec:
             result = await git_manager.clone_repository(url, target_dir)
 
@@ -95,9 +99,13 @@ class TestCloneRepository:
 
         mock_proc = mock_subprocess_factory(returncode=0)
 
-        with patch("os.path.exists", return_value=False), patch(
-            "asyncio.create_subprocess_exec", return_value=mock_proc,
-        ) as mock_exec:
+        with (
+            patch("os.path.exists", return_value=False),
+            patch(
+                "asyncio.create_subprocess_exec",
+                return_value=mock_proc,
+            ) as mock_exec,
+        ):
             await git_manager.clone_repository(url, target_dir, branch=branch)
 
             args = mock_exec.call_args[0]
@@ -113,9 +121,13 @@ class TestCloneRepository:
 
         mock_proc = mock_subprocess_factory(returncode=0)
 
-        with patch("os.path.exists", return_value=False), patch(
-            "asyncio.create_subprocess_exec", return_value=mock_proc,
-        ) as mock_exec:
+        with (
+            patch("os.path.exists", return_value=False),
+            patch(
+                "asyncio.create_subprocess_exec",
+                return_value=mock_proc,
+            ) as mock_exec,
+        ):
             await git_manager.clone_repository(url, target_dir, depth=depth)
 
             args = mock_exec.call_args[0]
@@ -130,11 +142,18 @@ class TestCloneRepository:
 
         mock_proc = mock_subprocess_factory(returncode=0)
 
-        with patch("os.path.exists", return_value=False), patch(
-            "asyncio.create_subprocess_exec", return_value=mock_proc,
-        ) as mock_exec:
+        with (
+            patch("os.path.exists", return_value=False),
+            patch(
+                "asyncio.create_subprocess_exec",
+                return_value=mock_proc,
+            ) as mock_exec,
+        ):
             await git_manager.clone_repository(
-                url, target_dir, single_branch=True, branch="main",
+                url,
+                target_dir,
+                single_branch=True,
+                branch="main",
             )
 
             args = mock_exec.call_args[0]
@@ -142,7 +161,9 @@ class TestCloneRepository:
 
     @pytest.mark.asyncio
     async def test_clone_removes_existing_directory(
-        self, git_manager, mock_subprocess_factory,
+        self,
+        git_manager,
+        mock_subprocess_factory,
     ):
         """Test that existing directory is removed before cloning."""
         url = "https://github.com/test/repo.git"
@@ -151,9 +172,15 @@ class TestCloneRepository:
         mock_proc = mock_subprocess_factory(returncode=0)
         mock_remove = AsyncMock()
 
-        with patch("os.path.exists", return_value=True), patch.object(
-            git_manager, "_remove_directory", mock_remove,
-        ), patch("asyncio.create_subprocess_exec", return_value=mock_proc):
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch.object(
+                git_manager,
+                "_remove_directory",
+                mock_remove,
+            ),
+            patch("asyncio.create_subprocess_exec", return_value=mock_proc),
+        ):
             await git_manager.clone_repository(url, target_dir)
 
             mock_remove.assert_called_once_with(target_dir)
@@ -170,8 +197,12 @@ class TestCloneRepository:
             return_value=(b"", b"fatal: repository not found"),
         )
 
-        with patch("os.path.exists", return_value=False), patch(
-            "asyncio.create_subprocess_exec", return_value=mock_proc,
+        with (
+            patch("os.path.exists", return_value=False),
+            patch(
+                "asyncio.create_subprocess_exec",
+                return_value=mock_proc,
+            ),
         ):
             with pytest.raises(GitError) as exc_info:
                 await git_manager.clone_repository(url, target_dir)
@@ -184,9 +215,12 @@ class TestCloneRepository:
         url = "https://github.com/test/repo.git"
         target_dir = "/tmp/test_repo"
 
-        with patch("os.path.exists", return_value=False), patch(
-            "asyncio.create_subprocess_exec",
-            side_effect=OSError("Permission denied"),
+        with (
+            patch("os.path.exists", return_value=False),
+            patch(
+                "asyncio.create_subprocess_exec",
+                side_effect=OSError("Permission denied"),
+            ),
         ):
             with pytest.raises(GitError) as exc_info:
                 await git_manager.clone_repository(url, target_dir)
@@ -199,7 +233,9 @@ class TestValidateRepositorySize:
 
     @pytest.mark.asyncio
     async def test_validate_passes_for_small_repo(
-        self, git_manager, mock_subprocess_factory,
+        self,
+        git_manager,
+        mock_subprocess_factory,
     ):
         """Test validation passes for repository within limits."""
         url = "https://github.com/test/small-repo.git"
@@ -212,10 +248,18 @@ class TestValidateRepositorySize:
         mock_clone = mock_subprocess_factory(returncode=0)
         mock_info = mock_subprocess_factory(stdout=b"size-pack: 50 MiB\n", returncode=0)
 
-        with patch("shutil.disk_usage", return_value=mock_disk_usage), patch.object(
-            git_manager, "_run_git_command", AsyncMock(),
-        ) as mock_git, patch.object(
-            git_manager, "get_repository_info", AsyncMock(return_value={"size": "50 MiB", "file_count": 100}),
+        with (
+            patch("shutil.disk_usage", return_value=mock_disk_usage),
+            patch.object(
+                git_manager,
+                "_run_git_command",
+                AsyncMock(),
+            ) as mock_git,
+            patch.object(
+                git_manager,
+                "get_repository_info",
+                AsyncMock(return_value={"size": "50 MiB", "file_count": 100}),
+            ),
         ):
             is_valid, info = await git_manager.validate_repository_size(url)
 
@@ -236,7 +280,8 @@ class TestValidateRepositorySize:
 
         with patch("shutil.disk_usage", return_value=mock_disk_usage):
             is_valid, info = await git_manager.validate_repository_size(
-                url, min_free_space_gb=1.0,
+                url,
+                min_free_space_gb=1.0,
             )
 
             assert not is_valid
@@ -244,7 +289,9 @@ class TestValidateRepositorySize:
 
     @pytest.mark.asyncio
     async def test_validate_fails_repo_too_large(
-        self, git_manager, mock_subprocess_factory,
+        self,
+        git_manager,
+        mock_subprocess_factory,
     ):
         """Test validation fails when repository exceeds size limit."""
         url = "https://github.com/test/huge-repo.git"
@@ -252,15 +299,22 @@ class TestValidateRepositorySize:
         mock_disk_usage = MagicMock()
         mock_disk_usage.free = 10 * (1024**3)  # 10GB free
 
-        with patch("shutil.disk_usage", return_value=mock_disk_usage), patch.object(
-            git_manager, "_run_git_command", AsyncMock(),
-        ), patch.object(
-            git_manager,
-            "get_repository_info",
-            AsyncMock(return_value={"size": "600 MiB", "file_count": 1000}),
+        with (
+            patch("shutil.disk_usage", return_value=mock_disk_usage),
+            patch.object(
+                git_manager,
+                "_run_git_command",
+                AsyncMock(),
+            ),
+            patch.object(
+                git_manager,
+                "get_repository_info",
+                AsyncMock(return_value={"size": "600 MiB", "file_count": 1000}),
+            ),
         ):
             is_valid, info = await git_manager.validate_repository_size(
-                url, max_size_mb=500,
+                url,
+                max_size_mb=500,
             )
 
             assert not is_valid
@@ -268,7 +322,9 @@ class TestValidateRepositorySize:
 
     @pytest.mark.asyncio
     async def test_validate_fails_too_many_files(
-        self, git_manager, mock_subprocess_factory,
+        self,
+        git_manager,
+        mock_subprocess_factory,
     ):
         """Test validation fails when file count exceeds limit."""
         url = "https://github.com/test/many-files-repo.git"
@@ -276,15 +332,22 @@ class TestValidateRepositorySize:
         mock_disk_usage = MagicMock()
         mock_disk_usage.free = 10 * (1024**3)
 
-        with patch("shutil.disk_usage", return_value=mock_disk_usage), patch.object(
-            git_manager, "_run_git_command", AsyncMock(),
-        ), patch.object(
-            git_manager,
-            "get_repository_info",
-            AsyncMock(return_value={"size": "100 MiB", "file_count": 15000}),
+        with (
+            patch("shutil.disk_usage", return_value=mock_disk_usage),
+            patch.object(
+                git_manager,
+                "_run_git_command",
+                AsyncMock(),
+            ),
+            patch.object(
+                git_manager,
+                "get_repository_info",
+                AsyncMock(return_value={"size": "100 MiB", "file_count": 15000}),
+            ),
         ):
             is_valid, info = await git_manager.validate_repository_size(
-                url, max_file_count=10000,
+                url,
+                max_file_count=10000,
             )
 
             assert not is_valid
@@ -304,9 +367,15 @@ class TestValidateRepositorySize:
         mock_response.__enter__ = Mock(return_value=mock_response)
         mock_response.__exit__ = Mock(return_value=False)
 
-        with patch("shutil.disk_usage", return_value=mock_disk_usage), patch.object(
-            git_manager, "_run_git_command", AsyncMock(side_effect=GitError("Clone failed")),
-        ), patch("urllib.request.urlopen", return_value=mock_response):
+        with (
+            patch("shutil.disk_usage", return_value=mock_disk_usage),
+            patch.object(
+                git_manager,
+                "_run_git_command",
+                AsyncMock(side_effect=GitError("Clone failed")),
+            ),
+            patch("urllib.request.urlopen", return_value=mock_response),
+        ):
             is_valid, info = await git_manager.validate_repository_size(url)
 
             # GitHub returns size in KB, should be converted to MB
@@ -322,13 +391,27 @@ class TestCloneRepositoryWithValidation:
         url = "https://github.com/test/repo.git"
         target_dir = "/tmp/test_repo"
 
-        with patch.object(
-            git_manager,
-            "validate_repository_size",
-            AsyncMock(return_value=(True, {"estimated_size_mb": 50, "file_count": 100, "free_space_gb": 10})),
-        ), patch.object(
-            git_manager, "clone_repository", AsyncMock(return_value=target_dir),
-        ) as mock_clone:
+        with (
+            patch.object(
+                git_manager,
+                "validate_repository_size",
+                AsyncMock(
+                    return_value=(
+                        True,
+                        {
+                            "estimated_size_mb": 50,
+                            "file_count": 100,
+                            "free_space_gb": 10,
+                        },
+                    )
+                ),
+            ),
+            patch.object(
+                git_manager,
+                "clone_repository",
+                AsyncMock(return_value=target_dir),
+            ) as mock_clone,
+        ):
             result = await git_manager.clone_repository_with_validation(url, target_dir)
 
             assert result == target_dir
@@ -346,7 +429,12 @@ class TestCloneRepositoryWithValidation:
             AsyncMock(
                 return_value=(
                     False,
-                    {"errors": ["Repository too large"], "estimated_size_mb": 1000, "file_count": 0, "free_space_gb": 10},
+                    {
+                        "errors": ["Repository too large"],
+                        "estimated_size_mb": 1000,
+                        "file_count": 0,
+                        "free_space_gb": 10,
+                    },
                 ),
             ),
         ):
@@ -361,13 +449,22 @@ class TestCloneRepositoryWithValidation:
         url = "https://github.com/test/repo.git"
         target_dir = "/tmp/test_repo"
 
-        with patch.object(
-            git_manager, "validate_repository_size", AsyncMock(),
-        ) as mock_validate, patch.object(
-            git_manager, "clone_repository", AsyncMock(return_value=target_dir),
-        ) as mock_clone:
+        with (
+            patch.object(
+                git_manager,
+                "validate_repository_size",
+                AsyncMock(),
+            ) as mock_validate,
+            patch.object(
+                git_manager,
+                "clone_repository",
+                AsyncMock(return_value=target_dir),
+            ) as mock_clone,
+        ):
             result = await git_manager.clone_repository_with_validation(
-                url, target_dir, force=True,
+                url,
+                target_dir,
+                force=True,
             )
 
             assert result == target_dir
@@ -385,12 +482,17 @@ class TestUpdateRepository:
         old_commit = "abc123"
         new_commit = "def456"
 
-        with patch.object(
-            git_manager, "get_current_commit", AsyncMock(side_effect=[old_commit, new_commit]),
-        ), patch.object(
-            git_manager,
-            "_run_git_command",
-            AsyncMock(return_value="file1.py\nfile2.py"),
+        with (
+            patch.object(
+                git_manager,
+                "get_current_commit",
+                AsyncMock(side_effect=[old_commit, new_commit]),
+            ),
+            patch.object(
+                git_manager,
+                "_run_git_command",
+                AsyncMock(return_value="file1.py\nfile2.py"),
+            ),
         ):
             result = await git_manager.update_repository(repo_dir)
 
@@ -406,9 +508,14 @@ class TestUpdateRepository:
         repo_dir = "/tmp/test_repo"
         commit = "abc123"
 
-        with patch.object(
-            git_manager, "get_current_commit", AsyncMock(return_value=commit),
-        ), patch.object(git_manager, "_run_git_command", AsyncMock(return_value="")):
+        with (
+            patch.object(
+                git_manager,
+                "get_current_commit",
+                AsyncMock(return_value=commit),
+            ),
+            patch.object(git_manager, "_run_git_command", AsyncMock(return_value="")),
+        ):
             result = await git_manager.update_repository(repo_dir)
 
             assert result["old_commit"] == commit
@@ -422,12 +529,22 @@ class TestUpdateRepository:
         repo_dir = "/tmp/test_repo"
         branch = "develop"
 
-        with patch.object(
-            git_manager, "get_current_commit", AsyncMock(return_value="abc123"),
-        ), patch.object(
-            git_manager, "checkout_branch", AsyncMock(),
-        ) as mock_checkout, patch.object(
-            git_manager, "_run_git_command", AsyncMock(),
+        with (
+            patch.object(
+                git_manager,
+                "get_current_commit",
+                AsyncMock(return_value="abc123"),
+            ),
+            patch.object(
+                git_manager,
+                "checkout_branch",
+                AsyncMock(),
+            ) as mock_checkout,
+            patch.object(
+                git_manager,
+                "_run_git_command",
+                AsyncMock(),
+            ),
         ):
             await git_manager.update_repository(repo_dir, branch=branch)
 
@@ -444,7 +561,9 @@ class TestGetBranches:
         git_output = "main|2025-01-10 10:00:00|Initial commit\ndevelop|2025-01-11 15:30:00|Feature work"
 
         with patch.object(
-            git_manager, "_run_git_command", AsyncMock(return_value=git_output),
+            git_manager,
+            "_run_git_command",
+            AsyncMock(return_value=git_output),
         ):
             branches = await git_manager.get_branches(repo_dir)
 
@@ -474,7 +593,9 @@ class TestGetTags:
         git_output = "v1.0.0|2025-01-01 00:00:00|Release 1.0.0\nv1.1.0|2025-01-15 00:00:00|Bug fixes"
 
         with patch.object(
-            git_manager, "_run_git_command", AsyncMock(return_value=git_output),
+            git_manager,
+            "_run_git_command",
+            AsyncMock(return_value=git_output),
         ):
             tags = await git_manager.get_tags(repo_dir)
 
@@ -504,7 +625,9 @@ class TestGetCommits:
         git_output = "abc123|John Doe|john@example.com|1704067200|Initial commit\ndef456|Jane Smith|jane@example.com|1704153600|Add feature"
 
         with patch.object(
-            git_manager, "_run_git_command", AsyncMock(return_value=git_output),
+            git_manager,
+            "_run_git_command",
+            AsyncMock(return_value=git_output),
         ):
             commits = await git_manager.get_commits(repo_dir, limit=10)
 
@@ -522,7 +645,9 @@ class TestGetCommits:
         branch = "develop"
 
         with patch.object(
-            git_manager, "_run_git_command", AsyncMock(return_value=""),
+            git_manager,
+            "_run_git_command",
+            AsyncMock(return_value=""),
         ) as mock_cmd:
             await git_manager.get_commits(repo_dir, branch=branch)
 
@@ -541,7 +666,9 @@ class TestGetFileHistory:
         git_output = "abc123|John Doe|1704067200|Initial version\ndef456|Jane Smith|1704153600|Update logic"
 
         with patch.object(
-            git_manager, "_run_git_command", AsyncMock(return_value=git_output),
+            git_manager,
+            "_run_git_command",
+            AsyncMock(return_value=git_output),
         ):
             history = await git_manager.get_file_history(repo_dir, file_path)
 
@@ -576,7 +703,9 @@ class TestGetRepositoryInfo:
             return ""
 
         with patch.object(
-            git_manager, "_run_git_command", side_effect=mock_run_command,
+            git_manager,
+            "_run_git_command",
+            side_effect=mock_run_command,
         ):
             info = await git_manager.get_repository_info(repo_dir)
 
@@ -594,7 +723,9 @@ class TestGetRepositoryInfo:
         repo_dir = "/tmp/test_repo"
 
         with patch.object(
-            git_manager, "_run_git_command", AsyncMock(side_effect=GitError("Command failed")),
+            git_manager,
+            "_run_git_command",
+            AsyncMock(side_effect=GitError("Command failed")),
         ):
             info = await git_manager.get_repository_info(repo_dir)
 
@@ -616,7 +747,9 @@ class TestIsGitRepository:
         path = "/tmp/test_repo"
 
         with patch.object(
-            git_manager, "_run_git_command", AsyncMock(return_value=".git"),
+            git_manager,
+            "_run_git_command",
+            AsyncMock(return_value=".git"),
         ):
             result = await git_manager.is_git_repository(path)
 
@@ -628,7 +761,9 @@ class TestIsGitRepository:
         path = "/tmp/not_a_repo"
 
         with patch.object(
-            git_manager, "_run_git_command", AsyncMock(side_effect=GitError("Not a git repo")),
+            git_manager,
+            "_run_git_command",
+            AsyncMock(side_effect=GitError("Not a git repo")),
         ):
             result = await git_manager.is_git_repository(path)
 
@@ -645,7 +780,9 @@ class TestGetChangedFiles:
         git_output = "M\tsrc/main.py\nA\tsrc/new.py\nD\tsrc/old.py"
 
         with patch.object(
-            git_manager, "_run_git_command", AsyncMock(return_value=git_output),
+            git_manager,
+            "_run_git_command",
+            AsyncMock(return_value=git_output),
         ):
             changed = await git_manager.get_changed_files(repo_dir, "abc123", "def456")
 
@@ -681,7 +818,9 @@ class TestGetCurrentCommit:
         commit_hash = "abc123def456"
 
         with patch.object(
-            git_manager, "_run_git_command", AsyncMock(return_value=commit_hash),
+            git_manager,
+            "_run_git_command",
+            AsyncMock(return_value=commit_hash),
         ):
             result = await git_manager.get_current_commit(repo_dir)
 
@@ -706,7 +845,9 @@ class TestRunGitCommand:
         """Test git command failure raises GitError."""
         mock_proc = AsyncMock()
         mock_proc.returncode = 1
-        mock_proc.communicate = AsyncMock(return_value=(b"", b"fatal: not a git repository"))
+        mock_proc.communicate = AsyncMock(
+            return_value=(b"", b"fatal: not a git repository")
+        )
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_proc):
             with pytest.raises(GitError) as exc_info:
@@ -720,7 +861,9 @@ class TestRunGitCommand:
         cwd = "/tmp/test_repo"
         mock_proc = mock_subprocess_factory(returncode=0)
 
-        with patch("asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec:
+        with patch(
+            "asyncio.create_subprocess_exec", return_value=mock_proc
+        ) as mock_exec:
             await git_manager._run_git_command(["git", "status"], cwd=cwd)
 
             # Check that cwd was passed
@@ -731,7 +874,8 @@ class TestRunGitCommand:
     async def test_run_git_command_exception_wrapped(self, git_manager):
         """Test unexpected exceptions are wrapped in GitError."""
         with patch(
-            "asyncio.create_subprocess_exec", side_effect=OSError("Permission denied"),
+            "asyncio.create_subprocess_exec",
+            side_effect=OSError("Permission denied"),
         ):
             with pytest.raises(GitError) as exc_info:
                 await git_manager._run_git_command(["git", "status"])
@@ -751,8 +895,12 @@ class TestRemoveDirectory:
         mock_loop = AsyncMock()
         mock_loop.run_in_executor = AsyncMock(return_value=None)
 
-        with patch("shutil.rmtree", mock_rmtree), patch(
-            "asyncio.get_event_loop", return_value=mock_loop,
+        with (
+            patch("shutil.rmtree", mock_rmtree),
+            patch(
+                "asyncio.get_event_loop",
+                return_value=mock_loop,
+            ),
         ):
             await git_manager._remove_directory(path)
 
@@ -835,7 +983,9 @@ class TestEdgeCases:
         """Test handling of malformed git output."""
         # Missing delimiter in output
         with patch.object(
-            git_manager, "_run_git_command", AsyncMock(return_value="invalid_format"),
+            git_manager,
+            "_run_git_command",
+            AsyncMock(return_value="invalid_format"),
         ):
             branches = await git_manager.get_branches("/tmp/repo")
             # Should return empty list for malformed data
@@ -845,7 +995,9 @@ class TestEdgeCases:
     async def test_concurrent_operations(self, git_manager):
         """Test multiple concurrent git operations."""
         with patch.object(
-            git_manager, "_run_git_command", AsyncMock(return_value="output"),
+            git_manager,
+            "_run_git_command",
+            AsyncMock(return_value="output"),
         ):
             # Run multiple operations concurrently
             results = await asyncio.gather(
@@ -875,27 +1027,36 @@ class TestIntegrationScenarios:
             "errors": [],
         }
 
-        with patch.object(
-            git_manager, "validate_repository_size", AsyncMock(return_value=(True, validation_info)),
-        ), patch.object(
-            git_manager, "clone_repository", AsyncMock(return_value=target_dir),
-        ), patch.object(
-            git_manager,
-            "get_repository_info",
-            AsyncMock(
-                return_value={
-                    "remote_url": url,
-                    "current_branch": "main",
-                    "file_count": 100,
-                    "file_extensions": {"py": 50},
-                    "size": "50 MiB",
-                    "contributor_count": 5,
-                },
+        with (
+            patch.object(
+                git_manager,
+                "validate_repository_size",
+                AsyncMock(return_value=(True, validation_info)),
+            ),
+            patch.object(
+                git_manager,
+                "clone_repository",
+                AsyncMock(return_value=target_dir),
+            ),
+            patch.object(
+                git_manager,
+                "get_repository_info",
+                AsyncMock(
+                    return_value={
+                        "remote_url": url,
+                        "current_branch": "main",
+                        "file_count": 100,
+                        "file_extensions": {"py": 50},
+                        "size": "50 MiB",
+                        "contributor_count": 5,
+                    },
+                ),
             ),
         ):
             # Clone with validation
             result_dir = await git_manager.clone_repository_with_validation(
-                url, target_dir,
+                url,
+                target_dir,
             )
             assert result_dir == target_dir
 
@@ -909,24 +1070,27 @@ class TestIntegrationScenarios:
         """Test workflow: update repository and track changes."""
         repo_dir = "/tmp/test_repo"
 
-        with patch.object(
-            git_manager,
-            "update_repository",
-            AsyncMock(
-                return_value={
-                    "old_commit": "abc123",
-                    "new_commit": "def456",
-                    "updated": True,
-                    "changed_files": ["src/main.py"],
-                },
+        with (
+            patch.object(
+                git_manager,
+                "update_repository",
+                AsyncMock(
+                    return_value={
+                        "old_commit": "abc123",
+                        "new_commit": "def456",
+                        "updated": True,
+                        "changed_files": ["src/main.py"],
+                    },
+                ),
             ),
-        ), patch.object(
-            git_manager,
-            "get_changed_files",
-            AsyncMock(
-                return_value=[
-                    {"status": "modified", "file": "src/main.py"},
-                ],
+            patch.object(
+                git_manager,
+                "get_changed_files",
+                AsyncMock(
+                    return_value=[
+                        {"status": "modified", "file": "src/main.py"},
+                    ],
+                ),
             ),
         ):
             # Update repository
@@ -936,6 +1100,8 @@ class TestIntegrationScenarios:
 
             # Get detailed change info
             changes = await git_manager.get_changed_files(
-                repo_dir, update_result["old_commit"], update_result["new_commit"],
+                repo_dir,
+                update_result["old_commit"],
+                update_result["new_commit"],
             )
             assert changes[0]["status"] == "modified"

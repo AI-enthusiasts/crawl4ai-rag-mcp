@@ -7,7 +7,7 @@ Extracts and refactors existing Supabase functionality.
 import logging
 import os
 import time
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlparse
 
 from supabase import Client, create_client
@@ -131,7 +131,7 @@ class SupabaseAdapter:
             logger.exception("Unexpected error searching documents")
             return []
         else:
-            return result.data or []
+            return cast(list[dict[str, Any]], result.data) if result.data else []
 
     async def delete_documents_by_url(self, urls: list[str]) -> None:
         """Delete documents by URL"""
@@ -226,7 +226,7 @@ class SupabaseAdapter:
             logger.exception("Unexpected error searching code examples")
             return []
         else:
-            return result.data or []
+            return cast(list[dict[str, Any]], result.data) if result.data else []
 
     async def delete_code_examples_by_url(self, urls: list[str]) -> None:
         """Delete code examples by URL"""
@@ -304,7 +304,7 @@ class SupabaseAdapter:
             logger.exception("Unexpected error getting documents by URL")
             return []
         else:
-            return result.data or []
+            return cast(list[dict[str, Any]], result.data) if result.data else []
 
     async def search_documents_by_keyword(
         self,
@@ -335,7 +335,7 @@ class SupabaseAdapter:
             logger.exception("Unexpected error searching documents by keyword")
             return []
         else:
-            return result.data or []
+            return cast(list[dict[str, Any]], result.data) if result.data else []
 
     async def search_code_examples_by_keyword(
         self,
@@ -368,7 +368,7 @@ class SupabaseAdapter:
             logger.exception("Unexpected error searching code examples by keyword")
             return []
         else:
-            return result.data or []
+            return cast(list[dict[str, Any]], result.data) if result.data else []
 
     async def get_sources(self) -> list[dict[str, Any]]:
         """Get all available sources"""
@@ -388,7 +388,7 @@ class SupabaseAdapter:
             logger.exception("Unexpected error getting sources")
             return []
         else:
-            return result.data or []
+            return cast(list[dict[str, Any]], result.data) if result.data else []
 
     # Private helper methods
 
@@ -534,7 +534,7 @@ class SupabaseAdapter:
             raise VectorStoreError(msg)
 
         try:
-            source_data = {
+            source_data: dict[str, Any] = {
                 "source_id": source_id,
                 "url": url,
                 "title": title,

@@ -9,6 +9,7 @@ breaking MCP protocol. This module provides a logger that redirects all output t
 """
 
 import sys
+from typing import Any
 
 from crawl4ai.async_logger import AsyncLogger
 from rich.console import Console
@@ -21,7 +22,7 @@ class StderrAsyncLogger(AsyncLogger):
     for JSON-RPC messages only.
     """
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         """Initialize logger with stderr-based Console.
 
         Args:

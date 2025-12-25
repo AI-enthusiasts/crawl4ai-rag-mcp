@@ -1,0 +1,53 @@
+import subprocess
+from .async_configs import BrowserConfig, CrawlerRunConfig
+from _typeshed import Incomplete
+from playwright.async_api import BrowserContext as BrowserContext
+
+BROWSER_DISABLE_OPTIONS: Incomplete
+
+class ManagedBrowser:
+    @staticmethod
+    def build_browser_flags(config: BrowserConfig) -> list[str]: ...
+    browser_type: str
+    user_data_dir: str
+    headless: bool
+    browser_process: subprocess.Popen
+    temp_dir: str
+    debugging_port: int
+    host: str
+    logger: Incomplete
+    shutting_down: bool
+    cdp_url: Incomplete
+    browser_config: Incomplete
+    def __init__(self, browser_type: str = 'chromium', user_data_dir: str | None = None, headless: bool = False, logger=None, host: str = 'localhost', debugging_port: int = 9222, cdp_url: str | None = None, browser_config: BrowserConfig | None = None) -> None: ...
+    async def start(self) -> str: ...
+    async def cleanup(self) -> None: ...
+    @staticmethod
+    async def create_profile(browser_config=None, profile_name=None, logger=None): ...
+    @staticmethod
+    def list_profiles(): ...
+    @staticmethod
+    def delete_profile(profile_name_or_path): ...
+
+async def clone_runtime_state(src: BrowserContext, dst: BrowserContext, crawlerRunConfig: CrawlerRunConfig | None = None, browserConfig: BrowserConfig | None = None) -> None: ...
+
+class BrowserManager:
+    @classmethod
+    async def get_playwright(cls, use_undetected: bool = False): ...
+    config: BrowserConfig
+    logger: Incomplete
+    use_undetected: Incomplete
+    browser: Incomplete
+    default_context: Incomplete
+    managed_browser: Incomplete
+    playwright: Incomplete
+    sessions: Incomplete
+    session_ttl: int
+    contexts_by_config: Incomplete
+    def __init__(self, browser_config: BrowserConfig, logger=None, use_undetected: bool = False) -> None: ...
+    async def start(self) -> None: ...
+    async def setup_context(self, context: BrowserContext, crawlerRunConfig: CrawlerRunConfig = None, is_default: bool = False): ...
+    async def create_browser_context(self, crawlerRunConfig: CrawlerRunConfig = None): ...
+    async def get_page(self, crawlerRunConfig: CrawlerRunConfig): ...
+    async def kill_session(self, session_id: str): ...
+    async def close(self) -> None: ...

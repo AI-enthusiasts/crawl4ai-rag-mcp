@@ -126,7 +126,7 @@ async def _search_searxng(query: str, num_results: int) -> list[dict[str, Any]]:
     searxng_url = settings.searxng_url.rstrip("/")
     search_url = f"{searxng_url}/search"
 
-    params = {
+    params: dict[str, str | int] = {
         "q": query,
         "format": "json",
         "categories": "general",
@@ -143,12 +143,15 @@ async def _search_searxng(query: str, num_results: int) -> list[dict[str, Any]]:
     }
 
     try:
-        async with aiohttp.ClientSession() as session, session.get(
-            search_url,
-            params=params,
-            headers=headers,
-            timeout=aiohttp.ClientTimeout(total=settings.searxng_timeout),
-        ) as response:
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(
+                search_url,
+                params=params,
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=settings.searxng_timeout),
+            ) as response,
+        ):
             if response.status != 200:
                 logger.error("SearXNG returned status %s", response.status)
                 return []

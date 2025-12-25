@@ -7,8 +7,8 @@ requires-python = ">=3.12"
 dependencies = [
     "torch>=2.0.0", # Explicitly specify torch first to control version
     "crawl4ai==0.7.6",
-    "fastmcp>=2.12.5",
-    "supabase==2.15.1",
+    "fastmcp>=2.14.1",
+    "supabase>=2.15.1",
     "openai>=1.107.2",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
@@ -320,6 +320,13 @@ disallow_untyped_calls = false
 warn_return_any = false
 
 # ========================================
+# PYRIGHT CONFIGURATION
+# ========================================
+[tool.pyright]
+pythonVersion = "3.12"
+stubPath = "stubs"
+
+# ========================================
 # BANDIT CONFIGURATION
 # ========================================
 [tool.bandit]
@@ -348,4 +355,7 @@ torchaudio = [
 [dependency-groups]
 dev = [
     "mypy>=1.18.2",
+    "pyright>=1.1.407",
+    "pytype>=2024.10.11",
+    "stubdefaulter>=0.1.0",
 ]

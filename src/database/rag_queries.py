@@ -117,11 +117,17 @@ async def perform_rag_query(
             formatted_results.append(
                 {
                     "content": result.get("content"),
-                    "source": result.get("source_id"),  # Changed from "source" to "source_id"
+                    "source": result.get(
+                        "source_id"
+                    ),  # Changed from "source" to "source_id"
                     "url": result.get("url"),
                     "title": result.get("title"),
-                    "chunk_index": result.get("chunk_number"),  # Documents store as chunk_number
-                    "similarity_score": result.get("score", 0),
+                    "chunk_index": result.get(
+                        "chunk_number"
+                    ),  # Documents store as chunk_number
+                    "similarity_score": result.get(
+                        "similarity", 0
+                    ),  # Qdrant returns "similarity"
                 },
             )
 
@@ -200,7 +206,9 @@ async def search_code_examples(
                     "source_id": result.get("source_id"),
                     "url": result.get("url"),
                     "programming_language": result.get("programming_language"),
-                    "similarity_score": result.get("score", 0),
+                    "similarity_score": result.get(
+                        "similarity", 0
+                    ),  # Qdrant returns "similarity"
                 },
             )
 

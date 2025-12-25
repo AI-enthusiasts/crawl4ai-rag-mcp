@@ -60,7 +60,7 @@ class TestUpdateSourceSummary:
 
         with patch("src.database.sources.datetime") as mock_datetime:
             mock_now = datetime(2025, 1, 15, 10, 30, 0)
-            mock_datetime.utcnow.return_value = mock_now
+            mock_datetime.now.return_value = mock_now
 
             await update_source_summary(
                 database_client=mock_database_client,
@@ -443,8 +443,7 @@ class TestListAllSources:
         """Test listing a large number of sources."""
         # Create 100 mock sources
         expected_sources = [
-            {"source_id": f"example{i}.com", "total_chunks": i}
-            for i in range(100)
+            {"source_id": f"example{i}.com", "total_chunks": i} for i in range(100)
         ]
 
         mock_database_client.get_sources.return_value = expected_sources
@@ -457,7 +456,8 @@ class TestListAllSources:
 
     @pytest.mark.asyncio
     async def test_list_all_sources_returns_copy_not_reference(
-        self, mock_database_client,
+        self,
+        mock_database_client,
     ):
         """Test that function returns the actual list from database client."""
         expected_sources = [
@@ -558,7 +558,9 @@ class TestIntegrationScenarios:
         source_id = "example.com"
 
         # First attempt fails with QueryError
-        mock_database_client.update_source.side_effect = QueryError("Connection timeout")
+        mock_database_client.update_source.side_effect = QueryError(
+            "Connection timeout"
+        )
 
         with pytest.raises(QueryError):
             await update_source_summary(

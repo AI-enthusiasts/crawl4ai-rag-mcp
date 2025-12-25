@@ -14,7 +14,7 @@ import pytest
 sys.modules["src.core.context"] = MagicMock()
 
 from src.core.exceptions import (  # noqa: E402
-    ConnectionError,
+    DatabaseConnectionError,
     DatabaseError,
     VectorStoreError,
 )
@@ -26,7 +26,9 @@ class TestQdrantAdapterInitialization:
 
     def test_init_with_defaults(self):
         """Test initialization with default parameters"""
-        with patch("src.database.qdrant_adapter.AsyncQdrantClient") as mock_client_class:
+        with patch(
+            "src.database.qdrant_adapter.AsyncQdrantClient"
+        ) as mock_client_class:
             adapter = QdrantAdapter()
 
             # Should use default URL
@@ -47,7 +49,9 @@ class TestQdrantAdapterInitialization:
 
     def test_init_with_custom_params(self):
         """Test initialization with custom parameters"""
-        with patch("src.database.qdrant_adapter.AsyncQdrantClient") as mock_client_class:
+        with patch(
+            "src.database.qdrant_adapter.AsyncQdrantClient"
+        ) as mock_client_class:
             adapter = QdrantAdapter(
                 url="http://custom:9999",
                 api_key="test-key-123",
@@ -63,11 +67,16 @@ class TestQdrantAdapterInitialization:
 
     def test_init_with_env_vars(self):
         """Test initialization using environment variables"""
-        with patch("src.database.qdrant_adapter.AsyncQdrantClient"), \
-             patch.dict("os.environ", {
-                 "QDRANT_URL": "http://env-url:6333",
-                 "QDRANT_API_KEY": "env-key",
-             }):
+        with (
+            patch("src.database.qdrant_adapter.AsyncQdrantClient"),
+            patch.dict(
+                "os.environ",
+                {
+                    "QDRANT_URL": "http://env-url:6333",
+                    "QDRANT_API_KEY": "env-key",
+                },
+            ),
+        ):
             adapter = QdrantAdapter()
 
             assert adapter.url == "http://env-url:6333"
@@ -84,7 +93,9 @@ class TestQdrantAdapterCollectionManagement:
         mock_client.get_collection = AsyncMock(side_effect=Exception("Not found"))
         mock_client.create_collection = AsyncMock()
 
-        with patch("src.database.qdrant_adapter.AsyncQdrantClient", return_value=mock_client):
+        with patch(
+            "src.database.qdrant_adapter.AsyncQdrantClient", return_value=mock_client
+        ):
             adapter = QdrantAdapter()
             await adapter.initialize()
 
@@ -103,7 +114,9 @@ class TestQdrantAdapterCollectionManagement:
         mock_client.get_collection = AsyncMock(return_value={"name": "crawled_pages"})
         mock_client.create_collection = AsyncMock()
 
-        with patch("src.database.qdrant_adapter.AsyncQdrantClient", return_value=mock_client):
+        with patch(
+            "src.database.qdrant_adapter.AsyncQdrantClient", return_value=mock_client
+        ):
             adapter = QdrantAdapter()
             await adapter.initialize()
 
@@ -112,12 +125,18 @@ class TestQdrantAdapterCollectionManagement:
 
     @pytest.mark.asyncio
     async def test_ensure_collections_connection_error(self):
-        """Test collection creation handles ConnectionError"""
+        """Test collection creation handles DatabaseConnectionError"""
         mock_client = AsyncMock()
-        mock_client.get_collection = AsyncMock(side_effect=ConnectionError("Cannot connect"))
-        mock_client.create_collection = AsyncMock(side_effect=VectorStoreError("Create failed"))
+        mock_client.get_collection = AsyncMock(
+            side_effect=DatabaseConnectionError("Cannot connect")
+        )
+        mock_client.create_collection = AsyncMock(
+            side_effect=VectorStoreError("Create failed")
+        )
 
-        with patch("src.database.qdrant_adapter.AsyncQdrantClient", return_value=mock_client):
+        with patch(
+            "src.database.qdrant_adapter.AsyncQdrantClient", return_value=mock_client
+        ):
             adapter = QdrantAdapter()
 
             # Should handle gracefully and log warning
@@ -131,9 +150,13 @@ class TestQdrantAdapterCollectionManagement:
         """Test collection creation handles VectorStoreError"""
         mock_client = AsyncMock()
         mock_client.get_collection = AsyncMock(side_effect=Exception("Not found"))
-        mock_client.create_collection = AsyncMock(side_effect=VectorStoreError("Storage error"))
+        mock_client.create_collection = AsyncMock(
+            side_effect=VectorStoreError("Storage error")
+        )
 
-        with patch("src.database.qdrant_adapter.AsyncQdrantClient", return_value=mock_client):
+        with patch(
+            "src.database.qdrant_adapter.AsyncQdrantClient", return_value=mock_client
+        ):
             adapter = QdrantAdapter()
 
             # Should handle gracefully
@@ -146,10 +169,16 @@ class TestQdrantAdapterCollectionManagement:
     async def test_ensure_collections_generic_error(self):
         """Test collection creation handles generic exceptions"""
         mock_client = AsyncMock()
-        mock_client.get_collection = AsyncMock(side_effect=RuntimeError("Unknown error"))
-        mock_client.create_collection = AsyncMock(side_effect=RuntimeError("Create failed"))
+        mock_client.get_collection = AsyncMock(
+            side_effect=RuntimeError("Unknown error")
+        )
+        mock_client.create_collection = AsyncMock(
+            side_effect=RuntimeError("Create failed")
+        )
 
-        with patch("src.database.qdrant_adapter.AsyncQdrantClient", return_value=mock_client):
+        with patch(
+            "src.database.qdrant_adapter.AsyncQdrantClient", return_value=mock_client
+        ):
             adapter = QdrantAdapter()
 
             # Should handle gracefully
@@ -212,7 +241,9 @@ class TestQdrantAdapterDocumentOperations:
     @pytest.mark.asyncio
     async def test_get_documents_by_url(self, mock_adapter):
         """Test getting documents by URL"""
-        with patch("src.database.qdrant_adapter.qdrant.get_documents_by_url") as mock_get:
+        with patch(
+            "src.database.qdrant_adapter.qdrant.get_documents_by_url"
+        ) as mock_get:
             mock_get.return_value = [
                 {"url": "https://test.com", "content": "Test"},
             ]
@@ -229,10 +260,14 @@ class TestQdrantAdapterDocumentOperations:
     @pytest.mark.asyncio
     async def test_delete_documents_by_url(self, mock_adapter):
         """Test deleting documents by URL"""
-        with patch("src.database.qdrant_adapter.qdrant.delete_documents_by_url") as mock_delete:
+        with patch(
+            "src.database.qdrant_adapter.qdrant.delete_documents_by_url"
+        ) as mock_delete:
             mock_delete.return_value = None
 
-            await mock_adapter.delete_documents_by_url(["https://test1.com", "https://test2.com"])
+            await mock_adapter.delete_documents_by_url(
+                ["https://test1.com", "https://test2.com"]
+            )
 
             mock_delete.assert_called_once_with(
                 mock_adapter.client,
@@ -258,7 +293,9 @@ class TestQdrantAdapterCodeExamples:
     @pytest.mark.asyncio
     async def test_add_code_examples(self, mock_adapter):
         """Test adding code examples"""
-        with patch("src.database.qdrant_adapter.qdrant.code_examples.add_code_examples") as mock_add:
+        with patch(
+            "src.database.qdrant_adapter.qdrant.code_examples.add_code_examples"
+        ) as mock_add:
             mock_add.return_value = None
 
             await mock_adapter.add_code_examples(
@@ -276,7 +313,9 @@ class TestQdrantAdapterCodeExamples:
     @pytest.mark.asyncio
     async def test_search_code_examples_with_query_string(self, mock_adapter):
         """Test searching code examples with query string"""
-        with patch("src.database.qdrant_adapter.qdrant.code_examples.search_code_examples") as mock_search:
+        with patch(
+            "src.database.qdrant_adapter.qdrant.code_examples.search_code_examples"
+        ) as mock_search:
             mock_search.return_value = [
                 {"code": "def test(): pass", "summary": "Test function"},
             ]
@@ -300,7 +339,9 @@ class TestQdrantAdapterCodeExamples:
     @pytest.mark.asyncio
     async def test_search_code_examples_with_embedding(self, mock_adapter):
         """Test searching code examples with pre-computed embedding"""
-        with patch("src.database.qdrant_adapter.qdrant.code_examples.search_code_examples") as mock_search:
+        with patch(
+            "src.database.qdrant_adapter.qdrant.code_examples.search_code_examples"
+        ) as mock_search:
             mock_search.return_value = []
 
             embedding = [0.5] * 1536
@@ -322,10 +363,14 @@ class TestQdrantAdapterCodeExamples:
     @pytest.mark.asyncio
     async def test_delete_code_examples_by_url(self, mock_adapter):
         """Test deleting code examples by URL"""
-        with patch("src.database.qdrant_adapter.qdrant.code_examples.delete_code_examples_by_url") as mock_delete:
+        with patch(
+            "src.database.qdrant_adapter.qdrant.code_examples.delete_code_examples_by_url"
+        ) as mock_delete:
             mock_delete.return_value = None
 
-            await mock_adapter.delete_code_examples_by_url(["https://github.com/test/repo"])
+            await mock_adapter.delete_code_examples_by_url(
+                ["https://github.com/test/repo"]
+            )
 
             mock_delete.assert_called_once_with(
                 mock_adapter.client,
@@ -335,7 +380,9 @@ class TestQdrantAdapterCodeExamples:
     @pytest.mark.asyncio
     async def test_search_code_examples_by_keyword(self, mock_adapter):
         """Test keyword search for code examples"""
-        with patch("src.database.qdrant_adapter.qdrant.code_examples.search_code_examples_by_keyword") as mock_search:
+        with patch(
+            "src.database.qdrant_adapter.qdrant.code_examples.search_code_examples_by_keyword"
+        ) as mock_search:
             mock_search.return_value = [{"code": "async def fetch()"}]
 
             result = await mock_adapter.search_code_examples_by_keyword(
@@ -355,7 +402,9 @@ class TestQdrantAdapterCodeExamples:
     @pytest.mark.asyncio
     async def test_get_repository_code_examples(self, mock_adapter):
         """Test getting repository code examples"""
-        with patch("src.database.qdrant_adapter.qdrant.code_examples.get_repository_code_examples") as mock_get:
+        with patch(
+            "src.database.qdrant_adapter.qdrant.code_examples.get_repository_code_examples"
+        ) as mock_get:
             mock_get.return_value = [
                 {"code": "def test(): pass", "repo": "test/repo"},
             ]
@@ -377,7 +426,9 @@ class TestQdrantAdapterCodeExamples:
     @pytest.mark.asyncio
     async def test_delete_repository_code_examples(self, mock_adapter):
         """Test deleting repository code examples"""
-        with patch("src.database.qdrant_adapter.qdrant.code_examples.delete_repository_code_examples") as mock_delete:
+        with patch(
+            "src.database.qdrant_adapter.qdrant.code_examples.delete_repository_code_examples"
+        ) as mock_delete:
             mock_delete.return_value = None
 
             await mock_adapter.delete_repository_code_examples("test/repo")
@@ -390,7 +441,9 @@ class TestQdrantAdapterCodeExamples:
     @pytest.mark.asyncio
     async def test_search_code_by_signature(self, mock_adapter):
         """Test searching code by method/class signature"""
-        with patch("src.database.qdrant_adapter.qdrant.code_examples.search_code_by_signature") as mock_search:
+        with patch(
+            "src.database.qdrant_adapter.qdrant.code_examples.search_code_by_signature"
+        ) as mock_search:
             mock_search.return_value = [
                 {"code": "def fetch_data():", "method": "fetch_data"},
             ]
@@ -502,7 +555,9 @@ class TestQdrantAdapterSourceOperations:
     @pytest.mark.asyncio
     async def test_update_source_info(self, mock_adapter):
         """Test updating source information"""
-        with patch("src.database.qdrant_adapter.qdrant.update_source_info") as mock_update:
+        with patch(
+            "src.database.qdrant_adapter.qdrant.update_source_info"
+        ) as mock_update:
             mock_update.return_value = None
 
             await mock_adapter.update_source_info(
@@ -549,11 +604,15 @@ class TestQdrantAdapterErrorHandling:
 
     @pytest.mark.asyncio
     async def test_delete_raises_connection_error(self, mock_adapter):
-        """Test ConnectionError propagation from delete"""
-        with patch("src.database.qdrant_adapter.qdrant.delete_documents_by_url") as mock_delete:
-            mock_delete.side_effect = ConnectionError("Cannot connect to Qdrant")
+        """Test DatabaseConnectionError propagation from delete"""
+        with patch(
+            "src.database.qdrant_adapter.qdrant.delete_documents_by_url"
+        ) as mock_delete:
+            mock_delete.side_effect = DatabaseConnectionError(
+                "Cannot connect to Qdrant"
+            )
 
-            with pytest.raises(ConnectionError) as exc_info:
+            with pytest.raises(DatabaseConnectionError) as exc_info:
                 await mock_adapter.delete_documents_by_url(["https://test.com"])
 
             assert "Cannot connect" in str(exc_info.value)
@@ -561,7 +620,9 @@ class TestQdrantAdapterErrorHandling:
     @pytest.mark.asyncio
     async def test_code_examples_raises_vector_store_error(self, mock_adapter):
         """Test VectorStoreError propagation from code examples"""
-        with patch("src.database.qdrant_adapter.qdrant.code_examples.add_code_examples") as mock_add:
+        with patch(
+            "src.database.qdrant_adapter.qdrant.code_examples.add_code_examples"
+        ) as mock_add:
             mock_add.side_effect = VectorStoreError("Code storage failed")
 
             with pytest.raises(VectorStoreError) as exc_info:
@@ -734,7 +795,9 @@ class TestQdrantAdapterClientConfiguration:
 
     def test_client_assignment(self):
         """Test client is properly assigned during init"""
-        with patch("src.database.qdrant_adapter.AsyncQdrantClient") as mock_client_class:
+        with patch(
+            "src.database.qdrant_adapter.AsyncQdrantClient"
+        ) as mock_client_class:
             mock_client_instance = AsyncMock()
             mock_client_class.return_value = mock_client_instance
 
